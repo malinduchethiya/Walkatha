@@ -14,6 +14,7 @@ interface StoryReaderProps {
 }
 
 const FALLBACK_COVER = '/icon.png';
+const STORY_IMAGE_LINK = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
 
 export function splitStoryParagraphs(rawContent: string): string[] {
   const initial = (rawContent || '')
@@ -154,7 +155,12 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     <div className="max-w-4xl mx-auto">
       <div className="space-y-6">
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
-          <div className="w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]">
+          <a
+            href={STORY_IMAGE_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]"
+          >
             <img
               src={imgSrc}
               alt={story.title}
@@ -164,9 +170,9 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   setImgSrc(FALLBACK_COVER);
                 }
               }}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
             />
-          </div>
+          </a>
 
           <div className="p-5 sm:p-8">
             <header className="pb-5 mb-6 border-b border-[#1e2d52] space-y-2.5">

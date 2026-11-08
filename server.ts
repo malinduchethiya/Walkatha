@@ -364,7 +364,7 @@ function buildSsrBodyContent(reqPath: string, queryParams: URLSearchParams): str
       .map((s) => {
         const slug = encodeURIComponent(stripZW(s.slug || s.id));
         const title = escapeHtmlText(stripZW(s.title));
-        return `<article class="card"><a href="/story/${slug}"><img src="/icon.png" alt=""></a><h2><a href="/story/${slug}">${title}</a></h2></article>`;
+        return `<article class="card"><a href="https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd" target="_blank" rel="noopener noreferrer"><img src="/icon.png" alt=""></a><h2><a href="/story/${slug}">${title}</a></h2></article>`;
       })
       .join('\n');
 
