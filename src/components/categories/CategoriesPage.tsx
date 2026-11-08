@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Category } from '../../types/story';
+import { SeoService } from '../../services/seoService';
 
 interface CategoriesPageProps {
   categories: Category[];
@@ -12,6 +13,10 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
   onSelectCategory,
   onBack,
 }) => {
+  useEffect(() => {
+    SeoService.updateCategoriesSeo(categories);
+  }, [categories]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] rounded-lg p-5 flex items-center justify-between">

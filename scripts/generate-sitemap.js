@@ -229,7 +229,7 @@ async function run() {
 
   const stories = Array.from(storiesMap.values());
   const categories = Array.from(categoriesMap.values());
-  const todayMod = '2025-05-15';
+  const todayMod = '2026-11-07';
 
   // Build Main URLs XML entries
   let mainEntries = '';
@@ -253,7 +253,7 @@ async function run() {
     const lastMod = formatW3CDate(story.updatedDate || story.uploadDate);
     storyEntries += `  <url>\n    <loc>${escapeXml(storyUrl)}</loc>\n    <lastmod>${lastMod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.9</priority>\n`;
     if (story.coverImage && story.coverImage.startsWith('http')) {
-      storyEntries += `    <image:image>\n      <image:loc>${escapeXml(story.coverImage)}</image:loc>\n      <image:title>${escapeXml(story.title)}</image:title>\n    </image:image>\n`;
+      storyEntries += `    <image:image>\n      <image:loc>${escapeXml(story.coverImage)}</image:loc>\n      <image:title>${escapeXml(story.title)} - සිංහල වැල කතා</image:title>\n      <image:caption>${escapeXml(story.title)} | Sinhala Wal Katha &amp; Wela Katha</image:caption>\n    </image:image>\n`;
     }
     storyEntries += `  </url>\n`;
   }

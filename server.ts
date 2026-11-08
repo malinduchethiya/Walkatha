@@ -276,13 +276,79 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath, { maxAge: '7d' }));
-    app.get('*', (_req, res) => {
+    app.use(express.static(distPath, { maxAge: '7d', index: false }));
+    app.get('*', (req, res) => {
       res.setHeader(
         'Cache-Control',
         'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400'
       );
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexFile = path.join(distPath, 'index.html');
+      if (!fs.existsSync(indexFile)) {
+        return res.status(404).send('Not found');
+      }
+
+      try {
+        let html = fs.readFileSync(indexFile, 'utf8');
+        const reqPath = decodeURIComponent(req.path || '/').replace(/\/+$/, '') || '/';
+
+        if (reqPath.startsWith('/story/')) {
+          const slug = stripZW(reqPath.replace('/story/', '')).toLowerCase();
+          const store = readSyncStore();
+          const story = store.stories.find(
+            (s) =>
+              !s.isDeleted &&
+              !s.deleted &&
+              s.published !== false &&
+              (stripZW(s.slug).toLowerCase() === slug || stripZW(s.id).toLowerCase() === slug)
+          );
+          if (story) {
+            const cleanTitle = `${stripZW(story.title)} | සිංහල වැල කතා`.slice(0, 60);
+            const rawExcerpt = stripZW(
+              story.shortDescription || story.description || (story.fullContent || '').slice(0, 155)
+            );
+            const cleanDesc = (
+              rawExcerpt || `${stripZW(story.title)} - අලුත්ම සිංහල වැල කතා (Sinhala Wal Katha 2026)`
+            ).slice(0, 158);
+            const canonicalUrl = `https://www.walkathawa.site/story/${encodeURIComponent(
+              stripZW(story.slug)
+            )}`;
+            const ogImg =
+              story.coverImage && String(story.coverImage).startsWith('http')
+                ? story.coverImage
+                : 'https://www.walkathawa.site/icon.png';
+
+            html = html
+              .replace(/<title>[\s\S]*?<\/title>/i, `<title>${cleanTitle}</title>`)
+              .replace(
+                /<link rel="canonical" href="[^"]*"\s*\/?>/i,
+                `<link rel="canonical" href="${canonicalUrl}" />`
+              )
+              .replace(
+                /<meta property="og:title" content="[^"]*"\s*\/?>/i,
+                `<meta property="og:title" content="${cleanTitle.replace(/"/g, '&quot;')}" />`
+              )
+              .replace(
+                /<meta property="og:description" content="[^"]*"\s*\/?>/i,
+                `<meta property="og:description" content="${cleanDesc.replace(/"/g, '&quot;')}" />`
+              )
+              .replace(
+                /<meta property="og:url" content="[^"]*"\s*\/?>/i,
+                `<meta property="og:url" content="${canonicalUrl}" />`
+              )
+              .replace(
+                /<meta property="og:image" content="[^"]*"\s*\/?>/i,
+                `<meta property="og:image" content="${ogImg}" />`
+              )
+              .replace(
+                /<meta name="description" content="[^"]*"\s*\/?>/i,
+                `<meta name="description" content="${cleanDesc.replace(/"/g, '&quot;')}" />`
+              );
+          }
+        }
+        return res.send(html);
+      } catch {
+        return res.sendFile(indexFile);
+      }
     });
   }
 

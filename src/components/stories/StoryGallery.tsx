@@ -1,6 +1,7 @@
 import React from 'react';
 import { Story, Category } from '../../types/story';
 import { StoryCard } from './StoryCard';
+import { HOME_FAQ_ENTRIES } from '../../services/seoService';
 import {
   TripleInlineBanners320x50,
   NativeBannerAd,
@@ -27,6 +28,7 @@ interface StoryGalleryProps {
 export const StoryGallery: React.FC<StoryGalleryProps> = ({
   stories,
   totalStories,
+  categories,
   selectedCategory,
   onSelectCategory,
   onSelectStory,
@@ -100,7 +102,9 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           }
         }
       `}</style>
-      <h1 className="sr-only">සිංහල වැල කතා | වල් කතා සහ වැල කතා 2026</h1>
+      <h1 className="sr-only">
+        සිංහල වැල කතා | Sinhala Wal Katha &amp; Wela Katha 2026 - අලුත්ම වල් කතා සහ වැල කතා එකතුව
+      </h1>
 
       {/* Sorting option, Story Count & Smart Link below header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -206,6 +210,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           {currentPage > 1 && (
             <a
               href={getPageUrl(currentPage - 1)}
+              rel="prev"
               onClick={(e) => {
                 if (!e.ctrlKey && !e.metaKey) {
                   e.preventDefault();
@@ -252,6 +257,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           {currentPage < totalPages && (
             <a
               href={getPageUrl(currentPage + 1)}
+              rel="next"
               onClick={(e) => {
                 if (!e.ctrlKey && !e.metaKey) {
                   e.preventDefault();
@@ -266,6 +272,82 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           )}
         </nav>
       )}
+
+      {/* Semantic On-Page SEO Topic Cluster, Category Hub & FAQ Section */}
+      <section
+        aria-label="සිංහල වැල කතා සහ වල් කතා විස්තරය"
+        className="mt-8 pt-6 border-t border-slate-200/60 dark:border-[#1a2747] space-y-5 text-xs text-slate-600 dark:text-slate-400"
+      >
+        <div className="bg-white dark:bg-[#111a33] rounded-xl p-4 sm:p-5 space-y-3">
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+            අලුත්ම සිංහල වැල කතා 2026 | Sinhala Wal Katha, Wela Katha &amp; Walkatha9 එකතුව
+          </h2>
+          <p className="leading-relaxed">
+            <strong>Walkathawa (walkathawa.site)</strong> යනු ශ්‍රී ලංකාවේ ජනප්‍රියම සහ විශාලතම{' '}
+            <strong>සිංහල වැල කතා (Sinhala Wal Katha)</strong>, <strong>වල් කතා (Wal Katha)</strong>,{' '}
+            <strong>වැල කතා (Wela Katha)</strong> සහ <strong>Walkatha9</strong> සම්පූර්ණ කතා එකතුවයි.
+            දිනපතා යාවත්කාලීන වන අලුත්ම වල් කතා 2026 (New Sinhala Wal Katha 2026), අම්මා වල් කතා,
+            වයිෆ් / බිරිඳ කතා (Wife Wal Katha), අක්කා මල්ලි කතා (Akka Malli Katha), නැන්දා සහ ඇන්ටි කතා
+            (Aunty &amp; Nanda Wal Katha), ටීචර් කතා (Teacher Katha) මෙන්ම පාසල් සහ කැම්පස් වැල කතා
+            (School &amp; Campus Katha) 600කට අධික ප්‍රමාණයක් මෙහිදී නොමිලේ කියවිය හැක.
+          </p>
+
+          {categories && categories.length > 0 && (
+            <div className="pt-2">
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-2">
+                ජනප්‍රිය සිංහල වල් කතා වර්ගීකරණ (Top Sinhala Wal Katha Categories):
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => {
+                  const slug = cat.slug || cat.id;
+                  return (
+                    <a
+                      key={cat.id}
+                      href={`/category/${encodeURIComponent(slug)}`}
+                      onClick={(e) => {
+                        if (!e.ctrlKey && !e.metaKey) {
+                          e.preventDefault();
+                          onSelectCategory(slug);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-[#162347] text-blue-700 dark:text-blue-300 hover:underline font-medium"
+                    >
+                      {cat.sinhalaName || cat.name}
+                    </a>
+                  );
+                })}
+                <a
+                  href="/sitemap"
+                  className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-[#162347] text-slate-700 dark:text-slate-300 hover:underline font-medium"
+                >
+                  සියලුම කතා නාමාවලිය (All Stories A–Z) →
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Visible FAQ block matching Schema.org FAQPage */}
+        <div className="bg-white dark:bg-[#111a33] rounded-xl p-4 sm:p-5 space-y-3">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+            නිතර අසන ප්‍රශ්න (Sinhala Wal Katha FAQ)
+          </h2>
+          <div className="space-y-3">
+            {HOME_FAQ_ENTRIES.map((faq, idx) => (
+              <div key={idx} className="space-y-1">
+                <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  {faq.question}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  {faq.answer}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
+

@@ -28,12 +28,15 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
   return (
     <article
+      itemScope
+      itemType="https://schema.org/BlogPosting"
       style={{ border: 'none' }}
       className="min-w-0 w-full h-full bg-white dark:bg-[#111a33] rounded-xl border-0 shadow-sm hover:shadow-md dark:hover:bg-[#15203f] transition-all flex flex-col justify-between overflow-hidden"
     >
       <div className="min-w-0">
         <a
           href={storyHref}
+          title={`${story.title} - සිංහල වැල කතා`}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
               e.preventDefault();
@@ -43,8 +46,10 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           className="block relative aspect-[16/10] w-full bg-slate-100 dark:bg-[#0d152b] overflow-hidden"
         >
           <img
+            itemProp="image"
             src={imgSrc}
-            alt={story.title}
+            alt={`${story.title} - සිංහල වැල කතා | Sinhala Wal Katha`}
+            title={story.title}
             loading="lazy"
             decoding="async"
             onError={() => {

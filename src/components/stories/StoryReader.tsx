@@ -199,7 +199,8 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
         <div className="w-full aspect-[16/9] max-h-96 bg-slate-100 dark:bg-[#0d152b] overflow-hidden border-b border-slate-200 dark:border-[#1e2d52]">
           <img
             src={imgSrc}
-            alt={story.title}
+            alt={`${story.title} - සිංහල වැල කතා | Sinhala Wal Katha`}
+            title={story.title}
             decoding="async"
             onError={() => {
               if (imgSrc !== FALLBACK_COVER) {

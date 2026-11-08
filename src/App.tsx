@@ -5,6 +5,7 @@ import { StoryGallery } from './components/stories/StoryGallery';
 import { StoryReader } from './components/stories/StoryReader';
 import { CategoriesPage } from './components/categories/CategoriesPage';
 import { StaticPage } from './components/common/StaticPage';
+import { HtmlSitemapPage } from './components/common/HtmlSitemapPage';
 import { NotFoundPage } from './components/common/NotFoundPage';
 import { AdminRoot } from './components/admin/AdminRoot';
 import { Story, Category } from './types/story';
@@ -21,6 +22,7 @@ type ViewMode =
   | 'home'
   | 'reader'
   | 'categories'
+  | 'sitemap'
   | 'about'
   | 'privacy'
   | 'terms'
@@ -103,6 +105,12 @@ export function App() {
       return;
     }
 
+    if (path === '/sitemap') {
+      setViewMode('sitemap');
+      setSelectedStorySlug(null);
+      return;
+    }
+
     if (path === '/about') {
       setViewMode('about');
       return;
@@ -177,7 +185,12 @@ export function App() {
           ? categories.find((c) => c.slug === selectedCategory || c.id === selectedCategory) || null
           : null;
 
-      SeoService.updateHomeSeo(activeCategoryObj, currentPage);
+      SeoService.updateHomeSeo(
+        activeCategoryObj,
+        currentPage,
+        result.data,
+        result.totalPages || 1
+      );
     } catch {
       setStories([]);
     } finally {
@@ -309,6 +322,15 @@ export function App() {
         {viewMode === 'categories' && (
           <CategoriesPage
             categories={categories}
+            onSelectCategory={handleSelectCategory}
+            onBack={() => navigateTo('/')}
+          />
+        )}
+
+        {viewMode === 'sitemap' && (
+          <HtmlSitemapPage
+            categories={categories}
+            onSelectStory={handleSelectStory}
             onSelectCategory={handleSelectCategory}
             onBack={() => navigateTo('/')}
           />
