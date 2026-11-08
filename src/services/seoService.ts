@@ -104,6 +104,29 @@ export class SeoService {
     script.textContent = JSON.stringify(schemaData);
   }
 
+  static ensureHeadClosingScript(enabled: boolean) {
+    if (typeof document === 'undefined') return;
+    const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
+    const existing = document.head.querySelector(
+      `script[src="${POPUNDER_SRC}"]`
+    ) as HTMLScriptElement | null;
+
+    if (enabled) {
+      if (existing) {
+        if (document.head.lastElementChild !== existing) {
+          document.head.appendChild(existing);
+        }
+      } else {
+        const script = document.createElement('script');
+        script.setAttribute('data-cfasync', 'false');
+        script.src = POPUNDER_SRC;
+        document.head.appendChild(script);
+      }
+    } else if (existing) {
+      existing.remove();
+    }
+  }
+
   static updateHomeSeo(
     category?: Category | null,
     page = 1,
@@ -208,6 +231,7 @@ export class SeoService {
           : []),
       ],
     });
+    this.ensureHeadClosingScript(!isCategory);
   }
 
   /**
@@ -320,6 +344,7 @@ export class SeoService {
         },
       ],
     });
+    this.ensureHeadClosingScript(true);
   }
 
   static updateCategoriesSeo(_categories: Category[] = []) {

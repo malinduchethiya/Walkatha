@@ -50,6 +50,26 @@ export function App() {
     document.documentElement.classList.add('dark');
   }, []);
 
+  useEffect(() => {
+    const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
+    const existing = document.head.querySelector(`script[src="${POPUNDER_SRC}"]`);
+    if (viewMode === 'home' || viewMode === 'reader') {
+      if (existing) {
+        // Keep it as the very last child before </head>
+        if (document.head.lastElementChild !== existing) {
+          document.head.appendChild(existing);
+        }
+      } else {
+        const script = document.createElement('script');
+        script.setAttribute('data-cfasync', 'false');
+        script.src = POPUNDER_SRC;
+        document.head.appendChild(script);
+      }
+    } else if (existing) {
+      existing.remove();
+    }
+  }, [viewMode, selectedStorySlug, currentPage]);
+
   const parseRoute = useCallback(() => {
     const path = decodeURIComponent(window.location.pathname).replace(/\/+$/, '') || '/';
     const searchParams = new URLSearchParams(window.location.search);

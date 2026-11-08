@@ -453,11 +453,19 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
     .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
     .replace(/<script[^>]*brijmohan\.org[^>]*><\/script>\s*/gi, '');
 
+  const isHomeOrStory =
+    normalizedPath === '/' ||
+    normalizedPath.startsWith('/story/') ||
+    normalizedPath.startsWith('/posts/');
+  const headClosingScript = isHomeOrStory
+    ? '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>'
+    : '';
+
   return cleanedHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${newHeadInner}${assetTags}\n  </head>`
+      `<head>\n${newHeadInner}${assetTags}${headClosingScript}\n  </head>`
     )
     .replace(/<div id="root"><\/div>/i, `<div id="root">${ssrContent}</div>`);
 }
