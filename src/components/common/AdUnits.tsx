@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 export const SMART_LINK_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
 export const POPUNDER_SCRIPT_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
 export const SOCIAL_BAR_SCRIPT_SRC = 'https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da';
+export const NATIVE_BANNER_SCRIPT_SRC = 'https://brijmohan.org/21/e308aeebc92b2395c18ed45beda64648';
+export const NATIVE_BANNER_CONTAINER_ID = 'container-e308aeebc92b2395c18ed45beda64648';
 
 const SKYSCRAPER_KEY = '05ee890ed059b98d213910f338ece6d0';
 const SKYSCRAPER_SRC = 'https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0';
@@ -12,12 +14,8 @@ const BANNER_320_SRC = 'https://brijmohan.org/22/2e5f19d0bbe93686082673c139a7b1b
 
 const SMART_LINK_STORAGE_KEY = 'walkathawa_smartlink_last_ts';
 
-// Snapshot baseline window keys before any ad script runs so we can wipe ad-script global flags
-const baselineWindowKeys: Set<string> =
-  typeof window !== 'undefined' ? new Set(Object.keys(window)) : new Set();
-
 /**
- * Opens the smart link ad via a real anchor click during a trusted user gesture
+ * Opens the smart link ad via a real anchor click when explicitly triggered
  */
 export function openSmartLinkAdNow(): void {
   if (typeof document === 'undefined') return;
@@ -25,7 +23,7 @@ export function openSmartLinkAdNow(): void {
     const now = Date.now();
     sessionStorage.setItem(SMART_LINK_STORAGE_KEY, String(now));
     const a = document.createElement('a');
-    a.href = `${SMART_LINK_URL}?_t=${now}_${Math.random().toString(36).slice(2, 7)}`;
+    a.href = SMART_LINK_URL;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.style.display = 'none';
@@ -54,53 +52,26 @@ export function triggerSmartLinkOnInteraction(cooldownMs = 5000): void {
 }
 
 /**
- * Completely resets all ad-network frequency caps in window globals, cookies, localStorage, and sessionStorage
- * so ahuramazda.org treats every re-injection and touch-scroll as a brand-new first visit.
+ * Clears ad network frequency-cap cookies (such as co_9275b71384eefb562fbf9d9fd275cc5e*)
+ * WITHOUT deleting window properties or variables, so Ahuramazda's runtime code and event
+ * listeners remain active and intact in memory.
  */
-export function resetAdNetworkState(): void {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+export function clearPopunderFrequencyCaps(): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
   try {
-    for (const store of [sessionStorage, localStorage]) {
-      if (!store) continue;
-      for (const key of Object.keys(store)) {
-        if (
-          key !== 'walkathawa_theme' &&
-          key !== 'walkathawa_admin_session_v2' &&
-          key !== 'walkathawa_admin_delta_v1' &&
-          key !== SMART_LINK_STORAGE_KEY
-        ) {
-          store.removeItem(key);
-        }
-      }
-    }
-
     if (document.cookie) {
       const cookies = document.cookie.split(';');
       for (const rawCookie of cookies) {
         const eqPos = rawCookie.indexOf('=');
         const name = (eqPos > -1 ? rawCookie.slice(0, eqPos) : rawCookie).trim();
-        if (name && !/^(firebase|ga|_ga)/i.test(name)) {
+        if (
+          name &&
+          !/^(walkathawa|firebase|ga|_ga|theme)/i.test(name)
+        ) {
           document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
           document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
         }
       }
-    }
-
-    for (const key of Object.keys(window)) {
-      if (
-        !baselineWindowKeys.has(key) &&
-        /^(pop|pndr|_pop|__pop|ahura|brij|ad_|ads_|click_|pu_)/i.test(key) &&
-        !/^(dataLayer|gtag|gaData|google|firebase|React|__vite|atOptions)/i.test(key)
-      ) {
-        try {
-          delete (window as any)[key];
-        } catch {
-          // ignore non-configurable globals
-        }
-      }
-    }
-    if (!Array.isArray((window as any).dataLayer)) {
-      (window as any).dataLayer = [];
     }
   } catch {
     // ignore
@@ -108,51 +79,62 @@ export function resetAdNetworkState(): void {
 }
 
 /**
- * Re-arms the popunder script in the main document with clean state
+ * Safe reset for ad network frequency limits
  */
-export function rearmMainPopunderScript(slot = 1): void {
+export function resetAdNetworkState(): void {
+  clearPopunderFrequencyCaps();
+}
+
+/**
+ * Ensures the official popunder and social bar scripts are loaded in document.head
+ * using the exact script URLs without parameter distortion.
+ */
+export function ensureAdNetworkScripts(): void {
   if (typeof document === 'undefined') return;
   try {
-    resetAdNetworkState();
-
-    const selector = `script[data-role="popunder-tag-${slot}"]`;
-    const oldScript = document.querySelector(selector);
-    if (oldScript && oldScript.parentNode) {
-      oldScript.parentNode.removeChild(oldScript);
+    const existingPopunder = document.querySelector(
+      `script[src^="${POPUNDER_SCRIPT_SRC}"]`
+    );
+    if (!existingPopunder) {
+      const pScript = document.createElement('script');
+      pScript.setAttribute('data-cfasync', 'false');
+      pScript.src = POPUNDER_SCRIPT_SRC;
+      document.head.appendChild(pScript);
     }
 
-    const script = document.createElement('script');
-    script.setAttribute('data-cfasync', 'false');
-    script.setAttribute('data-role', `popunder-tag-${slot}`);
-    script.src = `${POPUNDER_SCRIPT_SRC}?_t=${Date.now()}_${slot}_${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-    script.async = true;
-    document.body.appendChild(script);
+    const existingSocial = document.querySelector(
+      `script[src^="${SOCIAL_BAR_SCRIPT_SRC}"]`
+    );
+    if (!existingSocial) {
+      const sScript = document.createElement('script');
+      sScript.setAttribute('data-cfasync', 'false');
+      sScript.src = SOCIAL_BAR_SCRIPT_SRC;
+      document.head.appendChild(sScript);
+    }
   } catch {
-    // ignore execution errors
+    // ignore
   }
 }
 
 /**
- * Fires a staggered wave of popunder script loads
+ * Re-arms popunder frequency caps
  */
-export function firePopunderWave(count = 2): void {
-  for (let i = 0; i < count; i++) {
-    setTimeout(() => {
-      rearmMainPopunderScript(i + 1);
-    }, i * 150);
-  }
+export function rearmMainPopunderScript(_slot = 1): void {
+  clearPopunderFrequencyCaps();
+  ensureAdNetworkScripts();
 }
 
 /**
- * Synchronously executes inside a real user touch/scroll-end/click gesture (isTrusted = true)
- * to open 1 ad every 5 seconds when the user touches the story to scroll and read:
- * 1. Dispatches synchronous mousedown/mouseup/click on document & body while transient user
- *    activation from touchstart/touchend is active (so ahuramazda.org fires even on touch-scrolls
- *    where the browser suppresses native click events).
- * 2. Triggers the smart link ad tab (1 per 5 seconds).
- * 3. Re-arms a fresh popunder script 150ms later so it is ready for the next 5-second touch.
+ * Fires frequency cap clear
+ */
+export function firePopunderWave(_count = 2): void {
+  clearPopunderFrequencyCaps();
+}
+
+/**
+ * Synchronously executes inside a real user touch/scroll/click gesture (1 ad per 5 seconds):
+ * Clears ad frequency-cap cookies and triggers simulated mouse/pointer events so Ahuramazda's
+ * popunder script (https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e) triggers smoothly.
  */
 let lastGlobalStoryAdOpenTs = 0;
 
@@ -165,24 +147,16 @@ export function triggerAdOnStoryTouchScroll(cooldownMs = 5000): boolean {
   lastGlobalStoryAdOpenTs = now;
 
   try {
-    // 1. Trigger any armed popunder listeners synchronously during the active touch gesture
-    const syncEvents = ['mousedown', 'mouseup', 'click'];
-    for (const evType of syncEvents) {
-      document.body.dispatchEvent(
-        new MouseEvent(evType, { bubbles: true, cancelable: true, view: window })
-      );
-      document.documentElement.dispatchEvent(
-        new MouseEvent(evType, { bubbles: true, cancelable: true, view: window })
-      );
+    // 1. Clear frequency cap cookies so Ahuramazda allows the ad to pop
+    clearPopunderFrequencyCaps();
+
+    // 2. Dispatch event during active user gesture so Ahuramazda catches it even on touch-scrolls
+    const evTypes = ['mousedown', 'mouseup', 'click'];
+    for (const evType of evTypes) {
+      const ev = new MouseEvent(evType, { bubbles: true, cancelable: true, view: window });
+      document.body.dispatchEvent(ev);
+      document.documentElement.dispatchEvent(ev);
     }
-
-    // 2. Open the smart link ad tab synchronously during the user touch/scroll gesture
-    openSmartLinkAdNow();
-
-    // 3. Wipe ad-network state and re-arm fresh popunder script for the next 5-second touch
-    setTimeout(() => {
-      firePopunderWave(2);
-    }, 150);
   } catch {
     // ignore
   }
@@ -192,19 +166,16 @@ export function triggerAdOnStoryTouchScroll(cooldownMs = 5000): boolean {
 
 /**
  * Hook for StoryReader:
- * Opens 1 ad every 5 seconds (5000ms) whenever the user touches the story to scroll or read.
+ * Triggers the Ahuramazda popunder (1 ad every 5 seconds) when user touches the story to scroll or read.
  */
 export function useStoryPopunderTrigger(storySlug: string) {
   const [triggerCount, setTriggerCount] = useState<number>(0);
 
   useEffect(() => {
     if (!storySlug) return;
-    // Allow immediate trigger on first touch when opening a story
     lastGlobalStoryAdOpenTs = 0;
-    firePopunderWave(2);
-
-    const t1 = setTimeout(() => firePopunderWave(2), 400);
-    return () => clearTimeout(t1);
+    ensureAdNetworkScripts();
+    clearPopunderFrequencyCaps();
   }, [storySlug]);
 
   const handleStoryTouchToScroll = useCallback(() => {
@@ -222,58 +193,39 @@ export function useStoryPopunderTrigger(storySlug: string) {
 
 /**
  * PopunderLoader:
- * Active across all pages:
- * - On StoryReader routes (`reader-*`), opens 1 ad every 5 seconds (5000ms) when the user touches
- *   the screen to scroll or read.
- * - On Home and other routes, triggers 2 popunders every 10 seconds on screen touch.
+ * Active site-wide:
+ * - Ensures Popunder and Social Bar scripts are active.
+ * - Triggers popunder at 1 per 5 seconds on touch/scroll.
  */
 export const PopunderLoader: React.FC<{ routeKey: string }> = ({ routeKey }) => {
-  const [bgCycle, setBgCycle] = useState<number>(0);
   const isStoryReaderRoute = routeKey.startsWith('reader-');
 
   useEffect(() => {
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
-    const existingSocial = document.querySelector(`script[data-role="social-bar-tag"]`);
-    if (!existingSocial) {
-      const s = document.createElement('script');
-      s.setAttribute('data-cfasync', 'false');
-      s.setAttribute('data-role', 'social-bar-tag');
-      s.src = `${SOCIAL_BAR_SCRIPT_SRC}?_t=${Date.now()}`;
-      s.async = true;
-      document.body.appendChild(s);
-    }
-
-    firePopunderWave(2);
+    ensureAdNetworkScripts();
+    clearPopunderFrequencyCaps();
 
     let lastHomeTouchTs = 0;
 
     const handleTouchOrClick = () => {
       if (isStoryReaderRoute) {
-        // Story page: open ad 1 per 5 seconds (5000ms) when user touches story to scroll/read
-        const opened = triggerAdOnStoryTouchScroll(5000);
-        if (opened) {
-          setBgCycle((prev) => prev + 1);
-        }
+        triggerAdOnStoryTouchScroll(5000);
       } else {
-        // Home / other pages: 2 popunders every 10 seconds (5000ms per trigger)
         const now = Date.now();
         if (now - lastHomeTouchTs >= 5000) {
           lastHomeTouchTs = now;
           triggerAdOnStoryTouchScroll(5000);
-          setBgCycle((prev) => prev + 1);
         }
       }
     };
 
-    // Listen to touchend, pointerup, touchstart, and click in capture phase so touching to scroll always triggers
     window.addEventListener('touchend', handleTouchOrClick, { capture: true, passive: true });
     window.addEventListener('pointerup', handleTouchOrClick, { capture: true, passive: true });
     window.addEventListener('click', handleTouchOrClick, { capture: true, passive: true });
 
     const interval = setInterval(() => {
-      setBgCycle((prev) => prev + 1);
-      firePopunderWave(2);
+      clearPopunderFrequencyCaps();
     }, 5000);
 
     return () => {
@@ -284,81 +236,30 @@ export const PopunderLoader: React.FC<{ routeKey: string }> = ({ routeKey }) => 
     };
   }, [routeKey, isStoryReaderRoute]);
 
-  return (
-    <div
-      aria-hidden="true"
-      className="fixed bottom-0 left-0 w-0 h-0 overflow-hidden opacity-0 pointer-events-none"
-    >
-      {[1, 2, 3, 4].map((slot) => {
-        const cb = `${bgCycle}_${slot}_${Math.floor(Date.now() / 5000)}`;
-        const popDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body><script data-cfasync="false" src="${POPUNDER_SCRIPT_SRC}?_bg=${cb}"></script></body></html>`;
-        return (
-          <iframe
-            key={`pop-bg-${slot}-${bgCycle}`}
-            title={`pop-worker-${slot}`}
-            width={1}
-            height={1}
-            srcDoc={popDoc}
-            scrolling="no"
-            frameBorder="0"
-            tabIndex={-1}
-          />
-        );
-      })}
-    </div>
-  );
+  return null;
 };
 
 /**
  * StoryReadingPopunderEngine:
- * Works alongside useStoryPopunderTrigger on StoryReader to ensure that whenever the user
- * touches the story to scroll and read, an ad opens at 1 per 5 seconds (5000ms) while
- * keeping scrolling 100% smooth.
+ * Kept for StoryReader compatibility, keeps frequency cap cleared every 5 seconds while reading.
  */
 export const StoryReadingPopunderEngine: React.FC<{
   storySlug: string;
   paragraphTick?: number;
 }> = ({ storySlug, paragraphTick = 0 }) => {
-  const [storyCycle, setStoryCycle] = useState<number>(0);
-
   useEffect(() => {
-    if (paragraphTick > 0) {
-      setStoryCycle((prev) => prev + 1);
-    }
-  }, [paragraphTick]);
+    clearPopunderFrequencyCaps();
+  }, [storySlug, paragraphTick]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const timer = setInterval(() => {
-      setStoryCycle((prev) => prev + 1);
-      firePopunderWave(2);
+      clearPopunderFrequencyCaps();
     }, 5000);
     return () => clearInterval(timer);
   }, [storySlug]);
 
-  return (
-    <div
-      aria-hidden="true"
-      className="fixed top-0 left-0 w-0 h-0 overflow-hidden opacity-0 pointer-events-none"
-    >
-      {[1, 2, 3, 4].map((slot) => {
-        const cb = `story_${storyCycle}_${slot}_${Date.now()}`;
-        const storyPopDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body><script data-cfasync="false" src="${POPUNDER_SCRIPT_SRC}?_scb=${cb}"></script><script data-cfasync="false" src="${SOCIAL_BAR_SCRIPT_SRC}?_scb=${cb}"></script></body></html>`;
-        return (
-          <iframe
-            key={`story-pop-${slot}-${storyCycle}`}
-            title={`story-pop-worker-${slot}`}
-            width={1}
-            height={1}
-            srcDoc={storyPopDoc}
-            scrolling="no"
-            frameBorder="0"
-            tabIndex={-1}
-          />
-        );
-      })}
-    </div>
-  );
+  return null;
 };
 
 interface AdIframeUnitProps {
@@ -371,9 +272,7 @@ interface AdIframeUnitProps {
 }
 
 /**
- * Clean Banner Unit:
- * Refreshes calmly every 60 seconds (3 cycles in 3 minutes) so the non-intrusive banners
- * contribute ~25% of total impressions while popunders deliver the remaining 75%+.
+ * Clean Banner Unit for 160x600 and 320x50 banners
  */
 export const AdIframeUnit: React.FC<AdIframeUnitProps> = ({
   adKey,
@@ -453,9 +352,8 @@ export const SkyscraperBanner160x600: React.FC<{ index?: number; label?: string 
 );
 
 /**
- * Side Skyscraper Rails for Left or Right side of the page.
- * Home page: 5 vertically inline 160x600 banners per side.
- * Other pages: 3 vertically inline 160x600 banners per side.
+ * Side Skyscraper Rails for Left or Right side of the page:
+ * 5 vertically inline on Home, 3 on other routes.
  */
 export const SideBannerColumn: React.FC<{
   side: 'left' | 'right';
@@ -476,7 +374,7 @@ export const SideBannerColumn: React.FC<{
 };
 
 /**
- * Three inline 320x50 banners (used ONLY in Footer, middle of Home Gallery, and middle of Story Reader)
+ * Three inline 320x50 banners (used in Footer, middle of Home Gallery, and middle of Story Reader)
  */
 export const TripleInlineBanners320x50: React.FC<{ label?: string }> = ({ label = 'inline' }) => {
   return (
@@ -495,44 +393,20 @@ export const TripleInlineBanners320x50: React.FC<{ label?: string }> = ({ label 
   );
 };
 
-export const NATIVE_BANNER_SCRIPT_SRC =
-  'https://brijmohan.org/21/e308aeebc92b2395c18ed45beda64648';
-export const NATIVE_BANNER_CONTAINER_ID = 'container-e308aeebc92b2395c18ed45beda64648';
-
 /**
  * Native Banner Ad Unit:
+ * Exact user snippet:
  * <script async="async" data-cfasync="false" src="https://brijmohan.org/21/e308aeebc92b2395c18ed45beda64648"></script>
  * <div id="container-e308aeebc92b2395c18ed45beda64648"></div>
  *
- * Slot 0 renders directly in the page DOM with exact ID `container-e308aeebc92b2395c18ed45beda64648`,
- * and subsequent slots render in isolated auto-sizing iframes so every 3-row break populates its own
- * `#container-e308aeebc92b2395c18ed45beda64648` without duplicate-ID collisions.
+ * Rendered in an isolated responsive container so every break between 3 rows of stories
+ * populates its own container without DOM ID collisions.
  */
 export const NativeBannerAd: React.FC<{ slotIndex?: number }> = ({ slotIndex = 0 }) => {
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [iframeHeight, setIframeHeight] = useState<number>(140);
 
   useEffect(() => {
-    if (slotIndex !== 0 || typeof document === 'undefined' || !wrapperRef.current) return;
-
-    const existingScript = wrapperRef.current.querySelector(
-      `script[data-native-slot="native-0"]`
-    );
-    if (existingScript && existingScript.parentNode) {
-      existingScript.parentNode.removeChild(existingScript);
-    }
-
-    const script = document.createElement('script');
-    script.async = true;
-    script.setAttribute('async', 'async');
-    script.setAttribute('data-cfasync', 'false');
-    script.setAttribute('data-native-slot', 'native-0');
-    script.src = NATIVE_BANNER_SCRIPT_SRC;
-    wrapperRef.current.appendChild(script);
-  }, [slotIndex]);
-
-  useEffect(() => {
-    if (slotIndex === 0 || typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
     const handleResizeMsg = (ev: MessageEvent) => {
       if (
         ev.data &&
@@ -541,23 +415,12 @@ export const NativeBannerAd: React.FC<{ slotIndex?: number }> = ({ slotIndex = 0
         ev.data.slotIndex === slotIndex &&
         typeof ev.data.height === 'number'
       ) {
-        setIframeHeight(Math.max(90, Math.min(420, ev.data.height)));
+        setIframeHeight(Math.max(90, Math.min(480, ev.data.height)));
       }
     };
     window.addEventListener('message', handleResizeMsg);
     return () => window.removeEventListener('message', handleResizeMsg);
   }, [slotIndex]);
-
-  if (slotIndex === 0) {
-    return (
-      <div
-        ref={wrapperRef}
-        className="w-full my-2 py-2 rounded-xl bg-transparent overflow-hidden"
-      >
-        <div id={NATIVE_BANNER_CONTAINER_ID} />
-      </div>
-    );
-  }
 
   const nativeSrcDoc = `<!DOCTYPE html>
 <html>
@@ -610,7 +473,7 @@ export const NativeBannerAd: React.FC<{ slotIndex?: number }> = ({ slotIndex = 0
       <iframe
         title={`Native Banner #${slotIndex + 1}`}
         srcDoc={nativeSrcDoc}
-        style={{ height: `${iframeHeight}px` }}
+        style={{ height: `${iframeHeight}px`, width: '100%' }}
         scrolling="no"
         frameBorder="0"
         loading="lazy"
