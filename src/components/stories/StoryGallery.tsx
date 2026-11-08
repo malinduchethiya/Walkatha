@@ -78,6 +78,28 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
 
   return (
     <div className="space-y-5">
+      <style>{`
+        .story-grid-2col {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          column-gap: 12px !important;
+          row-gap: 14px !important;
+          width: 100% !important;
+        }
+        @media (min-width: 640px) {
+          .story-grid-2col {
+            column-gap: 16px !important;
+            row-gap: 18px !important;
+          }
+        }
+        @media (min-width: 1024px) {
+          .story-grid-2col {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            column-gap: 20px !important;
+            row-gap: 22px !important;
+          }
+        }
+      `}</style>
       <h1 className="sr-only">සිංහල වැල කතා | වල් කතා සහ වැල කතා 2026</h1>
 
       {/* Sorting option, Story Count & Smart Link below header */}
@@ -119,18 +141,17 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
 
       {/* Stories Grid: 2 columns on mobile, 3 columns on desktop with clear vertical & horizontal spacing */}
       {isLoading ? (
-        <div
-          style={{ columnGap: '10px', rowGap: '12px' }}
-          className="story-grid-2col grid grid-cols-2 lg:grid-cols-3"
-        >
+        <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 8 }).map((_, idx) => (
-            <div key={idx} className="p-1 sm:p-1.5 min-w-0 w-full">
-              <div className="w-full h-48 sm:h-56 rounded-xl bg-slate-100 dark:bg-[#111a33] border-0 p-3 animate-pulse" />
-            </div>
+            <div
+              key={idx}
+              style={{ border: 'none' }}
+              className="min-w-0 w-full h-52 sm:h-60 rounded-xl bg-white dark:bg-[#111a33] border-0 p-3 animate-pulse"
+            />
           ))}
         </div>
       ) : stories.length === 0 ? (
-        <div className="bg-slate-100 dark:bg-[#111a33] rounded-xl p-8 text-center">
+        <div className="bg-white dark:bg-[#111a33] rounded-xl p-8 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
             ඔබ සෙවූ කතාව හමු නොවීය. සියලුම සිංහල වැල කතා පිරික්සන්න.
           </p>
@@ -149,10 +170,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         <div className="space-y-4 sm:space-y-6">
           {storyChunks.map((chunk, chunkIdx) => (
             <React.Fragment key={`story-chunk-${chunkIdx}`}>
-              <div
-                style={{ columnGap: '10px', rowGap: '12px' }}
-                className="story-grid-2col grid grid-cols-2 lg:grid-cols-3"
-              >
+              <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3">
                 {chunk.map((story) => (
                   <StoryCard
                     key={story.id}

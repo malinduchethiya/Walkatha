@@ -65,8 +65,10 @@ async function startServer() {
   // Security & Performance Cache Headers
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    if (req.path.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff2?)$/i)) {
+    if (isProd && req.path.startsWith('/assets/') && req.path.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff2?)$/i)) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (!isProd) {
+      res.setHeader('Cache-Control', 'no-store');
     }
     next();
   });
