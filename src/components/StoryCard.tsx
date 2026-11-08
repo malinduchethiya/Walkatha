@@ -15,7 +15,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   isBookmarked,
   onToggleBookmark,
 }) => {
-  const authorName = typeof story.author === 'string' ? story.author : story.author?.name || 'Walkathawa';
+  const authorName = typeof story.author === 'string' ? story.author : story.author?.name || 'Wal Katha';
 
   return (
     <article className="group bg-slate-100 dark:bg-[#111a33] hover:bg-slate-200/70 dark:hover:bg-[#152244] border-0 rounded-xl p-4 flex flex-col justify-between transition-all duration-200 shadow-md">

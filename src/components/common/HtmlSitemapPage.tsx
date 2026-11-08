@@ -40,29 +40,28 @@ export const HtmlSitemapPage: React.FC<HtmlSitemapPageProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-[#111a33] rounded-xl p-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#111a33] rounded-xl p-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">
-            සම්පූර්ණ සිංහල වැල කතා නාමාවලිය (Complete Sinhala Wal Katha Sitemap)
+          <h1 className="text-lg sm:text-2xl font-bold text-white">
+            Wal Katha — Complete Sitemap
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">
-            Walkathawa වෙබ් අඩවියේ ඇති සියලුම සිංහල වැල කතා, වල් කතා සහ Wela Katha ({allStories.length}) එකම පිටුවකින්.
+          <p className="text-xs sm:text-sm text-slate-300 mt-1">
+            Wal Katha වෙබ් අඩවියේ ඇති සියලුම සිංහල වැල කතා, වල් කතා සහ Wela Katha ({allStories.length}) එකම පිටුවකින්.
           </p>
         </div>
         <button
           type="button"
           onClick={onBack}
-          className="px-3 py-1.5 rounded-md text-xs font-medium bg-slate-100 dark:bg-[#162347] text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-[#1e2f5e] cursor-pointer"
+          className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#162347] text-slate-200 hover:bg-[#1e2f5e] cursor-pointer"
         >
           ← මුල් පිටුවට
         </button>
       </div>
 
-      {/* Category Directory */}
-      <section className="bg-white dark:bg-[#111a33] rounded-xl p-5 space-y-3">
-        <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+      <section className="bg-[#111a33] rounded-xl p-5 space-y-3">
+        <div className="text-sm sm:text-base font-bold text-white">
           1. ප්‍රධාන වර්ගීකරණ (Story Categories)
-        </h2>
+        </div>
         <div className="flex flex-wrap gap-2">
           {categories.map((cat) => {
             const slug = cat.slug || cat.id;
@@ -76,7 +75,7 @@ export const HtmlSitemapPage: React.FC<HtmlSitemapPageProps> = ({
                     onSelectCategory(slug);
                   }
                 }}
-                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-[#162347] text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+                className="px-3 py-1.5 rounded-lg bg-[#162347] text-xs font-semibold text-blue-300 hover:underline"
               >
                 {cat.sinhalaName || cat.name}
               </a>
@@ -85,11 +84,10 @@ export const HtmlSitemapPage: React.FC<HtmlSitemapPageProps> = ({
         </div>
       </section>
 
-      {/* Complete Stories List */}
-      <section className="bg-white dark:bg-[#111a33] rounded-xl p-5 space-y-3">
-        <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+      <section className="bg-[#111a33] rounded-xl p-5 space-y-3">
+        <div className="text-sm sm:text-base font-bold text-white">
           2. සියලුම සිංහල වැල කතා ලැයිස්තුව ({allStories.length} Stories)
-        </h2>
+        </div>
         {isLoading ? (
           <p className="text-xs text-slate-500">කතා ලැයිස්තුව පූරණය වෙමින් පවතී...</p>
         ) : (
@@ -97,14 +95,14 @@ export const HtmlSitemapPage: React.FC<HtmlSitemapPageProps> = ({
             {allStories.map((story) => (
               <li key={story.id} className="truncate">
                 <a
-                  href={`/story/${encodeURIComponent(story.slug)}`}
+                  href={`/posts/${encodeURIComponent(story.slug)}`}
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey) {
                       e.preventDefault();
                       onSelectStory(story.slug);
                     }
                   }}
-                  className="text-blue-700 dark:text-blue-400 hover:underline"
+                  className="text-blue-400 hover:underline"
                 >
                   • {story.title}
                 </a>

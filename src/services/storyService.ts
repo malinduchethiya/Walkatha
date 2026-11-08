@@ -10,7 +10,14 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { db, contentDb } from '../firebase';
-import { Story, Category, StoryQueryParams, PagedResult } from '../types/story';
+import {
+  Story,
+  Category,
+  StoryQueryParams,
+  PagedResult,
+  toW3CDatetime,
+  hasSubstantiveStoryChanges,
+} from '../types/story';
 
 const DEFAULT_CATEGORIES: Category[] = [
   {
@@ -151,9 +158,11 @@ function normalizeStoryDoc(id: string, data: Record<string, any>): Story & { chu
     likes: Number(data.likes) || 0,
     featured: Boolean(data.featured),
     published: !isDocDeleted(data),
-    uploadDate: data.uploadDate || data.uploadedDate || '2026-05-01T00:00:00.000Z',
-    uploadedDate: data.uploadedDate || data.uploadDate || '2026-05-01T00:00:00.000Z',
-    updatedDate: data.updatedDate || new Date().toISOString(),
+    createdAt: toW3CDatetime(data.createdAt || data.uploadDate || data.uploadedDate) || undefined,
+    uploadDate: toW3CDatetime(data.uploadDate || data.uploadedDate || data.createdAt) || undefined,
+    uploadedDate: toW3CDatetime(data.uploadedDate || data.uploadDate || data.createdAt) || undefined,
+    updatedAt: toW3CDatetime(data.updatedAt || data.updatedDate) || undefined,
+    updatedDate: toW3CDatetime(data.updatedDate || data.updatedAt) || undefined,
     chunkIndex: typeof data.chunkIndex === 'number' ? data.chunkIndex : undefined,
   };
 }
@@ -573,8 +582,10 @@ export class StoryService {
       featured: Boolean(input.featured),
       published: true,
       isDeleted: false,
+      createdAt: now,
       uploadDate: now,
       uploadedDate: now,
+      updatedAt: now,
       updatedDate: now,
     };
 
@@ -632,6 +643,20 @@ export class StoryService {
         ? `${cleanContent.replace(/\s+/g, ' ').slice(0, 150)}...`
         : existingStory.shortDescription || '';
 
+    const substantiveChanged = hasSubstantiveStoryChanges(existingStory, {
+      title: cleanTitle,
+      fullContent: cleanContent,
+      shortDescription: desc,
+      coverImage:
+        updates.coverImage !== undefined
+          ? updates.coverImage.trim()
+          : existingStory.coverImage || '',
+      category: updates.category || existingStory.category || 'romantic',
+    });
+    const nextUpdatedAt = substantiveChanged
+      ? new Date().toISOString()
+      : existingStory.updatedAt || existingStory.updatedDate;
+
     const updatedStory: Story & { isDeleted?: boolean } = {
       ...existingStory,
       id: storyId,
@@ -659,7 +684,8 @@ export class StoryService {
         updates.views !== undefined ? Number(updates.views) : Number(existingStory.views || 12),
       published: true,
       isDeleted: false,
-      updatedDate: new Date().toISOString(),
+      updatedAt: nextUpdatedAt,
+      updatedDate: nextUpdatedAt,
     };
 
     const delta = readLocalDelta();
@@ -902,8 +928,10 @@ export class StoryService {
             category: s.category,
             tags: s.tags,
             published: true,
+            createdAt: s.createdAt || s.uploadDate,
             uploadDate: s.uploadDate,
-            updatedDate: new Date().toISOString(),
+            updatedAt: s.updatedAt || s.updatedDate,
+            updatedDate: s.updatedDate || s.updatedAt,
           },
           { merge: true }
         );

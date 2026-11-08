@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-baseline gap-2 shrink-0"
           >
             <span className="text-lg font-bold tracking-tight text-[#0f172a] dark:text-white">
-              Walkathawa
+              Wal Katha
             </span>
             <span className="text-xs font-medium text-blue-700 dark:text-blue-400 hidden sm:inline">
               සිංහල වැල කතා

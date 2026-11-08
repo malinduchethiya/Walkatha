@@ -1,42 +1,26 @@
 import fs from 'fs';
 import path from 'path';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
 
-const baseUrl = 'https://www.walkathawa.site';
-const publicDir = path.join(process.cwd(), 'public');
-const syncFilePath = path.join(process.cwd(), 'server-data', 'firestore-sync.json');
+const SITE_URL = 'https://www.walkathawa.site';
+const NOW_MS = Date.now();
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-const primaryConfig = {
-  apiKey: 'AIzaSyDWIC_GSMIOliCrhHKPgZgNUAZKUZ96nh4',
-  authDomain: 'walkathawa-93f80.firebaseapp.com',
-  projectId: 'walkathawa-93f80',
-  storageBucket: 'walkathawa-93f80.firebasestorage.app',
-  messagingSenderId: '575596307575',
-  appId: '1:575596307575:web:daf2ef013ba17b53745272',
-};
+const DEFAULT_CATEGORIES = [
+  { id: 'wife', slug: 'wife', sinhalaName: 'වයිෆ් / බිරිඳ කතා', name: 'Wife Stories' },
+  { id: 'akka-malli', slug: 'akka-malli', sinhalaName: 'අක්කා - මල්ලි කතා', name: 'Akka Malli' },
+  { id: 'nanda', slug: 'nanda', sinhalaName: 'නැන්දා / ඇන්ටි කතා', name: 'Aunty Stories' },
+  { id: 'school', slug: 'school', sinhalaName: 'පාසල් සහ කැම්පස් කතා', name: 'School & Campus' },
+  { id: 'romantic', slug: 'romantic', sinhalaName: 'ආදර සහ රස කතා', name: 'Romantic Stories' },
+];
 
-const contentReplicaConfig = {
-  projectId: 'advance-sandbox-gmzf6',
-  appId: '1:448261670736:web:b9c2a2ffea58dfe8ce0e55',
-  apiKey: 'AIzaSyC52g5zyvwkpuqYuP2SlW9yqU50KXxm3DE',
-  authDomain: 'advance-sandbox-gmzf6.firebaseapp.com',
-  storageBucket: 'advance-sandbox-gmzf6.firebasestorage.app',
-  messagingSenderId: '448261670736',
-};
-
-if (!fs.existsSync(publicDir)) {
-  fs.mkdirSync(publicDir, { recursive: true });
-}
-
-function stripZeroWidth(str) {
-  if (!str) return '';
-  return String(str).replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+function stripZW(val) {
+  return String(val || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
 }
 
 function escapeXml(str) {
-  if (!str) return '';
-  return stripZeroWidth(str)
+  return String(str || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -44,301 +28,213 @@ function escapeXml(str) {
     .replace(/'/g, '&apos;');
 }
 
-function formatW3CDate(dateVal) {
-  const fallback = '2025-05-01';
-  if (!dateVal) return fallback;
+function encodeSlug(rawSlug) {
+  const clean = stripZW(rawSlug);
   try {
-    const d = new Date(dateVal);
-    if (!isNaN(d.getTime())) {
-      const iso = d.toISOString().split('T')[0];
-      if (iso > '2025-05-15') return '2025-05-15';
-      return iso;
-    }
-  } catch {}
-  return fallback;
+    return encodeURIComponent(decodeURIComponent(clean));
+  } catch {
+    return encodeURIComponent(clean);
+  }
 }
 
-function isDeleted(data) {
-  if (!data) return false;
-  return Boolean(data.isDeleted === true || data.deleted === true || data.published === false);
+function toW3CDatetime(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(trimmed);
+  if (isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
 }
 
-async function run() {
-  console.log('[Sitemap] Generating complete flat sitemap.xml & robots.txt for https://www.walkathawa.site ...');
+function resolveStoryLastmod(story) {
+  const updatedW3C = toW3CDatetime(story.updatedAt || story.updatedDate);
+  const createdW3C = toW3CDatetime(story.createdAt || story.uploadDate || story.uploadedDate);
 
-  const storiesMap = new Map();
-  const deletedSlugs = new Set();
-  const categoriesMap = new Map();
-  const deletedCats = new Set();
-
-  const defaultCats = [
-    { id: 'wife', slug: 'wife', name: 'වයිෆ් / බිරිඳ (Wife Stories)' },
-    { id: 'akka-malli', slug: 'akka-malli', name: 'අක්කා - මල්ලි (Akka Malli)' },
-    { id: 'nanda', slug: 'nanda', name: 'නැන්දා / ඇන්ටි (Aunty Stories)' },
-    { id: 'school', slug: 'school', name: 'පාසල් සහ කැම්පස් (School & Campus)' },
-    { id: 'romantic', slug: 'romantic', name: 'ආදර කතා (Romantic Stories)' },
-  ];
-  for (const c of defaultCats) {
-    categoriesMap.set(c.slug, c);
+  if (updatedW3C) {
+    return { lastmod: updatedW3C, source: 'updatedAt' };
   }
-
-  // Remove any _redirects file that conflicts with Cloudflare Wrangler single-page-application mode
-  const redirectsPath = path.join(publicDir, '_redirects');
-  if (fs.existsSync(redirectsPath)) {
-    try {
-      fs.unlinkSync(redirectsPath);
-    } catch {}
+  if (createdW3C) {
+    return { lastmod: createdW3C, source: 'createdAt' };
   }
+  return { lastmod: null, source: 'none' };
+}
 
-  // 1. Load from server-data/firestore-sync.json first and generate static catalog + 2MB chunks for Cloudflare Pages
-  if (fs.existsSync(syncFilePath)) {
-    try {
-      const syncData = JSON.parse(fs.readFileSync(syncFilePath, 'utf8'));
-      const syncStories = Array.isArray(syncData.stories) ? syncData.stories : [];
-      const syncCats = Array.isArray(syncData.categories) ? syncData.categories : [];
+function getRecencyChangefreqAndPriority(lastmodIso) {
+  if (!lastmodIso) {
+    return { changefreq: 'yearly', priority: '0.6' };
+  }
+  const ts = new Date(lastmodIso).getTime();
+  if (isNaN(ts)) {
+    return { changefreq: 'yearly', priority: '0.6' };
+  }
+  const ageDays = Math.max(0, (NOW_MS - ts) / DAY_MS);
+  if (ageDays <= 7) {
+    return { changefreq: 'daily', priority: '0.9' };
+  }
+  if (ageDays <= 30) {
+    return { changefreq: 'weekly', priority: '0.8' };
+  }
+  if (ageDays <= 180) {
+    return { changefreq: 'monthly', priority: '0.7' };
+  }
+  return { changefreq: 'yearly', priority: '0.6' };
+}
 
-      const CHUNK_SIZE = 105;
-      const apiDataDir = path.join(publicDir, 'api-data');
-      const chunksDir = path.join(apiDataDir, 'chunks');
-      fs.mkdirSync(chunksDir, { recursive: true });
-
-      const compactStories = syncStories
-        .filter((s) => !isDeleted(s))
-        .map((s, idx) => {
-          const chunkIndex = Math.floor(idx / CHUNK_SIZE);
-          const copy = {
+function loadStore() {
+  const syncPath = path.resolve(process.cwd(), 'server-data', 'firestore-sync.json');
+  try {
+    if (fs.existsSync(syncPath)) {
+      const parsed = JSON.parse(fs.readFileSync(syncPath, 'utf8'));
+      const rawStories = Array.isArray(parsed.stories)
+        ? parsed.stories.filter(
+            (s) => s && !s.isDeleted && !s.deleted && s.published !== false && stripZW(s.slug || s.id)
+          )
+        : [];
+      const seenSlugs = new Set();
+      const stories = [];
+      for (const s of rawStories) {
+        const key = encodeSlug(s.slug || s.id).toLowerCase();
+        if (!seenSlugs.has(key)) {
+          seenSlugs.add(key);
+          stories.push({
             ...s,
-            id: stripZeroWidth(s.id || s.slug),
-            slug: stripZeroWidth(s.slug || s.id),
-            title: stripZeroWidth(s.title || 'සිංහල වැල කතා'),
-            chunkIndex,
-          };
-          delete copy.content;
-          return copy;
-        });
-
-      const catalogStories = compactStories.map((s) => {
-        const meta = { ...s };
-        delete meta.fullContent;
-        return meta;
-      });
-
-      fs.writeFileSync(
-        path.join(apiDataDir, 'catalog.json'),
-        JSON.stringify({
-          updatedAt: syncData.updatedAt || new Date().toISOString(),
-          totalStories: catalogStories.length,
-          categories: syncCats,
-          stories: catalogStories,
-        }),
-        'utf8'
-      );
-
-      const totalChunks = Math.ceil(compactStories.length / CHUNK_SIZE);
-      for (let c = 0; c < totalChunks; c++) {
-        const slice = compactStories.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
-        fs.writeFileSync(
-          path.join(chunksDir, `chunk-${c}.json`),
-          JSON.stringify({ chunkIndex: c, stories: slice }),
-          'utf8'
-        );
-      }
-
-      for (const s of syncStories) {
-        const rawSlug = stripZeroWidth(s.slug || s.id || '');
-        const key = rawSlug.toLowerCase();
-        if (!key) continue;
-        if (isDeleted(s)) {
-          deletedSlugs.add(key);
-          continue;
-        }
-        storiesMap.set(key, {
-          id: s.id || rawSlug,
-          title: stripZeroWidth(s.title || 'සිංහල වැල කතා'),
-          slug: rawSlug,
-          category: stripZeroWidth(s.category || 'romantic'),
-          coverImage: stripZeroWidth(s.coverImage || ''),
-          uploadDate: s.uploadDate || s.uploadedDate || '2025-05-01',
-          updatedDate: s.updatedDate || s.uploadDate || '2025-05-01',
-        });
-      }
-
-      for (const c of syncCats) {
-        const slug = stripZeroWidth(c.slug || c.id || '');
-        if (!slug || slug === 'all') continue;
-        if (isDeleted(c)) {
-          deletedCats.add(slug.toLowerCase());
-          categoriesMap.delete(slug);
-          continue;
-        }
-        categoriesMap.set(slug, {
-          id: c.id || slug,
-          slug,
-          name: stripZeroWidth(c.sinhalaName || c.name || slug),
-        });
-      }
-    } catch (err) {
-      console.warn('[Sitemap] Sync file read notice:', err.message);
-    }
-  }
-
-  // 2. Also merge live Firestore if sync store was empty
-  if (storiesMap.size === 0) {
-    const primaryApp = getApps().some((a) => a.name === 'sitemap-primary')
-      ? getApp('sitemap-primary')
-      : initializeApp(primaryConfig, 'sitemap-primary');
-    const replicaApp = getApps().some((a) => a.name === 'sitemap-replica')
-      ? getApp('sitemap-replica')
-      : initializeApp(contentReplicaConfig, 'sitemap-replica');
-
-    const primaryDb = getFirestore(primaryApp);
-    const replicaDb = getFirestore(
-      replicaApp,
-      'ai-studio-walkatha-f5f7438d-1626-498d-ab41-6bcb7c299cae'
-    );
-
-    for (const dbInstance of [primaryDb, replicaDb]) {
-      try {
-        const snap = await getDocs(collection(dbInstance, 'stories'));
-        snap.forEach((docSnap) => {
-          const data = docSnap.data();
-          const rawSlug = stripZeroWidth(data.slug || docSnap.id || '');
-          const key = rawSlug.toLowerCase();
-          if (!key) return;
-
-          if (isDeleted(data)) {
-            deletedSlugs.add(key);
-            storiesMap.delete(key);
-            return;
-          }
-          if (deletedSlugs.has(key)) return;
-
-          storiesMap.set(key, {
-            id: docSnap.id,
-            title: stripZeroWidth(data.title || 'සිංහල වැල කතා'),
-            slug: rawSlug,
-            category: stripZeroWidth(data.category || 'romantic'),
-            coverImage: stripZeroWidth(data.coverImage || ''),
-            uploadDate: data.uploadDate || '2025-05-01',
-            updatedDate: data.updatedDate || '2025-05-01',
+            slug: stripZW(s.slug || s.id),
+            title: stripZW(s.title),
           });
-        });
-      } catch {}
+        }
+      }
+
+      const rawCats =
+        Array.isArray(parsed.categories) && parsed.categories.length > 0
+          ? parsed.categories.filter((c) => c && !c.isDeleted && !c.deleted && c.slug !== 'all')
+          : DEFAULT_CATEGORIES;
+      return { stories, categories: rawCats };
     }
+  } catch (err) {
+    console.error('Error reading firestore-sync.json:', err);
   }
-
-  const stories = Array.from(storiesMap.values());
-  const categories = Array.from(categoriesMap.values());
-  const todayMod = '2026-11-07';
-
-  // Build Main URLs XML entries
-  let mainEntries = '';
-  mainEntries += `  <url>\n    <loc>${baseUrl}/</loc>\n    <lastmod>${todayMod}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
-  mainEntries += `  <url>\n    <loc>${baseUrl}/categories</loc>\n    <lastmod>${todayMod}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
-  mainEntries += `  <url>\n    <loc>${baseUrl}/sitemap</loc>\n    <lastmod>${todayMod}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
-
-  for (const pagePath of ['/about', '/privacy', '/terms', '/contact']) {
-    mainEntries += `  <url>\n    <loc>${baseUrl}${pagePath}</loc>\n    <lastmod>${todayMod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>\n`;
-  }
-
-  for (const cat of categories) {
-    mainEntries += `  <url>\n    <loc>${baseUrl}/category/${encodeURIComponent(cat.slug)}</loc>\n    <lastmod>${todayMod}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.85</priority>\n  </url>\n`;
-  }
-
-  // Build Story URLs XML entries
-  let storyEntries = '';
-  for (const story of stories) {
-    const cleanSlug = stripZeroWidth(story.slug);
-    const storyUrl = `${baseUrl}/story/${encodeURIComponent(cleanSlug)}`;
-    const lastMod = formatW3CDate(story.updatedDate || story.uploadDate);
-    storyEntries += `  <url>\n    <loc>${escapeXml(storyUrl)}</loc>\n    <lastmod>${lastMod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.9</priority>\n`;
-    if (story.coverImage && story.coverImage.startsWith('http')) {
-      storyEntries += `    <image:image>\n      <image:loc>${escapeXml(story.coverImage)}</image:loc>\n      <image:title>${escapeXml(story.title)} - සිංහල වැල කතා</image:title>\n      <image:caption>${escapeXml(story.title)} | Sinhala Wal Katha &amp; Wela Katha</image:caption>\n    </image:image>\n`;
-    }
-    storyEntries += `  </url>\n`;
-  }
-
-  // 1. Primary Flat Sitemap (public/sitemap.xml & public/sitmap.xml) containing ALL 626+ URLs directly!
-  let fullUrlsetXml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  fullUrlsetXml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n`;
-  fullUrlsetXml += mainEntries;
-  fullUrlsetXml += storyEntries;
-  fullUrlsetXml += `</urlset>\n`;
-
-  // 2. Sub-sitemaps (sitemap-main.xml, sitemap-stories.xml, sitemap_index.xml)
-  const mainXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${mainEntries}</urlset>\n`;
-  const storiesXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${storyEntries}</urlset>\n`;
-  const indexXml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <sitemap>\n    <loc>${baseUrl}/sitemap-main.xml</loc>\n    <lastmod>${todayMod}</lastmod>\n  </sitemap>\n  <sitemap>\n    <loc>${baseUrl}/sitemap-stories.xml</loc>\n    <lastmod>${todayMod}</lastmod>\n  </sitemap>\n</sitemapindex>\n`;
-
-  // 3. SEO-optimized robots.txt
-  const robotsContent = `User-agent: *
-Allow: /
-Allow: /story/
-Allow: /category/
-Allow: /categories
-Allow: /sitemap
-Disallow: /admin
-Disallow: /api/
-
-User-agent: Googlebot
-Allow: /
-Disallow: /admin
-Disallow: /api/
-
-User-agent: Googlebot-Image
-Allow: /
-
-Host: ${baseUrl}
-Sitemap: ${baseUrl}/sitemap.xml
-Sitemap: ${baseUrl}/sitemap-stories.xml
-Sitemap: ${baseUrl}/sitemap-main.xml
-`;
-
-  // Write to public/
-  fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), fullUrlsetXml, 'utf8');
-  fs.writeFileSync(path.join(publicDir, 'sitmap.xml'), fullUrlsetXml, 'utf8');
-  fs.writeFileSync(path.join(publicDir, 'sitemap_index.xml'), indexXml, 'utf8');
-  fs.writeFileSync(path.join(publicDir, 'sitemap-main.xml'), mainXml, 'utf8');
-  fs.writeFileSync(path.join(publicDir, 'sitemap-stories.xml'), storiesXml, 'utf8');
-  fs.writeFileSync(path.join(publicDir, 'robots.txt'), robotsContent, 'utf8');
-
-  // Sync to dist/ if present
-  const distDir = path.join(process.cwd(), 'dist');
-  if (fs.existsSync(distDir)) {
-    fs.writeFileSync(path.join(distDir, 'sitemap.xml'), fullUrlsetXml, 'utf8');
-    fs.writeFileSync(path.join(distDir, 'sitmap.xml'), fullUrlsetXml, 'utf8');
-    fs.writeFileSync(path.join(distDir, 'sitemap_index.xml'), indexXml, 'utf8');
-    fs.writeFileSync(path.join(distDir, 'sitemap-main.xml'), mainXml, 'utf8');
-    fs.writeFileSync(path.join(distDir, 'sitemap-stories.xml'), storiesXml, 'utf8');
-    fs.writeFileSync(path.join(distDir, 'robots.txt'), robotsContent, 'utf8');
-  }
-
-  // 4. Inject static crawlable SEO directory into index.html so external sitemap crawlers (xml-sitemaps.com, etc.) discover all 625+ URLs on the very first crawl
-  const indexHtmlPath = path.join(process.cwd(), 'index.html');
-  if (fs.existsSync(indexHtmlPath)) {
-    let html = fs.readFileSync(indexHtmlPath, 'utf8');
-    const catLinks = categories
-      .map((c) => `<a href="/category/${encodeURIComponent(c.slug)}">${escapeXml(c.name)}</a>`)
-      .join(' ');
-    const storyLinks = stories
-      .map((s) => `<a href="/story/${encodeURIComponent(stripZeroWidth(s.slug))}">${escapeXml(s.title)}</a>`)
-      .join(' ');
-    const seoNavBlock = `<!-- SEO_DIRECTORY_START --><nav aria-label="Full Site Story Directory" class="sr-only"><a href="/">මුල් පිටුව</a> <a href="/categories">වර්ගීකරණ</a> <a href="/sitemap">Sitemap</a> <a href="/about">අප ගැන</a> <a href="/privacy">පෞද්ගලිකත්ව ප්‍රතිපත්තිය</a> <a href="/terms">කොන්දේසි</a> <a href="/contact">සම්බන්ධ වන්න</a> ${catLinks} ${storyLinks}</nav><!-- SEO_DIRECTORY_END -->`;
-
-    if (html.includes('<!-- SEO_DIRECTORY_START -->')) {
-      html = html.replace(/<!-- SEO_DIRECTORY_START -->[\s\S]*?<!-- SEO_DIRECTORY_END -->/, seoNavBlock);
-    } else {
-      html = html.replace('<div id="root"></div>', `<div id="root"></div>\n    ${seoNavBlock}`);
-    }
-    fs.writeFileSync(indexHtmlPath, html, 'utf8');
-  }
-
-  const totalUrls = (fullUrlsetXml.match(/<url>/g) || []).length;
-  console.log(`[Sitemap] Successfully generated flat sitemap.xml with ${totalUrls} direct <url> entries (${stories.length} stories + ${categories.length} categories + static pages) and injected SEO crawl directory.`);
-  process.exit(0);
+  return { stories: [], categories: DEFAULT_CATEGORIES };
 }
 
-run().catch((err) => {
-  console.error('[Sitemap] Error generating sitemap:', err);
-  process.exit(1);
-});
+function generateSitemaps() {
+  const { stories, categories } = loadStore();
+
+  let countFromUpdatedAt = 0;
+  let countFromCreatedAt = 0;
+  let countMissingBoth = 0;
+  let latestStoryMod = null;
+
+  const storyEntries = stories.map((story) => {
+    const encoded = encodeSlug(story.slug);
+    const loc = `${SITE_URL}/story/${encoded}`;
+    const { lastmod, source } = resolveStoryLastmod(story);
+
+    if (source === 'updatedAt') countFromUpdatedAt++;
+    else if (source === 'createdAt') countFromCreatedAt++;
+    else countMissingBoth++;
+
+    if (lastmod && (!latestStoryMod || lastmod > latestStoryMod)) {
+      latestStoryMod = lastmod;
+    }
+
+    const { changefreq, priority } = getRecencyChangefreqAndPriority(lastmod);
+    const coverUrl =
+      story.coverImage && String(story.coverImage).startsWith('http')
+        ? String(story.coverImage).trim()
+        : null;
+
+    const lines = ['  <url>', `    <loc>${escapeXml(loc)}</loc>`];
+    if (lastmod) {
+      lines.push(`    <lastmod>${escapeXml(lastmod)}</lastmod>`);
+    }
+    lines.push(`    <changefreq>${changefreq}</changefreq>`);
+    lines.push(`    <priority>${priority}</priority>`);
+    if (coverUrl) {
+      lines.push('    <image:image>');
+      lines.push(`      <image:loc>${escapeXml(coverUrl)}</image:loc>`);
+      lines.push(`      <image:title>${escapeXml(story.title)}</image:title>`);
+      lines.push('    </image:image>');
+    }
+    lines.push('  </url>');
+    return lines.join('\n');
+  });
+
+  const sitemapStoriesXml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+    storyEntries.join('\n'),
+    '</urlset>',
+    '',
+  ].join('\n');
+
+  const topLastmod = latestStoryMod || new Date().toISOString();
+
+  const mainUrls = [
+    { loc: `${SITE_URL}/`, lastmod: topLastmod, changefreq: 'daily', priority: '1.0' },
+    { loc: `${SITE_URL}/categories`, lastmod: topLastmod, changefreq: 'weekly', priority: '0.8' },
+    ...categories.map((c) => ({
+      loc: `${SITE_URL}/category/${encodeSlug(c.slug || c.id)}`,
+      lastmod: topLastmod,
+      changefreq: 'daily',
+      priority: '0.8',
+    })),
+  ];
+
+  const sitemapMainXml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    mainUrls
+      .map((u) =>
+        [
+          '  <url>',
+          `    <loc>${escapeXml(u.loc)}</loc>`,
+          `    <lastmod>${escapeXml(u.lastmod)}</lastmod>`,
+          `    <changefreq>${u.changefreq}</changefreq>`,
+          `    <priority>${u.priority}</priority>`,
+          '  </url>',
+        ].join('\n')
+      )
+      .join('\n'),
+    '</urlset>',
+    '',
+  ].join('\n');
+
+  const sitemapIndexXml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '  <sitemap>',
+    `    <loc>${SITE_URL}/sitemap-main.xml</loc>`,
+    `    <lastmod>${escapeXml(topLastmod)}</lastmod>`,
+    '  </sitemap>',
+    '  <sitemap>',
+    `    <loc>${SITE_URL}/sitemap-stories.xml</loc>`,
+    `    <lastmod>${escapeXml(topLastmod)}</lastmod>`,
+    '  </sitemap>',
+    '</sitemapindex>',
+    '',
+  ].join('\n');
+
+  const publicDir = path.resolve(process.cwd(), 'public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  fs.writeFileSync(path.join(publicDir, 'sitemap-stories.xml'), sitemapStoriesXml, 'utf8');
+  fs.writeFileSync(path.join(publicDir, 'sitemap-main.xml'), sitemapMainXml, 'utf8');
+  fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemapIndexXml, 'utf8');
+  fs.writeFileSync(path.join(publicDir, 'sitemap_index.xml'), sitemapIndexXml, 'utf8');
+
+  const distDir = path.resolve(process.cwd(), 'dist');
+  if (fs.existsSync(distDir)) {
+    fs.writeFileSync(path.join(distDir, 'sitemap-stories.xml'), sitemapStoriesXml, 'utf8');
+    fs.writeFileSync(path.join(distDir, 'sitemap-main.xml'), sitemapMainXml, 'utf8');
+    fs.writeFileSync(path.join(distDir, 'sitemap.xml'), sitemapIndexXml, 'utf8');
+    fs.writeFileSync(path.join(distDir, 'sitemap_index.xml'), sitemapIndexXml, 'utf8');
+  }
+
+  console.log(
+    `[Sitemap Generator] Total stories: ${stories.length} | From updatedAt: ${countFromUpdatedAt} | Fallback createdAt: ${countFromCreatedAt} | Lacking both: ${countMissingBoth}`
+  );
+}
+
+generateSitemaps();

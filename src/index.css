@@ -34,6 +34,18 @@
   }
 }
 
+/* Adsterra Unit Styles (§4) */
+.betads, .card .embed-responsive, .card.embed-responsive {
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ad-468 iframe, .ad-160 iframe { border: 0; display: block; }
+@media (max-width: 519px) { .ad-468 { display: none; } }
+@media (max-width: 767px) { .ad-160 { display: none; } }
+
 /* Custom Navy Theme Accents */
 .dark {
   color-scheme: dark;
@@ -42,4 +54,3 @@
 :root:not(.dark) {
   color-scheme: light;
 }
-

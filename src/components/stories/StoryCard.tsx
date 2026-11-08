@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
 
 interface StoryCardProps {
@@ -18,105 +18,89 @@ export const StoryCard: React.FC<StoryCardProps> = ({
     story.coverImage && story.coverImage.trim() ? story.coverImage : FALLBACK_COVER
   );
 
+  useEffect(() => {
+    setImgSrc(
+      story.coverImage && story.coverImage.trim() ? story.coverImage : FALLBACK_COVER
+    );
+  }, [story.coverImage]);
+
+  const storyUrl = `/story/${encodeURIComponent(story.slug)}`;
+  const categorySlug = story.category || 'romantic';
+  const categoryLabel = story.categoryName || story.category || 'සිංහල කතා';
   const excerpt =
     story.shortDescription ||
     story.description ||
-    (story.fullContent ? `${story.fullContent.slice(0, 140)}...` : '');
+    (story.fullContent ? `${story.fullContent.slice(0, 120)}...` : '');
 
-  const storyHref = `/story/${encodeURIComponent(story.slug)}`;
-  const categorySlug = story.category || 'romantic';
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+    e.preventDefault();
+    onSelect(story.slug);
+  };
 
   return (
     <article
-      itemScope
-      itemType="https://schema.org/BlogPosting"
-      style={{ border: 'none' }}
-      className="min-w-0 w-full h-full bg-white dark:bg-[#111a33] rounded-xl border-0 shadow-sm hover:shadow-md dark:hover:bg-[#15203f] transition-all flex flex-col justify-between overflow-hidden"
+      style={{ border: 'none', boxShadow: 'none' }}
+      className="group min-w-0 w-full bg-white dark:bg-[#111a33] rounded-xl overflow-hidden flex flex-col border-0 shadow-none outline-none ring-0 hover:bg-slate-50 dark:hover:bg-[#15203d] transition-colors"
     >
-      <div className="min-w-0">
-        <a
-          href={storyHref}
-          title={`${story.title} - සිංහල වැල කතා`}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              onSelect(story.slug);
+      {/* Thumbnail Image on Top — §9: Feed cards use alt="" */}
+      <a
+        href={storyUrl}
+        onClick={handleCardClick}
+        className="block relative w-full aspect-[16/10] bg-slate-100 dark:bg-[#0d152b] overflow-hidden shrink-0"
+      >
+        <img
+          src={imgSrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            if (imgSrc !== FALLBACK_COVER) {
+              setImgSrc(FALLBACK_COVER);
             }
           }}
-          className="block relative aspect-[16/10] w-full bg-slate-100 dark:bg-[#0d152b] overflow-hidden"
-        >
-          <img
-            itemProp="image"
-            src={imgSrc}
-            alt={`${story.title} - සිංහල වැල කතා | Sinhala Wal Katha`}
-            title={story.title}
-            loading="lazy"
-            decoding="async"
-            onError={() => {
-              if (imgSrc !== FALLBACK_COVER) {
-                setImgSrc(FALLBACK_COVER);
-              }
-            }}
-            className="w-full h-full object-cover block"
-          />
-        </a>
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+        />
+      </a>
 
-        <div className="p-2.5 sm:p-4 min-w-0">
-          <div className="flex items-center justify-between gap-1.5 mb-1 text-[11px] sm:text-xs min-w-0">
+      {/* Clean Card Content */}
+      <div className="p-2.5 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-1.5 text-[10px] sm:text-[11px]">
             <a
               href={`/category/${encodeURIComponent(categorySlug)}`}
               onClick={(e) => {
-                if (onSelectCategory && !e.ctrlKey && !e.metaKey) {
+                if (!e.ctrlKey && !e.metaKey) {
                   e.preventDefault();
-                  onSelectCategory(categorySlug);
+                  e.stopPropagation();
+                  if (onSelectCategory) onSelectCategory(categorySlug);
                 }
               }}
               className="font-semibold text-blue-700 dark:text-blue-400 hover:underline truncate"
             >
-              {story.categoryName || story.category || 'සිංහල කතා'}
+              {categoryLabel}
             </a>
           </div>
 
-          <h2 className="text-xs sm:text-base font-bold text-slate-900 dark:text-slate-100 mb-1 sm:mb-1.5 leading-snug line-clamp-2 break-words">
-            <a
-              href={storyHref}
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  onSelect(story.slug);
-                }
-              }}
-              className="hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
-            >
+          <h2 className="text-[13px] sm:text-[15px] font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400 leading-snug line-clamp-2">
+            <a href={storyUrl} onClick={handleCardClick} className="hover:underline">
               {story.title}
             </a>
           </h2>
 
-          <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed break-words">
-            {excerpt}
-          </p>
+          {excerpt && (
+            <p className="hidden sm:line-clamp-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              {excerpt}
+            </p>
+          )}
         </div>
-      </div>
 
-      <div
-        style={{ borderTop: 'none' }}
-        className="px-2.5 sm:px-4 pb-2.5 sm:pb-3 pt-1 flex items-center justify-end text-[11px] sm:text-xs min-w-0"
-      >
-        <a
-          href={storyHref}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              onSelect(story.slug);
-            }
-          }}
-          className="font-semibold text-blue-700 dark:text-blue-400 hover:underline shrink-0"
-        >
-          කියවන්න →
-        </a>
+        <div className="pt-1 flex items-center justify-between text-[11px] font-semibold text-blue-700 dark:text-blue-400">
+          <a href={storyUrl} onClick={handleCardClick} className="hover:underline">
+            කතාව කියවන්න →
+          </a>
+        </div>
       </div>
     </article>
   );
 };
-
-export default StoryCard;

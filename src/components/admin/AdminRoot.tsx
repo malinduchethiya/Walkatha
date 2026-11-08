@@ -337,7 +337,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1e2d52] pb-4">
             <div>
               <h1 className="text-lg font-bold text-slate-900 dark:text-white">
-                Walkathawa Admin Login
+                Wal Katha Admin Login
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 පරිපාලක ගිණුමට පිවිසෙන්න
@@ -431,7 +431,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#111a33] p-4 rounded-lg border border-slate-200 dark:border-[#1e2d52]">
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-              Walkathawa Admin Panel
+              Wal Katha Admin Panel
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Logged in as <span className="font-medium text-blue-600 dark:text-blue-400">{ADMIN_CONFIG_EMAIL}</span> • කතා {stories.length} • වර්ගීකරණ {categories.length}

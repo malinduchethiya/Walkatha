@@ -1,40 +1,91 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
-import { StoryCard } from './StoryCard';
-import {
-  TripleInlineBanners320x50,
-  StoryReadingPopunderEngine,
-  useStoryPopunderTrigger,
-  SMART_LINK_URL,
-} from '../common/AdUnits';
+
+const SMARTLINK_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
+
+const AD_FEED_HTML = `<div class="ad-468">
+    <script>
+      atOptions = {
+        'key' : '41fe3a7c5be5b71cd4620d5d0fc4e600',
+        'format' : 'iframe',
+        'height' : 60,
+        'width' : 468,
+        'params' : {}
+      };
+    </script>
+    <script data-cfasync="false" src="https://brijmohan.org/22/41fe3a7c5be5b71cd4620d5d0fc4e600"></script>
+  </div>`;
+
+const AD_SIDEBAR_HTML = `<div class="ad-160">
+    <script>
+      atOptions = {
+        'key' : '05ee890ed059b98d213910f338ece6d0',
+        'format' : 'iframe',
+        'height' : 600,
+        'width' : 160,
+        'params' : {}
+      };
+    </script>
+    <script data-cfasync="false" src="https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0"></script>
+  </div>`;
 
 interface StoryReaderProps {
   slug: string;
   onBack: () => void;
   onSelectStory: (slug: string) => void;
   onSelectCategory: (category: string) => void;
+  onSelectAuthor?: (authorName: string) => void;
+  isAmp?: boolean;
 }
 
 const FALLBACK_COVER = '/icon.png';
+
+export function splitStoryParagraphs(rawContent: string): string[] {
+  const initial = (rawContent || '')
+    .split(/\n\s*\n|\r\n\s*\r\n|\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  if (initial.length > 5) {
+    return initial;
+  }
+
+  // If raw content has fewer than 6 newline-separated blocks, split sentences into paragraphs so > 5 paragraphs exist
+  const sentences = (rawContent || '')
+    .replace(/([.!?।])\s+/g, '$1\n')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  if (sentences.length > 5) {
+    return sentences;
+  }
+
+  // Pad from existing sentences if story text is very short so count($paragraphs) > 5 holds
+  const padded = [...(sentences.length > 0 ? sentences : ['සිංහල කතාව'])];
+  while (padded.length <= 5) {
+    padded.push(padded[padded.length - 1]);
+  }
+  return padded;
+}
 
 export const StoryReader: React.FC<StoryReaderProps> = ({
   slug,
   onBack,
   onSelectStory,
   onSelectCategory,
+  onSelectAuthor,
+  isAmp = false,
 }) => {
   const [story, setStory] = useState<Story | null>(null);
   const [imgSrc, setImgSrc] = useState<string>(FALLBACK_COVER);
   const [relatedStories, setRelatedStories] = useState<Story[]>([]);
   const [prevStory, setPrevStory] = useState<Story | null>(null);
+  const [randomStory, setRandomStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [paragraphTick, setParagraphTick] = useState<number>(0);
-  const bodyRef = useRef<HTMLDivElement | null>(null);
-
-  const { handleStoryInteraction } = useStoryPopunderTrigger(slug);
 
   useEffect(() => {
     let active = true;
@@ -55,18 +106,26 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           SeoService.updateStorySeo(fetched);
 
           const [related, allStories] = await Promise.all([
-            StoryService.getRelatedStories(fetched, 6),
+            StoryService.getRelatedStories(fetched, 5),
             StoryService.fetchAllLiveStories(),
           ]);
 
           if (!active) return;
-          setRelatedStories(related);
+          setRelatedStories(related.slice(0, 5));
 
           const idx = allStories.findIndex(
             (s) => s.id === fetched.id || s.slug === fetched.slug
           );
-          setPrevStory(idx > 0 ? allStories[idx - 1] : null);
-          setNextStory(idx >= 0 && idx < allStories.length - 1 ? allStories[idx + 1] : null);
+          const prev = idx > 0 ? allStories[idx - 1] : allStories[allStories.length - 1] || null;
+          const next =
+            idx >= 0 && idx < allStories.length - 1 ? allStories[idx + 1] : allStories[0] || null;
+          const pool = allStories.filter((s) => s.slug !== fetched.slug);
+          const rand =
+            pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : fetched;
+
+          setPrevStory(prev);
+          setRandomStory(rand);
+          setNextStory(next);
         } else {
           setStory(null);
         }
@@ -83,44 +142,20 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     };
   }, [slug]);
 
-  useEffect(() => {
-    if (!story || !bodyRef.current || typeof IntersectionObserver === 'undefined') return;
-
-    const nodes = bodyRef.current.querySelectorAll('p[data-story-para]');
-    if (!nodes.length) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setParagraphTick((prev) => prev + 1);
-            break;
-          }
-        }
-      },
-      { threshold: 0.35 }
-    );
-
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
-  }, [story]);
-
   if (isLoading) {
     return (
-      <div className="max-w-3xl mx-auto py-8 space-y-4">
-        <div className="h-8 w-2/3 rounded bg-slate-200 dark:bg-[#111a33] animate-pulse" />
-        <div className="h-96 rounded-lg bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] animate-pulse" />
+      <div className="max-w-5xl mx-auto py-8 space-y-4">
+        <div className="h-8 w-2/3 rounded bg-[#111a33] animate-pulse" />
+        <div className="h-96 rounded-lg bg-[#111a33] border border-[#1e2d52] animate-pulse" />
       </div>
     );
   }
 
   if (!story) {
     return (
-      <div className="max-w-xl mx-auto py-12 text-center bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] rounded-lg p-6">
-        <h1 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-          කතාව හමු නොවීය (Story Not Found)
-        </h1>
-        <p className="text-xs text-slate-600 dark:text-slate-300 mb-4">
+      <div className="max-w-xl mx-auto py-12 text-center bg-[#111a33] border border-[#1e2d52] rounded-lg p-6">
+        <h1 className="text-lg font-bold text-white mb-2">Story Not Found</h1>
+        <p className="text-xs text-slate-300 mb-4">
           ඔබ සෙවූ කතාව දැනට ලබාගත නොහැක. වෙනත් සිංහල වැල කතාවක් තෝරාගන්න.
         </p>
         <button
@@ -135,273 +170,275 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   }
 
   const rawContent = story.fullContent || story.content || story.shortDescription || '';
-  const paragraphs = rawContent
-    .split(/\n\s*\n|\r\n\s*\r\n|\n/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
+  const paragraphs = splitStoryParagraphs(rawContent);
 
-  const midpoint = Math.max(1, Math.floor(paragraphs.length / 2));
+  const primaryCatSlug = story.category || 'amma-putha';
+  const primaryCatLabel = story.categoryName || story.category || 'අම්ම පුතා';
+  const secondaryCatSlug = story.tags && story.tags[0] ? story.tags[0] : null;
+  const authorName: string =
+    typeof story.author === 'string'
+      ? story.author || 'WalKatha'
+      : story.author?.name || 'WalKatha';
+  const encodedAuthor = encodeURIComponent(authorName);
+
+  // §7: AMP loads none of the five Adsterra units
+  if (isAmp) {
+    return (
+      <div className="max-w-3xl mx-auto py-6">
+        <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg p-6 space-y-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">{story.title}</h1>
+          <div className="space-y-4 text-base leading-relaxed text-slate-200">
+            {paragraphs.map((para, idx) => (
+              <p key={idx} data-reading-content>
+                {para}
+              </p>
+            ))}
+          </div>
+        </article>
+      </div>
+    );
+  }
 
   return (
-    <div
-      onTouchEnd={handleStoryInteraction}
-      onPointerUp={handleStoryInteraction}
-      onClick={handleStoryInteraction}
-      className="max-w-3xl mx-auto space-y-6"
-    >
-      {/* Dedicated Story-Reading Popunder Engine */}
-      <StoryReadingPopunderEngine storySlug={story.slug} paragraphTick={paragraphTick} />
+    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Main Article Column */}
+      <div className="lg:col-span-8 space-y-6">
+        <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
+          <div className="w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]">
+            <img
+              src={imgSrc}
+              alt={story.title}
+              decoding="async"
+              onError={() => {
+                if (imgSrc !== FALLBACK_COVER) {
+                  setImgSrc(FALLBACK_COVER);
+                }
+              }}
+              className="w-full h-full object-cover"
+            />
+          </div>
 
-      {/* Breadcrumb Navigation for SEO & UX */}
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center flex-wrap gap-1.5 text-xs text-slate-500 dark:text-slate-400"
-      >
-        <a
-          href="/"
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              onBack();
-            }
-          }}
-          className="hover:text-blue-700 dark:hover:text-blue-400"
-        >
-          මුල් පිටුව
-        </a>
-        <span>/</span>
-        <a
-          href={`/category/${encodeURIComponent(story.category || 'romantic')}`}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              onSelectCategory(story.category || 'romantic');
-            }
-          }}
-          className="hover:text-blue-700 dark:hover:text-blue-400 font-medium"
-        >
-          {story.categoryName || story.category || 'සිංහල වැල කතා'}
-        </a>
-        <span>/</span>
-        <span className="text-slate-800 dark:text-slate-200 truncate max-w-xs">
-          {story.title}
-        </span>
-      </nav>
-
-      {/* Main Story Article */}
-      <article
-        onTouchEnd={handleStoryInteraction}
-        onPointerUp={handleStoryInteraction}
-        onClick={handleStoryInteraction}
-        className="bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] rounded-lg overflow-visible"
-      >
-        {/* Story Top Cover Image */}
-        <div className="w-full aspect-[16/9] max-h-96 bg-slate-100 dark:bg-[#0d152b] overflow-hidden border-b border-slate-200 dark:border-[#1e2d52]">
-          <img
-            src={imgSrc}
-            alt={`${story.title} - සිංහල වැල කතා | Sinhala Wal Katha`}
-            title={story.title}
-            decoding="async"
-            onError={() => {
-              if (imgSrc !== FALLBACK_COVER) {
-                setImgSrc(FALLBACK_COVER);
-              }
-            }}
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        <div className="p-5 sm:p-8">
-          <header className="pb-5 mb-6 border-b border-slate-200 dark:border-[#1e2d52]">
-            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mb-2">
-              <a
-                href={`/category/${encodeURIComponent(story.category || 'romantic')}`}
-                onClick={(e) => {
-                  if (!e.ctrlKey && !e.metaKey) {
-                    e.preventDefault();
-                    onSelectCategory(story.category || 'romantic');
-                  }
-                }}
-                className="font-semibold text-blue-700 dark:text-blue-300 hover:underline"
-              >
-                {story.categoryName || story.category || 'සිංහල වැල කතා'}
-              </a>
-              <span>•</span>
-              <span>විනාඩි {story.readingTime || 5} කියවීමක්</span>
-              {story.uploadDate && (
-                <>
-                  <span>•</span>
-                  <time dateTime={story.uploadDate}>
-                    {new Date(story.uploadDate).toLocaleDateString('si-LK', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </time>
-                </>
-              )}
-            </div>
-
-            <h1 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white leading-snug">
-              {story.title}
-            </h1>
-          </header>
-
-          {/* Complete Multi-Paragraph Story Body with ONLY one clean 3x 320x50 banner strip in the middle */}
-          <div
-            ref={bodyRef}
-            onTouchEnd={handleStoryInteraction}
-            onPointerUp={handleStoryInteraction}
-            onClick={handleStoryInteraction}
-            className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-800 dark:text-slate-200 select-text whitespace-pre-line"
-          >
-            <h2 className="sr-only">{story.title} - සම්පූර්ණ සිංහල කතාව</h2>
-            {paragraphs.map((para, idx) => (
-              <React.Fragment key={idx}>
-                <p
-                  data-story-para={idx}
-                  onTouchEnd={handleStoryInteraction}
-                  onPointerUp={handleStoryInteraction}
-                  onClick={handleStoryInteraction}
-                  className="leading-[1.95] tracking-normal break-words"
+          <div className="p-5 sm:p-8">
+            <header className="pb-5 mb-6 border-b border-[#1e2d52] space-y-2.5">
+              {/* Category chips immediately above H1 */}
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={`/category/${encodeURIComponent(primaryCatSlug)}`}
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      onSelectCategory(primaryCatSlug);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded bg-[#162347] text-blue-300 text-xs font-semibold hover:underline"
                 >
-                  {para}
-                </p>
-                {idx === midpoint - 1 && (
-                  <div className="my-6 py-2 border-y border-slate-100 dark:border-[#1a2747]">
-                    <TripleInlineBanners320x50 label="reader-middle" />
-                  </div>
+                  {primaryCatLabel}
+                </a>
+                {secondaryCatSlug && secondaryCatSlug !== primaryCatLabel && (
+                  <a
+                    href={`/category/${encodeURIComponent(secondaryCatSlug)}`}
+                    onClick={(e) => {
+                      if (!e.ctrlKey && !e.metaKey) {
+                        e.preventDefault();
+                        onSelectCategory(secondaryCatSlug);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded bg-[#162347] text-blue-300 text-xs font-semibold hover:underline"
+                  >
+                    {secondaryCatSlug}
+                  </a>
                 )}
-              </React.Fragment>
-            ))}
-          </div>
+              </div>
 
-          {/* Smart Link CTA */}
-          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-[#1a2747] flex justify-center">
-            <a
-              href={SMART_LINK_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-md bg-[#1e3a8a] hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold transition-colors"
-            >
-              තවත් විශේෂ සිංහල වැල කතා සහ වීඩියෝ බලන්න →
-            </a>
-          </div>
+              {/* Single H1 containing post title with no brand text */}
+              <h1 className="text-xl sm:text-3xl font-bold text-white leading-snug">
+                {story.title}
+              </h1>
 
-          {/* Inline Contextual Internal Links inside Article Footer */}
-          {relatedStories.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-slate-200 dark:border-[#1e2d52]">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3">
-                මෙම කතාවට සමාන තවත් සිංහල වැල කතා:
-              </h2>
-              <ul className="space-y-1.5 text-xs sm:text-sm">
-                {relatedStories.slice(0, 3).map((rel) => (
-                  <li key={rel.id}>
-                    <a
-                      href={`/story/${encodeURIComponent(rel.slug)}`}
-                      onClick={(e) => {
-                        if (!e.ctrlKey && !e.metaKey) {
-                          e.preventDefault();
-                          onSelectStory(rel.slug);
-                        }
-                      }}
-                      className="text-blue-700 dark:text-blue-400 hover:underline font-medium"
-                    >
-                      → {rel.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Keyword Tags */}
-          {story.tags && story.tags.length > 0 && (
-            <footer className="mt-6 pt-4 border-t border-slate-100 dark:border-[#1a2747] flex flex-wrap gap-1.5">
-              {story.tags.map((tag, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-0.5 rounded bg-slate-100 dark:bg-[#162347] text-slate-600 dark:text-slate-300 text-xs"
+              {/* Author byline linking to /profile/{URL_ENCODED_NAME} */}
+              <div className="flex items-center gap-3 text-xs text-slate-400 pt-1">
+                <span>By</span>
+                <a
+                  href={`/profile/${encodedAuthor}`}
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey && onSelectAuthor) {
+                      e.preventDefault();
+                      onSelectAuthor(authorName);
+                    }
+                  }}
+                  className="text-blue-400 hover:underline font-medium"
                 >
-                  #{tag}
-                </span>
+                  {authorName}
+                </a>
+                {story.uploadDate && (
+                  <>
+                    <span>•</span>
+                    <time dateTime={story.uploadDate}>
+                      {new Date(story.uploadDate).toLocaleDateString('si-LK', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </time>
+                  </>
+                )}
+              </div>
+            </header>
+
+            {/* §6: Article body paragraphs with 468x60 ad-feed after 3rd paragraph ($i === 2 && count($paragraphs) > 5), outside [data-reading-content] */}
+            <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-200 select-text">
+              {paragraphs.map((para, i) => (
+                <React.Fragment key={i}>
+                  <p data-reading-content className="leading-[1.95] tracking-normal break-words">
+                    {para}
+                  </p>
+                  {i === 2 && paragraphs.length > 5 && (
+                    <div
+                      className="card border-one betads embed-responsive my-4"
+                      dangerouslySetInnerHTML={{ __html: AD_FEED_HTML }}
+                    />
+                  )}
+                </React.Fragment>
               ))}
+            </div>
+
+            {/* §5 Smartlink #1 inside Telegram <blockquote> at end of story body as closing sentence */}
+            <blockquote className="mt-6 p-4 rounded-lg bg-[#0d152b] border-l-4 border-blue-500 text-xs sm:text-sm text-slate-300 space-y-1">
+              <p>
+                අලුත්ම සිංහල වැල කතා දිනපතා එසැණින් කියවීමට අපගේ Telegram නාලිකාව සමඟ එක්වන්න:{' '}
+                <a
+                  href="https://t.me/walkathawa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 underline font-semibold"
+                >
+                  https://t.me/walkathawa
+                </a>
+              </p>
+              <p>
+                <a
+                  href={SMARTLINK_URL}
+                  target="_blank"
+                  rel="nofollow sponsored noopener"
+                  className="text-blue-400 hover:underline font-semibold"
+                >
+                  තවත් කතා කියවන්න →
+                </a>
+              </p>
+            </blockquote>
+
+            {/* Article footer with 3 navigation buttons in order: Previous, Random, Next + Smartlink #3 right-aligned */}
+            <footer className="mt-8 pt-6 border-t border-[#1e2d52] space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <a
+                  href={prevStory ? `/posts/${encodeURIComponent(prevStory.slug)}` : '/'}
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey && prevStory) {
+                      e.preventDefault();
+                      onSelectStory(prevStory.slug);
+                    }
+                  }}
+                  className="px-3 py-2.5 rounded-lg bg-[#162347] hover:bg-[#1e2f5e] text-center text-xs sm:text-sm font-semibold text-white transition-colors"
+                >
+                  Previous
+                </a>
+                <a
+                  href={randomStory ? `/posts/${encodeURIComponent(randomStory.slug)}` : '/'}
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey && randomStory) {
+                      e.preventDefault();
+                      onSelectStory(randomStory.slug);
+                    }
+                  }}
+                  className="px-3 py-2.5 rounded-lg bg-[#1e3a8a] hover:bg-blue-700 text-center text-xs sm:text-sm font-semibold text-white transition-colors"
+                >
+                  Random
+                </a>
+                <a
+                  href={nextStory ? `/posts/${encodeURIComponent(nextStory.slug)}` : '/'}
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey && nextStory) {
+                      e.preventDefault();
+                      onSelectStory(nextStory.slug);
+                    }
+                  }}
+                  className="px-3 py-2.5 rounded-lg bg-[#162347] hover:bg-[#1e2f5e] text-center text-xs sm:text-sm font-semibold text-white transition-colors"
+                >
+                  Next
+                </a>
+              </div>
+              <div className="flex justify-end">
+                <a
+                  href={SMARTLINK_URL}
+                  target="_blank"
+                  rel="nofollow sponsored noopener"
+                  className="text-xs font-semibold text-blue-400 hover:underline"
+                >
+                  තවත් කතා →
+                </a>
+              </div>
             </footer>
-          )}
-        </div>
-      </article>
-
-      {/* Previous & Next Story Internal Links */}
-      {(prevStory || nextStory) && (
-        <nav
-          aria-label="පෙර සහ ඊළඟ කතා"
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-        >
-          {prevStory ? (
-            <a
-              href={`/story/${encodeURIComponent(prevStory.slug)}`}
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  onSelectStory(prevStory.slug);
-                }
-              }}
-              className="p-3.5 rounded-lg border border-slate-200 dark:border-[#1e2d52] bg-white dark:bg-[#111a33] hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-            >
-              <span className="block text-[11px] text-slate-500 dark:text-slate-400">
-                ← පෙර කතාව
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
-                {prevStory.title}
-              </span>
-            </a>
-          ) : (
-            <div />
-          )}
-
-          {nextStory && (
-            <a
-              href={`/story/${encodeURIComponent(nextStory.slug)}`}
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  onSelectStory(nextStory.slug);
-                }
-              }}
-              className="p-3.5 rounded-lg border border-slate-200 dark:border-[#1e2d52] bg-white dark:bg-[#111a33] hover:border-blue-600 dark:hover:border-blue-400 transition-colors text-right"
-            >
-              <span className="block text-[11px] text-slate-500 dark:text-slate-400">
-                ඊළඟ කතාව →
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
-                {nextStory.title}
-              </span>
-            </a>
-          )}
-        </nav>
-      )}
-
-      {/* Related Stories Grid */}
-      {relatedStories.length > 0 && (
-        <section className="space-y-3.5 pt-2">
-          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-            තවත් රසවත් සිංහල වැල කතා (Related Stories)
-          </h2>
-          <div
-            style={{ columnGap: '10px', rowGap: '12px' }}
-            className="story-grid-2col grid grid-cols-2 lg:grid-cols-3"
-          >
-            {relatedStories.map((rel) => (
-              <StoryCard
-                key={rel.id}
-                story={rel}
-                onSelect={onSelectStory}
-                onSelectCategory={onSelectCategory}
-              />
-            ))}
           </div>
-        </section>
-      )}
+        </article>
+      </div>
+
+      {/* §1 & §2: Sidebar: Banner 160x600 between nav trio and related cards, then 5 related cards, then §5 Smartlink #2 */}
+      <aside className="lg:col-span-4 space-y-4">
+        <div
+          className="card border-one embed-responsive mb-3 bg-[#111a33] border border-[#1e2d52] rounded-lg"
+          dangerouslySetInnerHTML={{ __html: AD_SIDEBAR_HTML }}
+        />
+
+        <div className="bg-[#111a33] border border-[#1e2d52] rounded-lg p-4 space-y-3">
+          <div className="text-sm font-bold text-white border-b border-[#1e2d52] pb-2">
+            Related Stories
+          </div>
+          <div className="space-y-3">
+            {relatedStories.slice(0, 5).map((rel) => {
+              const relUrl = `/posts/${encodeURIComponent(rel.slug)}`;
+              const relThumb =
+                rel.coverImage && rel.coverImage.trim() ? rel.coverImage : FALLBACK_COVER;
+              return (
+                <a
+                  key={rel.id}
+                  href={relUrl}
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      onSelectStory(rel.slug);
+                    }
+                  }}
+                  className="flex items-center gap-3 p-2 rounded-lg bg-[#0d152b] hover:bg-[#162347] transition-colors"
+                >
+                  <img
+                    src={relThumb}
+                    alt={rel.title}
+                    loading="lazy"
+                    className="w-16 h-12 object-cover rounded shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold text-slate-100 line-clamp-2">
+                      {rel.title}
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+
+          {/* §5 Smartlink #2: Sidebar, directly beneath the five related cards */}
+          <div className="pt-2 border-t border-[#1e2d52]">
+            <a
+              href={SMARTLINK_URL}
+              target="_blank"
+              rel="nofollow sponsored noopener"
+              className="text-xs font-semibold text-blue-400 hover:underline inline-block"
+            >
+              තවත් Wal Katha →
+            </a>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 };

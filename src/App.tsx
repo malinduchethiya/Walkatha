@@ -4,7 +4,7 @@ import { Footer } from './components/layout/Footer';
 import { StoryGallery } from './components/stories/StoryGallery';
 import { StoryReader } from './components/stories/StoryReader';
 import { CategoriesPage } from './components/categories/CategoriesPage';
-import { StaticPage } from './components/common/StaticPage';
+import { StaticPage, StaticPageSlug } from './components/common/StaticPage';
 import { HtmlSitemapPage } from './components/common/HtmlSitemapPage';
 import { NotFoundPage } from './components/common/NotFoundPage';
 import { AdminRoot } from './components/admin/AdminRoot';
@@ -12,28 +12,28 @@ import { Story, Category } from './types/story';
 import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
 import { testConnection } from './firebase';
-import {
-  SideBannerColumn,
-  PopunderLoader,
-  triggerSmartLinkOnInteraction,
-} from './components/common/AdUnits';
 
 type ViewMode =
   | 'home'
+  | 'category'
+  | 'popular'
+  | 'archives'
+  | 'profile'
+  | 'search'
   | 'reader'
+  | 'amp-reader'
   | 'categories'
   | 'sitemap'
-  | 'about'
-  | 'privacy'
-  | 'terms'
-  | 'contact'
+  | 'static'
   | 'not-found'
   | 'admin';
 
 export function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('home');
+  const [staticSlug, setStaticSlug] = useState<StaticPageSlug>('privacy-policy');
   const [selectedStorySlug, setSelectedStorySlug] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedAuthor, setSelectedAuthor] = useState<string>('WalKatha');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'oldest'>('latest');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -43,36 +43,14 @@ export function App() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    try {
-      const saved = localStorage.getItem('walkathawa_theme');
-      if (saved === 'light' || saved === 'dark') return saved;
-    } catch {
-      // ignore
-    }
-    return 'dark';
-  });
 
   useEffect(() => {
     testConnection();
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    try {
-      localStorage.setItem('walkathawa_theme', theme);
-    } catch {
-      // ignore
-    }
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    // §1: Hardcode <html lang="en" class="dark">
+    document.documentElement.setAttribute('lang', 'en');
+    document.documentElement.classList.add('dark');
+    const win = window as any;
+    win.salvattore = win.salvattore || { rescanMediaQueries: () => {} };
   }, []);
 
   const parseRoute = useCallback(() => {
@@ -80,7 +58,7 @@ export function App() {
     const searchParams = new URLSearchParams(window.location.search);
     const pageParam = parseInt(searchParams.get('page') || '1', 10);
     const validPage = !isNaN(pageParam) && pageParam > 0 ? pageParam : 1;
-    const qParam = searchParams.get('q') || '';
+    const qParam = searchParams.get('s') || searchParams.get('q') || '';
 
     if (qParam) {
       setSearchQuery(qParam);
@@ -99,6 +77,41 @@ export function App() {
       return;
     }
 
+    if (path === '/popular') {
+      setViewMode('popular');
+      setSelectedStorySlug(null);
+      setSelectedCategory('all');
+      setSortBy('popular');
+      setCurrentPage(validPage);
+      return;
+    }
+
+    if (path === '/archives' || path === '/archiveposts') {
+      setViewMode('archives');
+      setSelectedStorySlug(null);
+      setSelectedCategory('all');
+      setCurrentPage(validPage);
+      return;
+    }
+
+    if (path === '/search') {
+      setViewMode('search');
+      setSelectedStorySlug(null);
+      setSelectedCategory('all');
+      setCurrentPage(validPage);
+      return;
+    }
+
+    if (path.startsWith('/profile/') || path.startsWith('/followers/') || path.startsWith('/following/')) {
+      const author = path.replace(/^\/(profile|followers|following)\//, '').trim() || 'WalKatha';
+      setSelectedAuthor(author);
+      setViewMode('profile');
+      setSelectedStorySlug(null);
+      setSelectedCategory('all');
+      setCurrentPage(validPage);
+      return;
+    }
+
     if (path === '/categories') {
       setViewMode('categories');
       setSelectedStorySlug(null);
@@ -111,27 +124,31 @@ export function App() {
       return;
     }
 
-    if (path === '/about') {
-      setViewMode('about');
+    if (path.startsWith('/page/')) {
+      const pSlug = path.replace('/page/', '').trim() as StaticPageSlug;
+      setStaticSlug(pSlug || 'privacy-policy');
+      setViewMode('static');
       return;
     }
-    if (path === '/privacy') {
-      setViewMode('privacy');
-      return;
-    }
-    if (path === '/terms') {
-      setViewMode('terms');
-      return;
-    }
-    if (path === '/contact') {
-      setViewMode('contact');
+
+    if (
+      path === '/about' ||
+      path === '/privacy' ||
+      path === '/terms' ||
+      path === '/contact' ||
+      path === '/login' ||
+      path === '/register' ||
+      path === '/forgot-password'
+    ) {
+      setStaticSlug(path.replace('/', '') as StaticPageSlug);
+      setViewMode('static');
       return;
     }
 
     if (path.startsWith('/category/')) {
       const catSlug = path.replace('/category/', '').trim();
       if (catSlug) {
-        setViewMode('home');
+        setViewMode('category');
         setSelectedStorySlug(null);
         setSelectedCategory(catSlug);
         setCurrentPage(validPage);
@@ -139,11 +156,15 @@ export function App() {
       }
     }
 
-    if (path.startsWith('/story/')) {
-      const slug = path.replace('/story/', '').trim();
+    if (path.startsWith('/posts/') || path.startsWith('/story/')) {
+      const isAmp = path.endsWith('/amp');
+      const slug = path
+        .replace(/^\/(posts|story)\//, '')
+        .replace(/\/amp$/, '')
+        .trim();
       if (slug) {
         setSelectedStorySlug(slug);
-        setViewMode('reader');
+        setViewMode(isAmp ? 'amp-reader' : 'reader');
         return;
       }
     }
@@ -164,14 +185,22 @@ export function App() {
       .catch(() => setCategories([]));
   }, []);
 
+  const isGalleryView =
+    viewMode === 'home' ||
+    viewMode === 'category' ||
+    viewMode === 'popular' ||
+    viewMode === 'archives' ||
+    viewMode === 'profile' ||
+    viewMode === 'search';
+
   const fetchStoriesList = useCallback(async () => {
-    if (viewMode !== 'home') return;
+    if (!isGalleryView) return;
     setIsLoading(true);
     try {
       const result = await StoryService.getStories({
-        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        category: viewMode === 'category' && selectedCategory !== 'all' ? selectedCategory : undefined,
         search: searchQuery,
-        sortBy,
+        sortBy: viewMode === 'popular' ? 'popular' : sortBy,
         page: currentPage,
         limit: 30,
       });
@@ -180,23 +209,46 @@ export function App() {
       setTotalStories(result.total);
       setTotalPages(result.totalPages || 1);
 
-      const activeCategoryObj =
-        selectedCategory !== 'all'
-          ? categories.find((c) => c.slug === selectedCategory || c.id === selectedCategory) || null
-          : null;
-
-      SeoService.updateHomeSeo(
-        activeCategoryObj,
-        currentPage,
-        result.data,
-        result.totalPages || 1
-      );
+      if (viewMode === 'home') {
+        SeoService.updateHomeSeo(null, currentPage, result.data, result.totalPages || 1);
+      } else if (viewMode === 'category') {
+        const activeCategoryObj =
+          categories.find((c) => c.slug === selectedCategory || c.id === selectedCategory) || {
+            id: selectedCategory,
+            slug: selectedCategory,
+            name: selectedCategory,
+            sinhalaName: selectedCategory,
+          };
+        SeoService.updateHomeSeo(
+          activeCategoryObj,
+          currentPage,
+          result.data,
+          result.totalPages || 1
+        );
+      } else if (viewMode === 'popular') {
+        SeoService.updatePopularSeo();
+      } else if (viewMode === 'archives') {
+        SeoService.updateArchivesSeo();
+      } else if (viewMode === 'profile') {
+        SeoService.updateProfileSeo(selectedAuthor);
+      } else if (viewMode === 'search') {
+        SeoService.updateSearchSeo();
+      }
     } catch {
       setStories([]);
     } finally {
       setIsLoading(false);
     }
-  }, [viewMode, selectedCategory, searchQuery, sortBy, currentPage, categories]);
+  }, [
+    isGalleryView,
+    viewMode,
+    selectedCategory,
+    selectedAuthor,
+    searchQuery,
+    sortBy,
+    currentPage,
+    categories,
+  ]);
 
   useEffect(() => {
     fetchStoriesList();
@@ -209,7 +261,6 @@ export function App() {
   };
 
   const handleSelectStory = (slug: string) => {
-    triggerSmartLinkOnInteraction();
     navigateTo(`/story/${encodeURIComponent(slug)}`);
   };
 
@@ -224,10 +275,16 @@ export function App() {
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    const baseUrl =
-      selectedCategory && selectedCategory !== 'all'
-        ? `/category/${encodeURIComponent(selectedCategory)}`
-        : '/';
+    let baseUrl = '/';
+    if (viewMode === 'category' && selectedCategory && selectedCategory !== 'all') {
+      baseUrl = `/category/${encodeURIComponent(selectedCategory)}`;
+    } else if (viewMode === 'popular') {
+      baseUrl = '/popular';
+    } else if (viewMode === 'archives') {
+      baseUrl = '/archives';
+    } else if (viewMode === 'profile') {
+      baseUrl = `/profile/${encodeURIComponent(selectedAuthor)}`;
+    }
     const targetUrl = newPage > 1 ? `${baseUrl}?page=${newPage}` : baseUrl;
     window.history.pushState({}, '', targetUrl);
   };
@@ -235,9 +292,12 @@ export function App() {
   const handleSearchChange = (q: string) => {
     setSearchQuery(q);
     setCurrentPage(1);
-    if (viewMode !== 'home') {
+    if (q.trim()) {
+      setViewMode('search');
+      window.history.pushState({}, '', `/search?s=${encodeURIComponent(q)}`);
+    } else {
       setViewMode('home');
-      window.history.pushState({}, '', q ? `/?q=${encodeURIComponent(q)}` : '/');
+      window.history.pushState({}, '', '/');
     }
   };
 
@@ -264,19 +324,16 @@ export function App() {
     );
   }
 
-  const sideBannerCount = viewMode === 'home' ? 5 : 3;
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc] dark:bg-[#090e1d] text-[#0f172a] dark:text-slate-100 transition-colors duration-200">
-      <PopunderLoader routeKey={`${viewMode}-${selectedCategory}-${selectedStorySlug || ''}-${currentPage}`} />
+    <div className="min-h-screen flex flex-col bg-[#090e1d] text-slate-100">
       <Header
         categories={categories}
         selectedCategory={selectedCategory}
         onSelectCategory={handleSelectCategory}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
-        theme={theme}
-        onToggleTheme={toggleTheme}
+        theme="dark"
+        onToggleTheme={() => {}}
         onGoHome={() => {
           setSearchQuery('');
           navigateTo('/');
@@ -284,80 +341,76 @@ export function App() {
         onOpenCategoriesPage={() => navigateTo('/categories')}
       />
 
-      <div className="flex-1 w-full max-w-[1540px] mx-auto px-3 sm:px-5 py-6 flex items-start justify-center gap-4">
-        <SideBannerColumn side="left" count={sideBannerCount} />
+      <div className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-5 py-6">
+        <main className="w-full">
+          {isGalleryView && (
+            <StoryGallery
+              stories={stories}
+              totalStories={totalStories}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleSelectCategory}
+              onSelectStory={handleSelectStory}
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              sortBy={sortBy}
+              onSortChange={(newSort) => {
+                setSortBy(newSort);
+                setCurrentPage(1);
+              }}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              isLoading={isLoading}
+              pageKind={viewMode}
+            />
+          )}
 
-        <main className="flex-1 min-w-0 w-full max-w-6xl">
-        {viewMode === 'home' && (
-          <StoryGallery
-            stories={stories}
-            totalStories={totalStories}
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onSelectCategory={handleSelectCategory}
-            onSelectStory={handleSelectStory}
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-            sortBy={sortBy}
-            onSortChange={(newSort) => {
-              setSortBy(newSort);
-              setCurrentPage(1);
-            }}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            isLoading={isLoading}
-          />
-        )}
+          {(viewMode === 'reader' || viewMode === 'amp-reader') && selectedStorySlug && (
+            <StoryReader
+              slug={selectedStorySlug}
+              isAmp={viewMode === 'amp-reader'}
+              onBack={() => navigateTo('/')}
+              onSelectStory={handleSelectStory}
+              onSelectCategory={handleSelectCategory}
+              onSelectAuthor={(author) => navigateTo(`/profile/${encodeURIComponent(author)}`)}
+            />
+          )}
 
-        {viewMode === 'reader' && selectedStorySlug && (
-          <StoryReader
-            slug={selectedStorySlug}
-            onBack={() => navigateTo('/')}
-            onSelectStory={handleSelectStory}
-            onSelectCategory={handleSelectCategory}
-          />
-        )}
+          {viewMode === 'categories' && (
+            <CategoriesPage
+              categories={categories}
+              onSelectCategory={handleSelectCategory}
+              onBack={() => navigateTo('/')}
+            />
+          )}
 
-        {viewMode === 'categories' && (
-          <CategoriesPage
-            categories={categories}
-            onSelectCategory={handleSelectCategory}
-            onBack={() => navigateTo('/')}
-          />
-        )}
+          {viewMode === 'sitemap' && (
+            <HtmlSitemapPage
+              categories={categories}
+              onSelectStory={handleSelectStory}
+              onSelectCategory={handleSelectCategory}
+              onBack={() => navigateTo('/')}
+            />
+          )}
 
-        {viewMode === 'sitemap' && (
-          <HtmlSitemapPage
-            categories={categories}
-            onSelectStory={handleSelectStory}
-            onSelectCategory={handleSelectCategory}
-            onBack={() => navigateTo('/')}
-          />
-        )}
+          {viewMode === 'static' && (
+            <StaticPage page={staticSlug} onBack={() => navigateTo('/')} />
+          )}
 
-        {(viewMode === 'about' ||
-          viewMode === 'privacy' ||
-          viewMode === 'terms' ||
-          viewMode === 'contact') && (
-          <StaticPage page={viewMode} onBack={() => navigateTo('/')} />
-        )}
-
-        {viewMode === 'not-found' && (
-          <NotFoundPage
-            onGoHome={() => navigateTo('/')}
-            onBrowseCategories={() => navigateTo('/categories')}
-          />
-        )}
+          {viewMode === 'not-found' && (
+            <NotFoundPage
+              onGoHome={() => navigateTo('/')}
+              onBrowseCategories={() => navigateTo('/categories')}
+            />
+          )}
         </main>
-
-        <SideBannerColumn side="right" count={sideBannerCount} />
       </div>
 
       <Footer
         categories={categories}
         onSelectCategory={handleSelectCategory}
-        onNavigateStatic={(page) => navigateTo(`/${page}`)}
+        onNavigatePath={(path) => navigateTo(path)}
       />
     </div>
   );
