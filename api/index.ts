@@ -1,3 +1,33 @@
+import fs from 'fs';
+import path from 'path';
+
+function stripZW(val: unknown): string {
+  return String(val || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+}
+
+function readSyncStore(): { stories: any[]; categories: any[] } {
+  const candidates = [
+    path.resolve(process.cwd(), 'server-data', 'firestore-sync.json'),
+    path.resolve(process.cwd(), 'public', 'api-data', 'catalog.json'),
+  ];
+  for (const filePath of candidates) {
+    try {
+      if (fs.existsSync(filePath)) {
+        const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        return {
+          stories: Array.isArray(raw.stories) ? raw.stories : [],
+          categories: Array.isArray(raw.categories) ? raw.categories : [],
+        };
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return { stories: [], categories: [] };
+}
+
 export default async function handler(req: any, res: any) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname;
@@ -11,29 +41,63 @@ export default async function handler(req: any, res: any) {
     return res.end();
   }
 
-  // Health check
   if (pathname === '/api/health' || pathname === '/api') {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
     return res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
   }
 
-  // Categories
-  if (pathname === '/api/categories') {
+  if (pathname === '/api/firestore/stories') {
+    const store = readSyncStore();
+    const activeStories = store.stories.filter(
+      (s) => s && !s.isDeleted && !s.deleted && s.published !== false
+    );
+    const activeCategories = store.categories.filter(
+      (c) => c && !c.isDeleted && !c.deleted && c.slug !== 'all'
+    );
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    return res.end(
-      JSON.stringify({
-        categories: [
-          { id: 'all', name: 'All Stories', sinhalaName: 'සියලු කතා' },
-          { id: 'romantic', name: 'Romantic', sinhalaName: 'ආදර කතා' },
-          { id: 'unconventional', name: 'Adult & Drama', sinhalaName: 'අසම්මත කතා' },
-          { id: 'short', name: 'Short Stories', sinhalaName: 'කෙටි කතා' },
-          { id: 'suspense', name: 'Suspense & Mystery', sinhalaName: 'ත්‍රාසජනක' },
-          { id: 'novel', name: 'Series & Novels', sinhalaName: 'දිගු කතා මාලා' },
-        ],
-      })
-    );
+    return res.end(JSON.stringify({ stories: activeStories, categories: activeCategories }));
+  }
+
+  if (pathname.startsWith('/api/firestore/story/')) {
+    const rawSlug = pathname.replace('/api/firestore/story/', '');
+    let target = stripZW(rawSlug).toLowerCase();
+    try {
+      target = stripZW(decodeURIComponent(rawSlug)).toLowerCase();
+    } catch {
+      // ignore
+    }
+    const store = readSyncStore();
+    const found = store.stories.find((s) => {
+      if (!s || s.isDeleted || s.deleted || s.published === false) return false;
+      const sSlug = stripZW(s.slug).toLowerCase();
+      const sId = stripZW(s.id).toLowerCase();
+      let sSlugDec = sSlug;
+      try {
+        sSlugDec = stripZW(decodeURIComponent(String(s.slug || ''))).toLowerCase();
+      } catch {
+        // ignore
+      }
+      return sSlug === target || sSlugDec === target || sId === target;
+    });
+
+    if (!found) {
+      res.statusCode = 404;
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(JSON.stringify({ error: 'Story not found' }));
+    }
+
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify(found));
+  }
+
+  if (pathname === '/api/categories') {
+    const store = readSyncStore();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify({ categories: store.categories }));
   }
 
   res.statusCode = 200;

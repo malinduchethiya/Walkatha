@@ -224,16 +224,60 @@ function generateSitemaps() {
   fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemapIndexXml, 'utf8');
   fs.writeFileSync(path.join(publicDir, 'sitemap_index.xml'), sitemapIndexXml, 'utf8');
 
+  // Generate lightweight /api-data/catalog.json (~700KB) + /api-data/chunks/chunk-N.json (~4MB each, well under 25MB limit)
+  const CHUNK_SIZE = 105;
+  const apiDataDir = path.join(publicDir, 'api-data');
+  const chunksDir = path.join(apiDataDir, 'chunks');
+  fs.mkdirSync(chunksDir, { recursive: true });
+
+  const fullChunkStories = stories.map((s, idx) => ({
+    ...s,
+    fullContent: s.fullContent || s.content || '',
+    content: s.fullContent || s.content || '',
+    chunkIndex: Math.floor(idx / CHUNK_SIZE),
+  }));
+
+  const lightweightCatalogStories = fullChunkStories.map(({ fullContent, content, ...meta }) => ({
+    ...meta,
+    chunkIndex: meta.chunkIndex,
+  }));
+
+  const catalogJsonStr = JSON.stringify({ stories: lightweightCatalogStories, categories });
+  fs.writeFileSync(path.join(apiDataDir, 'catalog.json'), catalogJsonStr, 'utf8');
+
+  const totalChunks = Math.ceil(fullChunkStories.length / CHUNK_SIZE);
+  for (let c = 0; c < totalChunks; c++) {
+    const slice = fullChunkStories.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
+    fs.writeFileSync(
+      path.join(chunksDir, `chunk-${c}.json`),
+      JSON.stringify({ chunkIndex: c, stories: slice }),
+      'utf8'
+    );
+  }
+
   const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {
     fs.writeFileSync(path.join(distDir, 'sitemap-stories.xml'), sitemapStoriesXml, 'utf8');
     fs.writeFileSync(path.join(distDir, 'sitemap-main.xml'), sitemapMainXml, 'utf8');
     fs.writeFileSync(path.join(distDir, 'sitemap.xml'), sitemapIndexXml, 'utf8');
     fs.writeFileSync(path.join(distDir, 'sitemap_index.xml'), sitemapIndexXml, 'utf8');
+
+    const distApiDataDir = path.join(distDir, 'api-data');
+    const distChunksDir = path.join(distApiDataDir, 'chunks');
+    fs.mkdirSync(distChunksDir, { recursive: true });
+    fs.writeFileSync(path.join(distApiDataDir, 'catalog.json'), catalogJsonStr, 'utf8');
+    for (let c = 0; c < totalChunks; c++) {
+      const slice = fullChunkStories.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
+      fs.writeFileSync(
+        path.join(distChunksDir, `chunk-${c}.json`),
+        JSON.stringify({ chunkIndex: c, stories: slice }),
+        'utf8'
+      );
+    }
   }
 
   console.log(
-    `[Sitemap Generator] Total stories: ${stories.length} | From updatedAt: ${countFromUpdatedAt} | Fallback createdAt: ${countFromCreatedAt} | Lacking both: ${countMissingBoth}`
+    `[Sitemap & Static Catalog Generator] Total stories: ${stories.length} | Chunks: ${totalChunks} | From updatedAt: ${countFromUpdatedAt} | Fallback createdAt: ${countFromCreatedAt} | Lacking both: ${countMissingBoth}`
   );
 }
 

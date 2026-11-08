@@ -10,16 +10,18 @@
   }
 }
 
-/* Explicit 2-column mobile grid & 3-column desktop grid with comfortable horizontal & vertical spacing */
+/* 3-column x 5-row gallery grid */
+.story-grid-3x5,
 .story-grid-2col {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   column-gap: 14px;
   row-gap: 16px;
   width: 100%;
 }
 
 @media (min-width: 640px) {
+  .story-grid-3x5,
   .story-grid-2col {
     column-gap: 18px;
     row-gap: 20px;
@@ -27,26 +29,13 @@
 }
 
 @media (min-width: 1024px) {
+  .story-grid-3x5,
   .story-grid-2col {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     column-gap: 20px;
     row-gap: 22px;
   }
 }
 
-/* Adsterra Unit Styles (§4) */
-.betads, .card .embed-responsive, .card.embed-responsive {
-  min-height: 250px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.ad-468 iframe, .ad-160 iframe { border: 0; display: block; }
-@media (max-width: 519px) { .ad-468 { display: none; } }
-@media (max-width: 767px) { .ad-160 { display: none; } }
-
-/* Custom Navy Theme Accents */
 .dark {
   color-scheme: dark;
 }

@@ -2,21 +2,6 @@ import React from 'react';
 import { Story, Category } from '../../types/story';
 import { StoryCard } from './StoryCard';
 
-const SMARTLINK_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
-
-const AD_FEED_HTML = `<div class="ad-468">
-    <script>
-      atOptions = {
-        'key' : '41fe3a7c5be5b71cd4620d5d0fc4e600',
-        'format' : 'iframe',
-        'height' : 60,
-        'width' : 468,
-        'params' : {}
-      };
-    </script>
-    <script data-cfasync="false" src="https://brijmohan.org/22/41fe3a7c5be5b71cd4620d5d0fc4e600"></script>
-  </div>`;
-
 interface StoryGalleryProps {
   stories: Story[];
   totalStories: number;
@@ -94,8 +79,8 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
       ? 'Wal Katha - Sinhala Wal Katha & Wela Katha'
       : `Wal Katha - ${selectedCategory}`);
 
-  // On strict home template, display up to 29 story cards and append ad-feed as the 30th child (§2)
-  const displayedStories = isStrictHome ? stories.slice(0, 29) : stories;
+  // 3 columns x 5 rows = 15 stories per page
+  const displayedStories = stories.slice(0, 15);
 
   return (
     <div className="space-y-5">
@@ -127,10 +112,10 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         </div>
       </div>
 
-      {/* Stories Grid */}
+      {/* Stories Grid: 3 columns x 5 rows (15 items) */}
       {isLoading ? (
-        <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 8 }).map((_, idx) => (
+        <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
+          {Array.from({ length: 15 }).map((_, idx) => (
             <div
               key={idx}
               className="min-w-0 w-full h-52 sm:h-60 rounded-xl bg-[#111a33] p-3 animate-pulse"
@@ -154,7 +139,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           </button>
         </div>
       ) : (
-        <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3">
+        <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
           {displayedStories.map((story) => (
             <StoryCard
               key={story.id}
@@ -163,27 +148,13 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
               onSelectCategory={onSelectCategory}
             />
           ))}
-
-          {/* §2: partials/ad-feed appended as the 30th child of the home grid (ONLY on home) */}
-          {isStrictHome && (
-            <div
-              className="card border-one betads embed-responsive bg-[#111a33] rounded-xl"
-              onLoad={() => {
-                const win = window as any;
-                if (win.salvattore && typeof win.salvattore.rescanMediaQueries === 'function') {
-                  win.salvattore.rescanMediaQueries();
-                }
-              }}
-              dangerouslySetInnerHTML={{ __html: AD_FEED_HTML }}
-            />
-          )}
         </div>
       )}
 
-      {/* Paginator Row + §5 Smartlink #3 right-aligned after page links (ONLY on home) */}
+      {/* Paginator Row */}
       <nav
         aria-label="පිටු අංකනය"
-        className="flex items-center justify-between gap-2 pt-4 flex-wrap"
+        className="flex items-center justify-center gap-2 pt-4 flex-wrap"
       >
         <div className="flex items-center justify-center gap-1.5 flex-wrap">
           {totalPages > 1 && currentPage > 1 && (
@@ -246,18 +217,6 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
             </a>
           )}
         </div>
-
-        {/* §5 Smartlink #3: Home grid paginator row, right-aligned after the page links */}
-        {isStrictHome && (
-          <a
-            href={SMARTLINK_URL}
-            target="_blank"
-            rel="nofollow sponsored noopener"
-            className="ml-auto text-xs font-semibold text-blue-400 hover:underline"
-          >
-            තවත් කතා →
-          </a>
-        )}
       </nav>
     </div>
   );

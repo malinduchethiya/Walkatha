@@ -10,16 +10,18 @@
   }
 }
 
-/* Explicit 2-column mobile grid & 3-column desktop grid with comfortable horizontal & vertical spacing */
+/* 3-column x 5-row gallery grid */
+.story-grid-3x5,
 .story-grid-2col {
   display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   column-gap: 12px !important;
   row-gap: 14px !important;
   width: 100%;
 }
 
 @media (min-width: 640px) {
+  .story-grid-3x5,
   .story-grid-2col {
     column-gap: 16px !important;
     row-gap: 18px !important;
@@ -27,8 +29,8 @@
 }
 
 @media (min-width: 1024px) {
+  .story-grid-3x5,
   .story-grid-2col {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     column-gap: 20px !important;
     row-gap: 22px !important;
   }

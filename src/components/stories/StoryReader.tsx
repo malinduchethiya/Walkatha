@@ -3,34 +3,6 @@ import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
 
-const SMARTLINK_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
-
-const AD_FEED_HTML = `<div class="ad-468">
-    <script>
-      atOptions = {
-        'key' : '41fe3a7c5be5b71cd4620d5d0fc4e600',
-        'format' : 'iframe',
-        'height' : 60,
-        'width' : 468,
-        'params' : {}
-      };
-    </script>
-    <script data-cfasync="false" src="https://brijmohan.org/22/41fe3a7c5be5b71cd4620d5d0fc4e600"></script>
-  </div>`;
-
-const AD_SIDEBAR_HTML = `<div class="ad-160">
-    <script>
-      atOptions = {
-        'key' : '05ee890ed059b98d213910f338ece6d0',
-        'format' : 'iframe',
-        'height' : 600,
-        'width' : 160,
-        'params' : {}
-      };
-    </script>
-    <script data-cfasync="false" src="https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0"></script>
-  </div>`;
-
 interface StoryReaderProps {
   slug: string;
   onBack: () => void;
@@ -48,27 +20,17 @@ export function splitStoryParagraphs(rawContent: string): string[] {
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
 
-  if (initial.length > 5) {
+  if (initial.length > 1) {
     return initial;
   }
 
-  // If raw content has fewer than 6 newline-separated blocks, split sentences into paragraphs so > 5 paragraphs exist
   const sentences = (rawContent || '')
     .replace(/([.!?।])\s+/g, '$1\n')
     .split('\n')
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-  if (sentences.length > 5) {
-    return sentences;
-  }
-
-  // Pad from existing sentences if story text is very short so count($paragraphs) > 5 holds
-  const padded = [...(sentences.length > 0 ? sentences : ['සිංහල කතාව'])];
-  while (padded.length <= 5) {
-    padded.push(padded[padded.length - 1]);
-  }
-  return padded;
+  return sentences.length > 0 ? sentences : ['සිංහල කතාව'];
 }
 
 export const StoryReader: React.FC<StoryReaderProps> = ({
@@ -81,9 +43,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 }) => {
   const [story, setStory] = useState<Story | null>(null);
   const [imgSrc, setImgSrc] = useState<string>(FALLBACK_COVER);
-  const [relatedStories, setRelatedStories] = useState<Story[]>([]);
   const [prevStory, setPrevStory] = useState<Story | null>(null);
-  const [randomStory, setRandomStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -105,13 +65,8 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           );
           SeoService.updateStorySeo(fetched);
 
-          const [related, allStories] = await Promise.all([
-            StoryService.getRelatedStories(fetched, 5),
-            StoryService.fetchAllLiveStories(),
-          ]);
-
+          const allStories = await StoryService.fetchAllLiveStories();
           if (!active) return;
-          setRelatedStories(related.slice(0, 5));
 
           const idx = allStories.findIndex(
             (s) => s.id === fetched.id || s.slug === fetched.slug
@@ -119,12 +74,8 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           const prev = idx > 0 ? allStories[idx - 1] : allStories[allStories.length - 1] || null;
           const next =
             idx >= 0 && idx < allStories.length - 1 ? allStories[idx + 1] : allStories[0] || null;
-          const pool = allStories.filter((s) => s.slug !== fetched.slug);
-          const rand =
-            pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : fetched;
 
           setPrevStory(prev);
-          setRandomStory(rand);
           setNextStory(next);
         } else {
           setStory(null);
@@ -144,7 +95,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto py-8 space-y-4">
+      <div className="max-w-4xl mx-auto py-8 space-y-4">
         <div className="h-8 w-2/3 rounded bg-[#111a33] animate-pulse" />
         <div className="h-96 rounded-lg bg-[#111a33] border border-[#1e2d52] animate-pulse" />
       </div>
@@ -181,7 +132,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       : story.author?.name || 'WalKatha';
   const encodedAuthor = encodeURIComponent(authorName);
 
-  // §7: AMP loads none of the five Adsterra units
   if (isAmp) {
     return (
       <div className="max-w-3xl mx-auto py-6">
@@ -200,9 +150,8 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   }
 
   return (
-    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Main Article Column */}
-      <div className="lg:col-span-8 space-y-6">
+    <div className="max-w-4xl mx-auto">
+      <div className="space-y-6">
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
           <div className="w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]">
             <img
@@ -220,7 +169,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
           <div className="p-5 sm:p-8">
             <header className="pb-5 mb-6 border-b border-[#1e2d52] space-y-2.5">
-              {/* Category chips immediately above H1 */}
               <div className="flex flex-wrap items-center gap-2">
                 <a
                   href={`/category/${encodeURIComponent(primaryCatSlug)}`}
@@ -250,12 +198,10 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 )}
               </div>
 
-              {/* Single H1 containing post title with no brand text */}
               <h1 className="text-xl sm:text-3xl font-bold text-white leading-snug">
                 {story.title}
               </h1>
 
-              {/* Author byline linking to /profile/{URL_ENCODED_NAME} */}
               <div className="flex items-center gap-3 text-xs text-slate-400 pt-1">
                 <span>By</span>
                 <a
@@ -285,24 +231,18 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               </div>
             </header>
 
-            {/* §6: Article body paragraphs with 468x60 ad-feed after 3rd paragraph ($i === 2 && count($paragraphs) > 5), outside [data-reading-content] */}
             <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-200 select-text">
               {paragraphs.map((para, i) => (
-                <React.Fragment key={i}>
-                  <p data-reading-content className="leading-[1.95] tracking-normal break-words">
-                    {para}
-                  </p>
-                  {i === 2 && paragraphs.length > 5 && (
-                    <div
-                      className="card border-one betads embed-responsive my-4"
-                      dangerouslySetInnerHTML={{ __html: AD_FEED_HTML }}
-                    />
-                  )}
-                </React.Fragment>
+                <p
+                  key={i}
+                  data-reading-content
+                  className="leading-[1.95] tracking-normal break-words"
+                >
+                  {para}
+                </p>
               ))}
             </div>
 
-            {/* §5 Smartlink #1 inside Telegram <blockquote> at end of story body as closing sentence */}
             <blockquote className="mt-6 p-4 rounded-lg bg-[#0d152b] border-l-4 border-blue-500 text-xs sm:text-sm text-slate-300 space-y-1">
               <p>
                 අලුත්ම සිංහල වැල කතා දිනපතා එසැණින් කියවීමට අපගේ Telegram නාලිකාව සමඟ එක්වන්න:{' '}
@@ -315,23 +255,12 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   https://t.me/walkathawa
                 </a>
               </p>
-              <p>
-                <a
-                  href={SMARTLINK_URL}
-                  target="_blank"
-                  rel="nofollow sponsored noopener"
-                  className="text-blue-400 hover:underline font-semibold"
-                >
-                  තවත් කතා කියවන්න →
-                </a>
-              </p>
             </blockquote>
 
-            {/* Article footer with 3 navigation buttons in order: Previous, Random, Next + Smartlink #3 right-aligned */}
             <footer className="mt-8 pt-6 border-t border-[#1e2d52] space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <a
-                  href={prevStory ? `/posts/${encodeURIComponent(prevStory.slug)}` : '/'}
+                  href={prevStory ? `/story/${encodeURIComponent(prevStory.slug)}` : '/'}
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey && prevStory) {
                       e.preventDefault();
@@ -343,19 +272,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   Previous
                 </a>
                 <a
-                  href={randomStory ? `/posts/${encodeURIComponent(randomStory.slug)}` : '/'}
-                  onClick={(e) => {
-                    if (!e.ctrlKey && !e.metaKey && randomStory) {
-                      e.preventDefault();
-                      onSelectStory(randomStory.slug);
-                    }
-                  }}
-                  className="px-3 py-2.5 rounded-lg bg-[#1e3a8a] hover:bg-blue-700 text-center text-xs sm:text-sm font-semibold text-white transition-colors"
-                >
-                  Random
-                </a>
-                <a
-                  href={nextStory ? `/posts/${encodeURIComponent(nextStory.slug)}` : '/'}
+                  href={nextStory ? `/story/${encodeURIComponent(nextStory.slug)}` : '/'}
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey && nextStory) {
                       e.preventDefault();
@@ -367,78 +284,10 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   Next
                 </a>
               </div>
-              <div className="flex justify-end">
-                <a
-                  href={SMARTLINK_URL}
-                  target="_blank"
-                  rel="nofollow sponsored noopener"
-                  className="text-xs font-semibold text-blue-400 hover:underline"
-                >
-                  තවත් කතා →
-                </a>
-              </div>
             </footer>
           </div>
         </article>
       </div>
-
-      {/* §1 & §2: Sidebar: Banner 160x600 between nav trio and related cards, then 5 related cards, then §5 Smartlink #2 */}
-      <aside className="lg:col-span-4 space-y-4">
-        <div
-          className="card border-one embed-responsive mb-3 bg-[#111a33] border border-[#1e2d52] rounded-lg"
-          dangerouslySetInnerHTML={{ __html: AD_SIDEBAR_HTML }}
-        />
-
-        <div className="bg-[#111a33] border border-[#1e2d52] rounded-lg p-4 space-y-3">
-          <div className="text-sm font-bold text-white border-b border-[#1e2d52] pb-2">
-            Related Stories
-          </div>
-          <div className="space-y-3">
-            {relatedStories.slice(0, 5).map((rel) => {
-              const relUrl = `/posts/${encodeURIComponent(rel.slug)}`;
-              const relThumb =
-                rel.coverImage && rel.coverImage.trim() ? rel.coverImage : FALLBACK_COVER;
-              return (
-                <a
-                  key={rel.id}
-                  href={relUrl}
-                  onClick={(e) => {
-                    if (!e.ctrlKey && !e.metaKey) {
-                      e.preventDefault();
-                      onSelectStory(rel.slug);
-                    }
-                  }}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-[#0d152b] hover:bg-[#162347] transition-colors"
-                >
-                  <img
-                    src={relThumb}
-                    alt={rel.title}
-                    loading="lazy"
-                    className="w-16 h-12 object-cover rounded shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-semibold text-slate-100 line-clamp-2">
-                      {rel.title}
-                    </div>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-
-          {/* §5 Smartlink #2: Sidebar, directly beneath the five related cards */}
-          <div className="pt-2 border-t border-[#1e2d52]">
-            <a
-              href={SMARTLINK_URL}
-              target="_blank"
-              rel="nofollow sponsored noopener"
-              className="text-xs font-semibold text-blue-400 hover:underline inline-block"
-            >
-              තවත් Wal Katha →
-            </a>
-          </div>
-        </div>
-      </aside>
     </div>
   );
 };

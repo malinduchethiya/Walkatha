@@ -13,24 +13,6 @@ const syncFilePath = path.resolve(process.cwd(), 'server-data', 'firestore-sync.
 const SITE_URL = 'https://www.walkathawa.site';
 const SITE_NAME = 'Walkathawa';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/icon.png`;
-const SMARTLINK_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
-
-const POPUNDER_SNIPPET =
-  '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
-const SOCIALBAR_SNIPPET =
-  '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>';
-
-const AD_FEED_PARTIAL = `<div class="card border-one betads embed-responsive">
-  <div class="ad-468">
-    <script>atOptions = {'key' : '41fe3a7c5be5b71cd4620d5d0fc4e600', 'format' : 'iframe', 'height' : 60, 'width' : 468, 'params' : {}};</script><script data-cfasync="false" src="https://brijmohan.org/22/41fe3a7c5be5b71cd4620d5d0fc4e600"></script>
-  </div>
-</div>`;
-
-const AD_SIDEBAR_PARTIAL = `<div class="card border-one embed-responsive mb-3">
-  <div class="ad-160">
-    <script>atOptions = {'key' : '05ee890ed059b98d213910f338ece6d0', 'format' : 'iframe', 'height' : 600, 'width' : 160, 'params' : {}};</script><script data-cfasync="false" src="https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0"></script>
-  </div>
-</div>`;
 
 interface SyncStore {
   stories: any[];
@@ -290,9 +272,9 @@ function buildHeadForRoute(reqPath: string, queryParams: URLSearchParams): strin
   const activeStories = store.stories.filter(
     (s) => s && !s.isDeleted && !s.deleted && s.published !== false
   );
-  const totalPages = Math.max(1, Math.ceil(activeStories.length / 30));
-  const startIdx = (page - 1) * 30;
-  const pageStories = activeStories.slice(startIdx, startIdx + 30);
+  const totalPages = Math.max(1, Math.ceil(activeStories.length / 15));
+  const startIdx = (page - 1) * 15;
+  const pageStories = activeStories.slice(startIdx, startIdx + 15);
 
   const title =
     page > 1
@@ -376,8 +358,8 @@ function buildSsrBodyContent(reqPath: string, queryParams: URLSearchParams): str
   );
 
   if (normalizedPath === '/') {
-    const startIdx = (page - 1) * 30;
-    const slice = activeStories.slice(startIdx, startIdx + 29);
+    const startIdx = (page - 1) * 15;
+    const slice = activeStories.slice(startIdx, startIdx + 15);
     const cardsHtml = slice
       .map((s) => {
         const slug = encodeURIComponent(stripZW(s.slug || s.id));
@@ -393,13 +375,9 @@ function buildSsrBodyContent(reqPath: string, queryParams: URLSearchParams): str
 
     return `<div class="ssr-shell">
   <h1 class="sr-only">${escapeHtmlText(h1Text)}</h1>
-  <div class="story-grid-2col">
+  <div class="story-grid-3x5">
     ${cardsHtml}
-    ${AD_FEED_PARTIAL}
   </div>
-  <nav aria-label="Pagination">
-    <a href="${SMARTLINK_URL}" target="_blank" rel="nofollow sponsored noopener">තවත් කතා →</a>
-  </nav>
 </div>`;
   }
 
@@ -422,24 +400,7 @@ function buildSsrBodyContent(reqPath: string, queryParams: URLSearchParams): str
     const paragraphs = splitParagraphsForSsr(String(rawBody));
 
     const paragraphsHtml = paragraphs
-      .map((p, i) => {
-        const pTag = `<p data-reading-content>${escapeHtmlText(p)}</p>`;
-        if (i === 2 && paragraphs.length > 5) {
-          return `${pTag}\n${AD_FEED_PARTIAL}`;
-        }
-        return pTag;
-      })
-      .join('\n');
-
-    const related = activeStories.slice(0, 5);
-    const relatedHtml = related
-      .map((r) => {
-        const rSlug = encodeURIComponent(stripZW(r.slug || r.id));
-        const rTitle = escapeHtmlAttr(stripZW(r.title));
-        return `<a href="/story/${rSlug}"><img src="/icon.png" alt="${rTitle}"><span>${escapeHtmlText(
-          stripZW(r.title)
-        )}</span></a>`;
-      })
+      .map((p) => `<p data-reading-content>${escapeHtmlText(p)}</p>`)
       .join('\n');
 
     return `<div class="ssr-article">
@@ -454,22 +415,12 @@ function buildSsrBodyContent(reqPath: string, queryParams: URLSearchParams): str
     </div>
     <blockquote>
       අලුත්ම සිංහල වැල කතා දිනපතා එසැණින් කියවීමට අපගේ Telegram නාලිකාව සමඟ එක්වන්න: <a href="https://t.me/walkathawa">https://t.me/walkathawa</a>
-      <a href="${SMARTLINK_URL}" target="_blank" rel="nofollow sponsored noopener">තවත් කතා කියවන්න →</a>
     </blockquote>
     <footer>
       <a href="/">Previous</a>
-      <a href="/">Random</a>
       <a href="/">Next</a>
-      <a href="${SMARTLINK_URL}" target="_blank" rel="nofollow sponsored noopener">තවත් කතා →</a>
     </footer>
   </article>
-  <aside>
-    ${AD_SIDEBAR_PARTIAL}
-    <div class="related-stories">
-      ${relatedHtml}
-      <a href="${SMARTLINK_URL}" target="_blank" rel="nofollow sponsored noopener">තවත් Wal Katha →</a>
-    </div>
-  </aside>
 </div>`;
   }
 
@@ -500,16 +451,15 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
   const ssrContent = buildSsrBodyContent(normalizedPath, queryParams);
   const cleanedHtml = rawHtml
     .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
-    .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
+    .replace(/<script[^>]*brijmohan\.org[^>]*><\/script>\s*/gi, '');
 
   return cleanedHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${newHeadInner}${assetTags}\n${POPUNDER_SNIPPET}\n  </head>`
+      `<head>\n${newHeadInner}${assetTags}\n  </head>`
     )
-    .replace(/<div id="root"><\/div>/i, `<div id="root">${ssrContent}</div>`)
-    .replace(/<\/body>/i, `${SOCIALBAR_SNIPPET}\n  </body>`);
+    .replace(/<div id="root"><\/div>/i, `<div id="root">${ssrContent}</div>`);
 }
 
 async function startServer() {

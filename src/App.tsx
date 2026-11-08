@@ -46,11 +46,8 @@ export function App() {
 
   useEffect(() => {
     testConnection();
-    // §1: Hardcode <html lang="en" class="dark">
     document.documentElement.setAttribute('lang', 'en');
     document.documentElement.classList.add('dark');
-    const win = window as any;
-    win.salvattore = win.salvattore || { rescanMediaQueries: () => {} };
   }, []);
 
   const parseRoute = useCallback(() => {
@@ -202,7 +199,7 @@ export function App() {
         search: searchQuery,
         sortBy: viewMode === 'popular' ? 'popular' : sortBy,
         page: currentPage,
-        limit: 30,
+        limit: 15,
       });
 
       setStories(result.data);

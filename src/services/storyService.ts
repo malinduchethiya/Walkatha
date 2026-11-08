@@ -233,8 +233,13 @@ export class StoryService {
             continue;
           }
           const story = normalizeStoryDoc(raw.id || raw.slug, raw);
+          const prev = mergedById.get(story.id);
+          if (prev && (prev.fullContent || '').length > (story.fullContent || '').length) {
+            story.fullContent = prev.fullContent;
+            story.content = prev.fullContent;
+          }
           mergedById.set(story.id, story);
-          if (story.fullContent && story.fullContent.length > 500) {
+          if (story.fullContent && story.fullContent.length > 300) {
             this.contentByIdCache.set(story.id.toLowerCase(), story);
             this.contentByIdCache.set(story.slug.toLowerCase(), story);
           }
@@ -244,7 +249,7 @@ export class StoryService {
 
     // 2. Only scan Firestore directly if static/server catalog wasn't available
     if (mergedById.size === 0) {
-      for (const firestoreInstance of [contentDb, db]) {
+      for (const firestoreInstance of [db, contentDb]) {
         const snap = await withTimeout(getDocs(collection(firestoreInstance, 'stories')), 4000);
         if (!snap) continue;
         snap.forEach((docSnap) => {
@@ -260,8 +265,13 @@ export class StoryService {
           }
 
           const incoming = normalizeStoryDoc(docSnap.id, raw);
+          const prev = mergedById.get(incoming.id);
+          if (prev && (prev.fullContent || '').length > (incoming.fullContent || '').length) {
+            incoming.fullContent = prev.fullContent;
+            incoming.content = prev.fullContent;
+          }
           mergedById.set(incoming.id, incoming);
-          if (incoming.fullContent && incoming.fullContent.length > 500) {
+          if (incoming.fullContent && incoming.fullContent.length > 300) {
             this.contentByIdCache.set(incoming.id.toLowerCase(), incoming);
             this.contentByIdCache.set(incoming.slug.toLowerCase(), incoming);
           }
@@ -362,7 +372,7 @@ export class StoryService {
       search = '',
       sortBy = 'latest',
       page = 1,
-      limit = 30,
+      limit = 15,
     } = params;
 
     const all = await this.fetchAllLiveStories();
@@ -428,7 +438,7 @@ export class StoryService {
     const decodedSlug = stripZeroWidth(decodeURIComponent(slug)).toLowerCase();
 
     const cached = this.contentByIdCache.get(decodedSlug);
-    if (cached && cached.fullContent && cached.fullContent.length > 1500) {
+    if (cached && cached.fullContent && cached.fullContent.length > 500) {
       return cached;
     }
 
@@ -437,7 +447,7 @@ export class StoryService {
       const raw = await fetchJsonSafe(`/api/firestore/story/${encodeURIComponent(decodedSlug)}`);
       if (raw && (raw.fullContent || raw.content)) {
         const story = normalizeStoryDoc(raw.id || decodedSlug, raw);
-        if (story.fullContent && story.fullContent.length > 500) {
+        if (story.fullContent && story.fullContent.length > 300) {
           this.contentByIdCache.set(decodedSlug, story);
           this.contentByIdCache.set(story.id.toLowerCase(), story);
           this.contentByIdCache.set(story.slug.toLowerCase(), story);
@@ -455,7 +465,7 @@ export class StoryService {
         stripZeroWidth(decodeURIComponent(s.slug)).toLowerCase() === decodedSlug
     );
 
-    if (found && found.fullContent && found.fullContent.length > 1500) {
+    if (found && found.fullContent && found.fullContent.length > 500) {
       this.contentByIdCache.set(decodedSlug, found);
       return found;
     }
@@ -474,17 +484,26 @@ export class StoryService {
             this.loadedChunks.add(cIdx);
             for (const raw of chunkPayload.stories) {
               const norm = normalizeStoryDoc(raw.id || raw.slug, raw);
-              if (norm.fullContent && norm.fullContent.length > 500) {
+              if (norm.fullContent && norm.fullContent.length > 300) {
                 this.contentByIdCache.set(norm.id.toLowerCase(), norm);
                 this.contentByIdCache.set(norm.slug.toLowerCase(), norm);
+                try {
+                  this.contentByIdCache.set(
+                    stripZeroWidth(decodeURIComponent(norm.slug)).toLowerCase(),
+                    norm
+                  );
+                } catch {
+                  // ignore
+                }
               }
             }
           }
         }
         const fromChunk =
           this.contentByIdCache.get(decodedSlug) ||
-          (found ? this.contentByIdCache.get(found.id.toLowerCase()) : undefined);
-        if (fromChunk && fromChunk.fullContent && fromChunk.fullContent.length > 500) {
+          (found ? this.contentByIdCache.get(found.id.toLowerCase()) : undefined) ||
+          (found ? this.contentByIdCache.get(found.slug.toLowerCase()) : undefined);
+        if (fromChunk && fromChunk.fullContent && fromChunk.fullContent.length > 300) {
           return found
             ? {
                 ...found,
