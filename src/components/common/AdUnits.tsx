@@ -494,3 +494,128 @@ export const TripleInlineBanners320x50: React.FC<{ label?: string }> = ({ label 
     </div>
   );
 };
+
+export const NATIVE_BANNER_SCRIPT_SRC =
+  'https://brijmohan.org/21/e308aeebc92b2395c18ed45beda64648';
+export const NATIVE_BANNER_CONTAINER_ID = 'container-e308aeebc92b2395c18ed45beda64648';
+
+/**
+ * Native Banner Ad Unit:
+ * <script async="async" data-cfasync="false" src="https://brijmohan.org/21/e308aeebc92b2395c18ed45beda64648"></script>
+ * <div id="container-e308aeebc92b2395c18ed45beda64648"></div>
+ *
+ * Slot 0 renders directly in the page DOM with exact ID `container-e308aeebc92b2395c18ed45beda64648`,
+ * and subsequent slots render in isolated auto-sizing iframes so every 3-row break populates its own
+ * `#container-e308aeebc92b2395c18ed45beda64648` without duplicate-ID collisions.
+ */
+export const NativeBannerAd: React.FC<{ slotIndex?: number }> = ({ slotIndex = 0 }) => {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [iframeHeight, setIframeHeight] = useState<number>(140);
+
+  useEffect(() => {
+    if (slotIndex !== 0 || typeof document === 'undefined' || !wrapperRef.current) return;
+
+    const existingScript = wrapperRef.current.querySelector(
+      `script[data-native-slot="native-0"]`
+    );
+    if (existingScript && existingScript.parentNode) {
+      existingScript.parentNode.removeChild(existingScript);
+    }
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.setAttribute('async', 'async');
+    script.setAttribute('data-cfasync', 'false');
+    script.setAttribute('data-native-slot', 'native-0');
+    script.src = NATIVE_BANNER_SCRIPT_SRC;
+    wrapperRef.current.appendChild(script);
+  }, [slotIndex]);
+
+  useEffect(() => {
+    if (slotIndex === 0 || typeof window === 'undefined') return;
+    const handleResizeMsg = (ev: MessageEvent) => {
+      if (
+        ev.data &&
+        typeof ev.data === 'object' &&
+        ev.data.type === 'walkathawa-native-height' &&
+        ev.data.slotIndex === slotIndex &&
+        typeof ev.data.height === 'number'
+      ) {
+        setIframeHeight(Math.max(90, Math.min(420, ev.data.height)));
+      }
+    };
+    window.addEventListener('message', handleResizeMsg);
+    return () => window.removeEventListener('message', handleResizeMsg);
+  }, [slotIndex]);
+
+  if (slotIndex === 0) {
+    return (
+      <div
+        ref={wrapperRef}
+        className="w-full my-2 py-2 rounded-lg bg-white/60 dark:bg-[#111a33]/60 border border-slate-200/70 dark:border-[#1e2d52]/70 overflow-hidden"
+      >
+        <div id={NATIVE_BANNER_CONTAINER_ID} />
+      </div>
+    );
+  }
+
+  const nativeSrcDoc = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <script async="async" data-cfasync="false" src="${NATIVE_BANNER_SCRIPT_SRC}"></script>
+    <div id="${NATIVE_BANNER_CONTAINER_ID}"></div>
+    <script>
+      (function(){
+        function reportHeight() {
+          try {
+            var c = document.getElementById('${NATIVE_BANNER_CONTAINER_ID}');
+            var h = Math.max(document.body.scrollHeight, c ? c.scrollHeight : 0);
+            if (h > 20) {
+              window.parent.postMessage({
+                type: 'walkathawa-native-height',
+                slotIndex: ${slotIndex},
+                height: h + 8
+              }, '*');
+            }
+          } catch (e) {}
+        }
+        if (typeof ResizeObserver !== 'undefined') {
+          new ResizeObserver(reportHeight).observe(document.body);
+        }
+        window.addEventListener('load', function() {
+          reportHeight();
+          setTimeout(reportHeight, 600);
+          setTimeout(reportHeight, 1800);
+        });
+      })();
+    </script>
+  </body>
+</html>`;
+
+  return (
+    <div className="w-full my-2 py-1 rounded-lg bg-white/60 dark:bg-[#111a33]/60 border border-slate-200/70 dark:border-[#1e2d52]/70 overflow-hidden">
+      <iframe
+        title={`Native Banner #${slotIndex + 1}`}
+        srcDoc={nativeSrcDoc}
+        style={{ height: `${iframeHeight}px` }}
+        scrolling="no"
+        frameBorder="0"
+        loading="lazy"
+        className="w-full border-0 overflow-hidden"
+      />
+    </div>
+  );
+};

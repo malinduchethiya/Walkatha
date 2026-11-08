@@ -27,8 +27,8 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   const categorySlug = story.category || 'romantic';
 
   return (
-    <article className="bg-white dark:bg-[#111a33] rounded-lg border border-slate-200 dark:border-[#1e2d52] overflow-hidden hover:border-blue-600 dark:hover:border-blue-400 transition-colors flex flex-col justify-between">
-      <div>
+    <article className="min-w-0 w-full h-full bg-white dark:bg-[#111a33] rounded-xl border border-slate-200/90 dark:border-[#22345e] shadow-sm overflow-hidden hover:border-blue-600 dark:hover:border-blue-400 transition-colors flex flex-col justify-between">
+      <div className="min-w-0">
         <a
           href={storyHref}
           onClick={(e) => {
@@ -53,8 +53,8 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           />
         </a>
 
-        <div className="p-4">
-          <div className="flex items-center justify-between gap-2 mb-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="p-3 sm:p-4 min-w-0">
+          <div className="flex items-center justify-between gap-1.5 mb-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 min-w-0">
             <a
               href={`/category/${encodeURIComponent(categorySlug)}`}
               onClick={(e) => {
@@ -63,14 +63,14 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                   onSelectCategory(categorySlug);
                 }
               }}
-              className="font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+              className="font-semibold text-blue-700 dark:text-blue-300 hover:underline truncate"
             >
               {story.categoryName || story.category || 'සිංහල කතා'}
             </a>
-            <span>විනාඩි {story.readingTime || 5}</span>
+            <span className="shrink-0">විනාඩි {story.readingTime || 5}</span>
           </div>
 
-          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1.5 leading-snug line-clamp-2">
+          <h2 className="text-xs sm:text-base font-bold text-slate-900 dark:text-slate-100 mb-1.5 leading-snug line-clamp-2 break-words">
             <a
               href={storyHref}
               onClick={(e) => {
@@ -85,14 +85,14 @@ export const StoryCard: React.FC<StoryCardProps> = ({
             </a>
           </h2>
 
-          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+          <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed break-words">
             {excerpt}
           </p>
         </div>
       </div>
 
-      <div className="px-4 py-2.5 border-t border-slate-100 dark:border-[#1a2747] flex items-center justify-between text-xs">
-        <span className="text-slate-500 dark:text-slate-400">
+      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-t border-slate-100 dark:border-[#1a2747] flex items-center justify-between text-[11px] sm:text-xs gap-1 min-w-0">
+        <span className="text-slate-500 dark:text-slate-400 truncate">
           {story.uploadDate
             ? new Date(story.uploadDate).toLocaleDateString('si-LK', {
                 year: 'numeric',
@@ -109,9 +109,9 @@ export const StoryCard: React.FC<StoryCardProps> = ({
               onSelect(story.slug);
             }
           }}
-          className="font-semibold text-blue-700 dark:text-blue-400 hover:underline"
+          className="font-semibold text-blue-700 dark:text-blue-400 hover:underline shrink-0"
         >
-          කතාව කියවන්න →
+          කියවන්න →
         </a>
       </div>
     </article>

@@ -271,10 +271,10 @@ export function App() {
         onOpenCategoriesPage={() => navigateTo('/categories')}
       />
 
-      <div className="flex-1 w-full max-w-[1540px] mx-auto px-2 sm:px-4 py-6 flex items-start justify-center gap-4">
+      <div className="flex-1 w-full max-w-[1540px] mx-auto px-3 sm:px-5 py-6 flex items-start justify-center gap-4">
         <SideBannerColumn side="left" count={sideBannerCount} />
 
-        <main className="flex-1 min-w-0 max-w-6xl">
+        <main className="flex-1 min-w-0 w-full max-w-6xl">
         {viewMode === 'home' && (
           <StoryGallery
             stories={stories}

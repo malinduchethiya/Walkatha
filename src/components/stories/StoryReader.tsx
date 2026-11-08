@@ -382,11 +382,11 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
       {/* Related Stories Grid */}
       {relatedStories.length > 0 && (
-        <section className="space-y-3 pt-2">
+        <section className="space-y-3.5 pt-2">
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             තවත් රසවත් සිංහල වැල කතා (Related Stories)
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3 gap-x-3.5 gap-y-4 sm:gap-x-5 sm:gap-y-5">
             {relatedStories.map((rel) => (
               <StoryCard
                 key={rel.id}
