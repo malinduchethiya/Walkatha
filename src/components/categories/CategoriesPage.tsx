@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Category } from '../../types/story';
 import { SeoService } from '../../services/seoService';
+import { NativeBanner, StoryBanner468 } from '../common/NativeBanner';
 
 interface CategoriesPageProps {
   categories: Category[];
@@ -37,6 +38,8 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
         </button>
       </div>
 
+      <StoryBanner468 refreshKey="categories-top" />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {categories.map((cat) => {
           const slug = cat.slug || cat.id;
@@ -69,6 +72,9 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
           );
         })}
       </div>
+
+      <StoryBanner468 refreshKey="categories-bottom" />
+      <NativeBanner refreshKey="categories-page" />
     </div>
   );
 };

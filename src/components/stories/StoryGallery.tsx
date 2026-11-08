@@ -1,6 +1,7 @@
 import React from 'react';
 import { Story, Category } from '../../types/story';
 import { StoryCard } from './StoryCard';
+import { NativeBanner, StoryBanner468 } from '../common/NativeBanner';
 
 interface StoryGalleryProps {
   stories: Story[];
@@ -112,6 +113,9 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         </div>
       </div>
 
+      {/* 468x60 Banner in free space above the 3x5 gallery grid */}
+      <StoryBanner468 refreshKey={`top-${pageKind}-${selectedCategory}-${currentPage}`} />
+
       {/* Stories Grid: 3 columns x 5 rows (15 items) */}
       {isLoading ? (
         <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
@@ -150,6 +154,10 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           ))}
         </div>
       )}
+
+      {/* Free space below the 3x5 grid: 468x60 Banner + Native Banner */}
+      <StoryBanner468 refreshKey={`bottom-${pageKind}-${selectedCategory}-${currentPage}`} />
+      <NativeBanner refreshKey={`${pageKind}-${selectedCategory}-${currentPage}`} />
 
       {/* Paginator Row */}
       <nav

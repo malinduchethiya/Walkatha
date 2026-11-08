@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { StoryGallery } from './components/stories/StoryGallery';
@@ -44,6 +44,8 @@ export function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const isInitialRouteRef = useRef<boolean>(true);
+
   useEffect(() => {
     testConnection();
     document.documentElement.setAttribute('lang', 'en');
@@ -53,20 +55,35 @@ export function App() {
   useEffect(() => {
     const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
     const existing = document.head.querySelector(`script[src="${POPUNDER_SRC}"]`);
-    if (viewMode === 'home' || viewMode === 'reader') {
-      if (existing) {
-        // Keep it as the very last child before </head>
-        if (document.head.lastElementChild !== existing) {
-          document.head.appendChild(existing);
-        }
-      } else {
+
+    if (isInitialRouteRef.current) {
+      isInitialRouteRef.current = false;
+      // On initial page load, leave the existing <head> script untouched so it finishes loading natively
+      if (!existing && (viewMode === 'home' || viewMode === 'reader')) {
         const script = document.createElement('script');
         script.setAttribute('data-cfasync', 'false');
         script.src = POPUNDER_SRC;
         document.head.appendChild(script);
       }
-    } else if (existing) {
-      existing.remove();
+    } else if (viewMode === 'home' || viewMode === 'reader') {
+      // On SPA navigation to home or a story page, create a fresh <script> node right before </head>
+      // so the browser executes the popunder script for the new page view
+      if (existing) {
+        existing.remove();
+      }
+      const script = document.createElement('script');
+      script.setAttribute('data-cfasync', 'false');
+      script.src = POPUNDER_SRC;
+      document.head.appendChild(script);
+    }
+
+    const SOCIALBAR_SRC = 'https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da';
+    const existingSocial = document.body.querySelector(`script[src="${SOCIALBAR_SRC}"]`);
+    if (!existingSocial) {
+      const socialScript = document.createElement('script');
+      socialScript.setAttribute('data-cfasync', 'false');
+      socialScript.src = SOCIALBAR_SRC;
+      document.body.appendChild(socialScript);
     }
   }, [viewMode, selectedStorySlug, currentPage]);
 

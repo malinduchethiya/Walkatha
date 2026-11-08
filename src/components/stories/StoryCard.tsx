@@ -72,7 +72,6 @@ export const StoryCard: React.FC<StoryCardProps> = ({
               onClick={(e) => {
                 if (!e.ctrlKey && !e.metaKey) {
                   e.preventDefault();
-                  e.stopPropagation();
                   if (onSelectCategory) onSelectCategory(categorySlug);
                 }
               }}

@@ -451,7 +451,7 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
   const ssrContent = buildSsrBodyContent(normalizedPath, queryParams);
   const cleanedHtml = rawHtml
     .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
-    .replace(/<script[^>]*brijmohan\.org[^>]*><\/script>\s*/gi, '');
+    .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
 
   const isHomeOrStory =
     normalizedPath === '/' ||
@@ -460,6 +460,8 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
   const headClosingScript = isHomeOrStory
     ? '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>'
     : '';
+  const bodyClosingScript =
+    '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>';
 
   return cleanedHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
@@ -467,7 +469,8 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
       /<head>[\s\S]*?<\/head>/i,
       `<head>\n${newHeadInner}${assetTags}${headClosingScript}\n  </head>`
     )
-    .replace(/<div id="root"><\/div>/i, `<div id="root">${ssrContent}</div>`);
+    .replace(/<div id="root"><\/div>/i, `<div id="root">${ssrContent}</div>`)
+    .replace(/<\/body>/i, `${bodyClosingScript}\n  </body>`);
 }
 
 async function startServer() {

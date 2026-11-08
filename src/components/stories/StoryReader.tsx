@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
+import { NativeBanner, StoryBanner468 } from '../common/NativeBanner';
 
 interface StoryReaderProps {
   slug: string;
@@ -232,15 +233,22 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             </header>
 
             <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-200 select-text">
-              {paragraphs.map((para, i) => (
-                <p
-                  key={i}
-                  data-reading-content
-                  className="leading-[1.95] tracking-normal break-words"
-                >
-                  {para}
-                </p>
-              ))}
+              {paragraphs.map((para, i) => {
+                const insertAfterIndex = paragraphs.length >= 3 ? 1 : 0;
+                return (
+                  <React.Fragment key={i}>
+                    <p
+                      data-reading-content
+                      className="leading-[1.95] tracking-normal break-words"
+                    >
+                      {para}
+                    </p>
+                    {i === insertAfterIndex && (
+                      <StoryBanner468 refreshKey={`${story.slug}-p2`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
 
             <blockquote className="mt-6 p-4 rounded-lg bg-[#0d152b] border-l-4 border-blue-500 text-xs sm:text-sm text-slate-300 space-y-1">
@@ -256,6 +264,10 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 </a>
               </p>
             </blockquote>
+
+            {/* Free space below story body: 468x60 Banner + Native Banner */}
+            <StoryBanner468 refreshKey={`${story.slug}-bottom`} className="mt-6" />
+            <NativeBanner refreshKey={story.slug} className="mt-4" />
 
             <footer className="mt-8 pt-6 border-t border-[#1e2d52] space-y-3">
               <div className="grid grid-cols-2 gap-3">

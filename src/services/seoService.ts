@@ -58,6 +58,18 @@ export function formatCleanDescription(rawDesc: string, fallbackTitle?: string):
 }
 
 export class SeoService {
+  private static appendBeforePopunder(node: HTMLElement) {
+    if (typeof document === 'undefined') return;
+    const popunder = document.head.querySelector(
+      'script[src*="ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"]'
+    );
+    if (popunder && popunder.parentNode === document.head) {
+      document.head.insertBefore(node, popunder);
+    } else {
+      document.head.appendChild(node);
+    }
+  }
+
   private static setMetaTag(attrName: 'name' | 'property', attrValue: string, content: string) {
     if (typeof document === 'undefined') return;
     let element = document.querySelector(
@@ -66,7 +78,7 @@ export class SeoService {
     if (!element) {
       element = document.createElement('meta');
       element.setAttribute(attrName, attrValue);
-      document.head.appendChild(element);
+      this.appendBeforePopunder(element);
     }
     element.setAttribute('content', content);
   }
@@ -83,7 +95,7 @@ export class SeoService {
     if (!link) {
       link = document.createElement('link');
       link.setAttribute('rel', rel);
-      document.head.appendChild(link);
+      this.appendBeforePopunder(link);
     }
     link.setAttribute('href', href);
   }
@@ -99,7 +111,7 @@ export class SeoService {
       script = document.createElement('script');
       script.id = id;
       script.type = 'application/ld+json';
-      document.head.appendChild(script);
+      this.appendBeforePopunder(script);
     }
     script.textContent = JSON.stringify(schemaData);
   }
@@ -111,19 +123,11 @@ export class SeoService {
       `script[src="${POPUNDER_SRC}"]`
     ) as HTMLScriptElement | null;
 
-    if (enabled) {
-      if (existing) {
-        if (document.head.lastElementChild !== existing) {
-          document.head.appendChild(existing);
-        }
-      } else {
-        const script = document.createElement('script');
-        script.setAttribute('data-cfasync', 'false');
-        script.src = POPUNDER_SRC;
-        document.head.appendChild(script);
-      }
-    } else if (existing) {
-      existing.remove();
+    if (enabled && !existing) {
+      const script = document.createElement('script');
+      script.setAttribute('data-cfasync', 'false');
+      script.src = POPUNDER_SRC;
+      document.head.appendChild(script);
     }
   }
 
