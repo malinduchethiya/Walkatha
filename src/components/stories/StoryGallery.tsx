@@ -119,16 +119,18 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
 
       {/* Stories Grid: 2 columns on mobile, 3 columns on desktop with clear vertical & horizontal spacing */}
       {isLoading ? (
-        <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3 gap-x-3.5 gap-y-4 sm:gap-x-5 sm:gap-y-5">
+        <div
+          style={{ columnGap: '10px', rowGap: '12px' }}
+          className="story-grid-2col grid grid-cols-2 lg:grid-cols-3"
+        >
           {Array.from({ length: 8 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="min-w-0 w-full h-56 sm:h-64 rounded-xl bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] p-3 sm:p-4 animate-pulse"
-            />
+            <div key={idx} className="p-1 sm:p-1.5 min-w-0 w-full">
+              <div className="w-full h-48 sm:h-56 rounded-xl bg-slate-100 dark:bg-[#111a33] border-0 p-3 animate-pulse" />
+            </div>
           ))}
         </div>
       ) : stories.length === 0 ? (
-        <div className="bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] rounded-lg p-8 text-center">
+        <div className="bg-slate-100 dark:bg-[#111a33] rounded-xl p-8 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
             ඔබ සෙවූ කතාව හමු නොවීය. සියලුම සිංහල වැල කතා පිරික්සන්න.
           </p>
@@ -144,10 +146,13 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           </button>
         </div>
       ) : (
-        <div className="space-y-5 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {storyChunks.map((chunk, chunkIdx) => (
             <React.Fragment key={`story-chunk-${chunkIdx}`}>
-              <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3 gap-x-3.5 gap-y-4 sm:gap-x-5 sm:gap-y-5">
+              <div
+                style={{ columnGap: '10px', rowGap: '12px' }}
+                className="story-grid-2col grid grid-cols-2 lg:grid-cols-3"
+              >
                 {chunk.map((story) => (
                   <StoryCard
                     key={story.id}

@@ -386,7 +386,10 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             තවත් රසවත් සිංහල වැල කතා (Related Stories)
           </h2>
-          <div className="story-grid-2col grid grid-cols-2 lg:grid-cols-3 gap-x-3.5 gap-y-4 sm:gap-x-5 sm:gap-y-5">
+          <div
+            style={{ columnGap: '10px', rowGap: '12px' }}
+            className="story-grid-2col grid grid-cols-2 lg:grid-cols-3"
+          >
             {relatedStories.map((rel) => (
               <StoryCard
                 key={rel.id}

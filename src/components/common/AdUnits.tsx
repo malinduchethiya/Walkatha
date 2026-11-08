@@ -552,7 +552,7 @@ export const NativeBannerAd: React.FC<{ slotIndex?: number }> = ({ slotIndex = 0
     return (
       <div
         ref={wrapperRef}
-        className="w-full my-2 py-2 rounded-lg bg-white/60 dark:bg-[#111a33]/60 border border-slate-200/70 dark:border-[#1e2d52]/70 overflow-hidden"
+        className="w-full my-2 py-2 rounded-xl bg-transparent overflow-hidden"
       >
         <div id={NATIVE_BANNER_CONTAINER_ID} />
       </div>
@@ -606,7 +606,7 @@ export const NativeBannerAd: React.FC<{ slotIndex?: number }> = ({ slotIndex = 0
 </html>`;
 
   return (
-    <div className="w-full my-2 py-1 rounded-lg bg-white/60 dark:bg-[#111a33]/60 border border-slate-200/70 dark:border-[#1e2d52]/70 overflow-hidden">
+    <div className="w-full my-2 py-1 rounded-xl bg-transparent overflow-hidden">
       <iframe
         title={`Native Banner #${slotIndex + 1}`}
         srcDoc={nativeSrcDoc}
