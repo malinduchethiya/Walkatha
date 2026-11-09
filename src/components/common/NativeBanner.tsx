@@ -137,3 +137,108 @@ export const StoryBanner468: React.FC<AdProps> = ({ className = '', refreshKey }
     />
   );
 };
+
+export const VerticalSideBanner: React.FC<AdProps & { slotId?: string }> = ({
+  className = '',
+  refreshKey,
+  slotId = 'v-slot',
+}) => {
+  const slotRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = slotRef.current;
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const renderFrame = document.createElement('iframe');
+    renderFrame.width = '160';
+    renderFrame.height = '320';
+    renderFrame.frameBorder = '0';
+    renderFrame.scrolling = 'no';
+    renderFrame.title = `vertical-ad-${slotId}`;
+    renderFrame.style.border = '0';
+    renderFrame.style.display = 'block';
+    renderFrame.style.width = '160px';
+    renderFrame.style.height = '320px';
+    renderFrame.style.minHeight = '320px';
+    renderFrame.style.maxWidth = '100%';
+    renderFrame.style.overflow = 'hidden';
+
+    container.appendChild(renderFrame);
+
+    try {
+      const frameDoc = renderFrame.contentDocument || renderFrame.contentWindow?.document;
+      if (frameDoc) {
+        frameDoc.open();
+        frameDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base href="${window.location.origin}/">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 160px;
+      height: 320px;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    #${NATIVE_CONTAINER_ID} {
+      width: 160px !important;
+      max-width: 160px !important;
+      overflow: hidden !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="${NATIVE_CONTAINER_ID}"></div>
+  <script async="async" data-cfasync="false" src="${NATIVE_BANNER_SRC}"></script>
+  <script>
+    atOptions = {
+      'key' : '${BANNER_468_KEY}',
+      'format' : 'iframe',
+      'height' : 60,
+      'width' : 468,
+      'params' : {}
+    };
+  </script>
+  <script data-cfasync="false" src="${BANNER_468_SRC}"></script>
+</body>
+</html>`);
+        frameDoc.close();
+      }
+    } catch {
+      // ignore fallback errors
+    }
+  }, [refreshKey, slotId]);
+
+  return (
+    <div
+      ref={slotRef}
+      className={`vertical-ad-slot w-[160px] min-h-[320px] rounded-lg bg-[#0d152b]/60 border border-[#1c2b4f]/60 flex items-center justify-center overflow-hidden ${className}`.trim()}
+    />
+  );
+};
+
+export const SideVerticalBannerRail: React.FC<{
+  side: 'left' | 'right';
+  refreshKey?: string | number;
+}> = ({ side, refreshKey }) => {
+  return (
+    <div
+      aria-label={`${side} vertical banners`}
+      className="hidden md:flex flex-col items-center justify-start gap-5 w-[160px] lg:w-[170px] shrink-0 pt-2"
+    >
+      <VerticalSideBanner slotId={`${side}-1`} refreshKey={`${side}-1-${refreshKey ?? ''}`} />
+      <VerticalSideBanner slotId={`${side}-2`} refreshKey={`${side}-2-${refreshKey ?? ''}`} />
+      <VerticalSideBanner slotId={`${side}-3`} refreshKey={`${side}-3-${refreshKey ?? ''}`} />
+    </div>
+  );
+};
+

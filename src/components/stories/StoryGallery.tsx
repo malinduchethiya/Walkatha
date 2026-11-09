@@ -143,15 +143,84 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           </button>
         </div>
       ) : (
-        <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
-          {displayedStories.map((story) => (
-            <StoryCard
-              key={story.id}
-              story={story}
-              onSelect={onSelectStory}
-              onSelectCategory={onSelectCategory}
+        <div className="space-y-4">
+          {/* Row 1 (Stories 1-3) */}
+          <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
+            {displayedStories.slice(0, 3).map((story) => (
+              <StoryCard
+                key={story.id}
+                story={story}
+                onSelect={onSelectStory}
+                onSelectCategory={onSelectCategory}
+              />
+            ))}
+          </div>
+
+          {/* Middle Horizontal Banner #1 (after Row 1) */}
+          {displayedStories.length > 3 && (
+            <StoryBanner468
+              refreshKey={`mid-1-${pageKind}-${selectedCategory}-${currentPage}`}
+              className="my-1"
             />
-          ))}
+          )}
+
+          {/* Row 2 (Stories 4-6) */}
+          {displayedStories.length > 3 && (
+            <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
+              {displayedStories.slice(3, 6).map((story) => (
+                <StoryCard
+                  key={story.id}
+                  story={story}
+                  onSelect={onSelectStory}
+                  onSelectCategory={onSelectCategory}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Middle Horizontal Banner #2 (after Row 2) */}
+          {displayedStories.length > 6 && (
+            <StoryBanner468
+              refreshKey={`mid-2-${pageKind}-${selectedCategory}-${currentPage}`}
+              className="my-1"
+            />
+          )}
+
+          {/* Rows 3 & 4 (Stories 7-12) */}
+          {displayedStories.length > 6 && (
+            <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
+              {displayedStories.slice(6, 12).map((story) => (
+                <StoryCard
+                  key={story.id}
+                  story={story}
+                  onSelect={onSelectStory}
+                  onSelectCategory={onSelectCategory}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Middle Horizontal Banner #3 (after Row 4) */}
+          {displayedStories.length > 12 && (
+            <StoryBanner468
+              refreshKey={`mid-3-${pageKind}-${selectedCategory}-${currentPage}`}
+              className="my-1"
+            />
+          )}
+
+          {/* Row 5 (Stories 13-15) */}
+          {displayedStories.length > 12 && (
+            <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
+              {displayedStories.slice(12, 15).map((story) => (
+                <StoryCard
+                  key={story.id}
+                  story={story}
+                  onSelect={onSelectStory}
+                  onSelectCategory={onSelectCategory}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
