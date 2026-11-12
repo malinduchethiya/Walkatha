@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { StoryGallery } from './components/stories/StoryGallery';
@@ -9,6 +9,7 @@ import { HtmlSitemapPage } from './components/common/HtmlSitemapPage';
 import { NotFoundPage } from './components/common/NotFoundPage';
 import { AdminRoot } from './components/admin/AdminRoot';
 import { SideVerticalBannerRail } from './components/common/NativeBanner';
+import { triggerStoryAd } from './utils/adTrigger';
 import { Story, Category } from './types/story';
 import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
@@ -45,8 +46,6 @@ export function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const isInitialRouteRef = useRef<boolean>(true);
-
   useEffect(() => {
     testConnection();
     document.documentElement.setAttribute('lang', 'en');
@@ -55,23 +54,8 @@ export function App() {
 
   useEffect(() => {
     const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
-    const existing = document.head.querySelector(`script[src="${POPUNDER_SRC}"]`);
-
-    if (isInitialRouteRef.current) {
-      isInitialRouteRef.current = false;
-      // On initial page load, leave the existing <head> script untouched so it finishes loading natively
-      if (!existing && (viewMode === 'home' || viewMode === 'reader')) {
-        const script = document.createElement('script');
-        script.setAttribute('data-cfasync', 'false');
-        script.src = POPUNDER_SRC;
-        document.head.appendChild(script);
-      }
-    } else if (viewMode === 'home' || viewMode === 'reader') {
-      // On SPA navigation to home or a story page, create a fresh <script> node right before </head>
-      // so the browser executes the popunder script for the new page view
-      if (existing) {
-        existing.remove();
-      }
+    const existingPopunder = document.head.querySelector(`script[src*="ahuramazda.org"]`);
+    if (!existingPopunder) {
       const script = document.createElement('script');
       script.setAttribute('data-cfasync', 'false');
       script.src = POPUNDER_SRC;
@@ -296,6 +280,7 @@ export function App() {
   };
 
   const handleSelectStory = (slug: string) => {
+    triggerStoryAd();
     navigateTo(`/story/${encodeURIComponent(slug)}`);
   };
 

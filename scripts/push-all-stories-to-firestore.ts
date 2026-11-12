@@ -1,291 +1,237 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, writeBatch, collection, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { db, contentDb, auth } from '../src/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, writeBatch, collection, getDocs, setDoc } from 'firebase/firestore';
 import fs from 'fs';
 
-// Primary Firebase Configuration (walkathawa-93f80)
-const primaryFirebaseConfig = {
-  apiKey: "AIzaSyDWIC_GSMIOliCrhHKPgZgNUAZKUZ96nh4",
-  authDomain: "walkathawa-93f80.firebaseapp.com",
-  projectId: "walkathawa-93f80",
-  storageBucket: "walkathawa-93f80.firebasestorage.app",
-  messagingSenderId: "575596307575",
-  appId: "1:575596307575:web:daf2ef013ba17b53745272",
-  measurementId: "G-E0YMRGV1SK"
-};
+async function pushAllStoriesToBothFirestores() {
+  console.log('1. Signing in to primary Firestore (walkathawa-93f80)...');
+  const cred = await signInWithEmailAndPassword(auth, 'merlinfiverr0@gmail.com', 'g2jabB80');
+  console.log('Signed in as admin:', cred.user.email, 'uid:', cred.user.uid);
 
-// Cloud Firestore Dedicated Replica Configuration
-const replicaFirebaseConfig = {
-  projectId: "cedar-binder-448501-h7",
-  appId: "1:962224124146:web:d311b4ce4093d1ae84a06b",
-  apiKey: "AIzaSyC0QRGIKuDcgAVTJ3P2YynIV4hClqw2jic",
-  authDomain: "cedar-binder-448501-h7.firebaseapp.com",
-  storageBucket: "cedar-binder-448501-h7.firebasestorage.app",
-  messagingSenderId: "962224124146"
-};
+  // Load all 614 full stories from server-data/firestore-sync.json
+  const syncData = JSON.parse(fs.readFileSync('./server-data/firestore-sync.json', 'utf8'));
+  const rawStories: any[] = syncData.stories || [];
+  console.log(`Loaded ${rawStories.length} full stories from ./server-data/firestore-sync.json.`);
 
-const primaryApp = initializeApp(primaryFirebaseConfig, 'primary');
-const primaryDb = getFirestore(primaryApp);
+  // Also read existing docs in walkathawa-93f80 so we preserve exact document IDs and view counts
+  const existingPrimarySnap = await getDocs(collection(db, 'stories'));
+  const primaryById = new Map<string, any>();
+  const primaryBySlug = new Map<string, { docId: string; data: any }>();
 
-const replicaApp = initializeApp(replicaFirebaseConfig, 'replica');
-const replicaAuth = getAuth(replicaApp);
-const replicaDb = getFirestore(replicaApp, 'ai-studio-walkathawa-02ef80ec-1ede-4cb8-a1f9-9e6e1fcb951b');
+  existingPrimarySnap.forEach((d) => {
+    const data = d.data();
+    primaryById.set(d.id, data);
+    if (data.slug) {
+      primaryBySlug.set(String(data.slug).trim().toLowerCase(), { docId: d.id, data });
+    }
+  });
+  console.log(`Found ${existingPrimarySnap.size} existing story docs in walkathawa-93f80.`);
 
-function cleanStoryBody(rawText: string): string {
-  if (!rawText) return '';
-  return rawText
-    .replace(/Wal Katha:\s*https?:\/\/[^\s]+/gi, '')
-    .replace(/Join with our Sinhala[^\n]+/gi, '')
-    .replace(/https?:\/\/(t\.me|slpornhub\.com)[^\s]*/gi, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-function buildNaturalDescription(title: string, rawDesc: string, fullBody: string, categoryName: string): string {
-  const cleanTitle = title.replace(/\s*[–-]\s*(Wal|Wela|Sex)\s*Katha.*$/i, '').trim();
-  const isStuffed =
-    !rawDesc ||
-    rawDesc.length < 45 ||
-    /slpornhub|pdf|wal katha lokaya|sex katha\s*[–-]|wela katha\s*[–-]|wife sharing/i.test(rawDesc);
-
-  let source = isStuffed ? fullBody : rawDesc;
-  source = source.replace(/\s+/g, ' ').trim();
-
-  if (!source) {
-    return `${cleanTitle} - ${categoryName || 'සිංහල වැල කතා'} එකතුවෙන් කියවන්න.`.slice(0, 155);
+  // Build lookup of full stories by id and by slug
+  const fullById = new Map<string, any>();
+  const fullBySlug = new Map<string, any>();
+  for (const s of rawStories) {
+    if (s.id) fullById.set(String(s.id).trim(), s);
+    if (s.slug) fullBySlug.set(String(s.slug).trim().toLowerCase(), s);
   }
 
-  if (source.length <= 155) {
-    return source;
+  // Merge so every document ID in walkathawa-93f80 AND every story in syncData gets complete fullContent
+  const targetDocs = new Map<string, any>();
+
+  for (const s of rawStories) {
+    const slugKey = String(s.slug || '').trim().toLowerCase();
+    const matchedPrimary = primaryById.get(s.id)
+      ? { docId: s.id, data: primaryById.get(s.id) }
+      : primaryBySlug.get(slugKey);
+
+    const docId = matchedPrimary ? matchedPrimary.docId : String(s.id || s.slug).trim();
+    const existingData = matchedPrimary ? matchedPrimary.data : {};
+
+    const fullBody = String(
+      s.fullContent || s.content || existingData.fullContent || existingData.content || ''
+    ).trim();
+    const words = fullBody ? fullBody.split(/\s+/).length : Number(s.wordCount) || 0;
+    const readingTime = Math.max(4, Math.ceil(words / 180));
+    const desc = String(
+      s.shortDescription || s.description || existingData.shortDescription || existingData.description || ''
+    ).trim() || `${fullBody.replace(/\s+/g, ' ').slice(0, 152)}...`;
+
+    targetDocs.set(docId, {
+      ...existingData,
+      ...s,
+      id: docId,
+      title: String(s.title || existingData.title || 'සිංහල කතාව').trim(),
+      slug: String(existingData.slug || s.slug || docId).trim(),
+      shortDescription: desc,
+      description: desc,
+      fullContent: fullBody,
+      content: fullBody,
+      wordCount: words,
+      readingTime,
+      category: s.category || existingData.category || 'romantic',
+      categoryId: s.categoryId || existingData.categoryId || s.category || 'romantic',
+      categoryName: s.categoryName || existingData.categoryName || 'සිංහල කතා',
+      tags:
+        Array.isArray(s.tags) && s.tags.length > 0
+          ? s.tags
+          : Array.isArray(existingData.tags) && existingData.tags.length > 0
+          ? existingData.tags
+          : ['සිංහල වැල කතා', 'වල් කතා', 'වැල කතා'],
+      coverImage: s.coverImage || existingData.coverImage || '',
+      views: Math.max(Number(existingData.views) || 0, Number(s.views) || 12),
+      likes: Math.max(Number(existingData.likes) || 0, Number(s.likes) || 0),
+      featured: Boolean(s.featured ?? existingData.featured ?? false),
+      published: existingData.isDeleted === true || s.isDeleted === true ? false : true,
+      uploadDate: existingData.uploadDate || s.uploadDate || '2026-05-01T00:00:00.000Z',
+      uploadedDate: existingData.uploadedDate || s.uploadedDate || s.uploadDate || '2026-05-01T00:00:00.000Z',
+      updatedDate: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
-  const truncated = source.slice(0, 152).replace(/\s+\S*$/, '');
-  return `${truncated}...`;
-}
-
-async function authenticateAdmin() {
-  const email = 'sync_master_admin@walkathawa.site';
-  const pass = 'SyncAdmin#2026!';
-  let uid = '';
-  try {
-    const cred = await signInWithEmailAndPassword(replicaAuth, email, pass);
-    uid = cred.user.uid;
-  } catch {
-    const cred = await createUserWithEmailAndPassword(replicaAuth, email, pass);
-    uid = cred.user.uid;
-  }
-  await setDoc(doc(replicaDb, 'users', uid), {
-    uid,
-    email,
-    role: 'admin',
-    createdAt: new Date().toISOString(),
-  }, { merge: true });
-  await deleteDoc(doc(replicaDb, 'posts', 'test_post')).catch(() => {});
-}
-
-async function pushAllStories() {
-  await authenticateAdmin();
-  console.log('Authenticated as Firestore Admin.');
-
-  const storyMap = new Map<string, any>();
-
-  // 1. Load existing stories from replicaDb first (614 stories with fullContent)
-  const existingReplicaSnap = await getDocs(collection(replicaDb, 'stories'));
-  existingReplicaSnap.forEach((d) => {
-    storyMap.set(d.id, { ...d.data(), id: d.id });
+  // Also check if any doc in existingPrimarySnap wasn't in rawStories by id
+  existingPrimarySnap.forEach((d) => {
+    if (!targetDocs.has(d.id)) {
+      const data = d.data();
+      const slugKey = String(data.slug || '').trim().toLowerCase();
+      const matchedFull = fullById.get(d.id) || fullBySlug.get(slugKey);
+      if (matchedFull) {
+        const fullBody = String(matchedFull.fullContent || matchedFull.content || data.fullContent || '').trim();
+        const words = fullBody ? fullBody.split(/\s+/).length : 0;
+        targetDocs.set(d.id, {
+          ...data,
+          fullContent: fullBody,
+          content: fullBody,
+          wordCount: words,
+          readingTime: Math.max(4, Math.ceil(words / 180)),
+          updatedDate: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
   });
 
-  // 2. Merge with /tmp/repo/public/api-data/stories.json if present
-  const sourcePath = '/tmp/repo/public/api-data/stories.json';
-  if (fs.existsSync(sourcePath)) {
-    const rawStories: any[] = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-    for (const s of rawStories) {
-      const id = String(s.id || s.slug).trim();
-      const prev = storyMap.get(id) || {};
-      storyMap.set(id, {
-        ...prev,
-        ...s,
-        fullContent: s.fullContent || s.content || prev.fullContent || prev.content || '',
-      });
-    }
+  // Also check existing contentDb docs so we only write docs that need updating
+  const existingContentSnap = await getDocs(collection(contentDb, 'stories')).catch(() => null);
+  const contentById = new Map<string, any>();
+  if (existingContentSnap) {
+    existingContentSnap.forEach((d) => contentById.set(d.id, d.data()));
   }
 
-  // 3. Merge metadata from primaryDb (views, etc.)
-  try {
-    const primarySnap = await getDocs(collection(primaryDb, 'stories'));
-    primarySnap.forEach((d) => {
-      const data = d.data();
-      const prev = storyMap.get(d.id) || {};
-      storyMap.set(d.id, {
-        ...prev,
-        ...data,
-        id: d.id,
-        fullContent: (data.fullContent && data.fullContent.length > 50)
-          ? data.fullContent
-          : (prev.fullContent || prev.content || ''),
-        views: Math.max(Number(data.views) || 0, Number(prev.views) || 12),
-      });
-    });
-  } catch (e) {
-    console.warn('Notice reading primaryDb:', e);
-  }
+  const allDocs = Array.from(targetDocs.values());
+  const docsNeedingPrimarySync = allDocs.filter((d) => {
+    const prev = primaryById.get(d.id);
+    return !prev || (prev.fullContent || '').length < (d.fullContent || '').length - 10;
+  });
+  const docsNeedingContentSync = allDocs.filter((d) => {
+    const prev = contentById.get(d.id);
+    return !prev || (prev.fullContent || '').length < (d.fullContent || '').length - 10;
+  });
 
-  const allStories = Array.from(storyMap.values());
-  console.log(`Prepared ${allStories.length} total stories with full content.`);
-
-  // Compute category counts
-  const catCounts = new Map<string, number>();
-  for (const s of allStories) {
-    const cat = s.category || 'romantic';
-    catCounts.set(cat, (catCounts.get(cat) || 0) + 1);
-  }
-
-  const categories = [
-    {
-      id: 'wife',
-      slug: 'wife',
-      name: 'වයිෆ් / බිරිඳ (Wife Stories)',
-      sinhalaName: 'වයිෆ් / බිරිඳ කතා',
-      description: 'බිරිඳ, පවුලේ ජීවිතය සහ විවාහක අත්දැකීම් ඇසුරින් ලියැවුණු සිංහල වැල කතා එකතුව.',
-      storyCount: catCounts.get('wife') || 0,
-    },
-    {
-      id: 'akka-malli',
-      slug: 'akka-malli',
-      name: 'අක්කා - මල්ලි (Akka Malli)',
-      sinhalaName: 'අක්කා - මල්ලි කතා',
-      description: 'අක්කා, මල්ලි සහ අසල්වැසි යෞවන සබඳතා ඇසුරින් ලියැවුණු රසවත් සිංහල වල් කතා.',
-      storyCount: catCounts.get('akka-malli') || 0,
-    },
-    {
-      id: 'nanda',
-      slug: 'nanda',
-      name: 'නැන්දා / ඇන්ටි (Aunty Stories)',
-      sinhalaName: 'නැන්දා / ඇන්ටි කතා',
-      description: 'අම්මා වල් කතා 2026, නැන්දා සහ ඇන්ටි චරිත ඇසුරින් නිර්මාණය වූ සිංහල කතා.',
-      storyCount: catCounts.get('nanda') || 0,
-    },
-    {
-      id: 'school',
-      slug: 'school',
-      name: 'පාසල් සහ කැම්පස් (School & Campus)',
-      sinhalaName: 'පාසල් සහ කැම්පස් කතා',
-      description: 'කැම්පස්, පාසල් සහ යෞවන ආදර අත්දැකීම් ඇසුරින් ලියැවුණු අලුත්ම සිංහල වැල කතා.',
-      storyCount: catCounts.get('school') || 0,
-    },
-    {
-      id: 'romantic',
-      slug: 'romantic',
-      name: 'ආදර කතා (Romantic Stories)',
-      sinhalaName: 'ආදර සහ රස කතා',
-      description: 'ආදරණීය හා හැඟීම්බර සිංහල වල් කතා සහ කෙටි කතා එකතුව.',
-      storyCount: catCounts.get('romantic') || 0,
-    },
-  ];
-
-  console.log('1. Syncing categories and settings to Firestore...');
-  const catBatch = writeBatch(replicaDb);
-  for (const cat of categories) {
-    catBatch.set(doc(replicaDb, 'categories', cat.id), {
-      ...cat,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-  }
-  await catBatch.commit();
-
-  await setDoc(doc(replicaDb, 'settings', 'global'), {
-    siteName: 'Walkathawa (වල් කතාව)',
-    alternateName: 'Walkathawa',
-    tagline: 'සිංහල වැල කතා | වල් කතා | Sinhala Wal Katha 2026',
-    metaTitle: 'සිංහල වැල කතා | වල් කතා හා වැල කතා 2026 - Walkathawa',
-    metaDescription: 'අලුත්ම සිංහල වැල කතා, වල් කතා, අම්මා වල් කතා 2026, අක්කා මල්ලි සහ පවුලේ වැල කතා 600කට වැඩි එකතුවක් නොමිලේ කියවන්න.',
-    keywords: 'සිංහල වැල කතා, වල් කතා, වැල කතා, Wal Katha, wala katha, wela katha, walkatha9, sinhala wal katha, Wela kathaa, Sex Katha, Sex Stories, Wal Stories, Sinhala Sex, Sinhala Porn, Free Download, Sri Lanka, new wela katha, wal katha 9, sinhala wela katha, wal Katha sinhalen, Ammai Puthai, Paule wela Katha, Sinhala wal wala wela katha, amma katha, family katha, suparima katha, walma, wal katha kari katha, eha gedara, akka katha, malli katha, seeya katha, husband katha, wife katha, hora katha, New Wal Katha blogs, wal chithra katha, wal katha free, sinhala sex katha, sinhala wal katha blog, nangita hukala, campus, amma malli, akka, birinda, wife lingika paula, rasama, rasa wal katha, wal katha fb, අම්මා වල් කතා 2026',
-    updatedAt: new Date().toISOString(),
-  }, { merge: true });
-
-  console.log('2. Syncing 614 stories and full content to dedicated collections (stories & posts)...');
-  const batchSize = 20;
-  let synced = 0;
-
-  for (let i = 0; i < allStories.length; i += batchSize) {
-    const chunk = allStories.slice(i, i + batchSize);
-    const batch = writeBatch(replicaDb);
-
-    for (const s of chunk) {
-      const storyId = String(s.id || s.slug || `story_${i}`).trim();
-      const body = cleanStoryBody(s.fullContent || s.content || '');
-      const words = body ? body.split(/\s+/).length : 0;
-      const readingTime = Math.max(3, Math.ceil(words / 180));
-      const naturalDesc = buildNaturalDescription(
-        s.title || 'සිංහල කතාව',
-        s.shortDescription || s.description || '',
-        body,
-        s.categoryName || ''
-      );
-
-      const storyPayload = {
-        id: storyId,
-        title: (s.title || 'සිංහල කතාව').trim(),
-        slug: (s.slug || storyId).trim(),
-        shortDescription: naturalDesc,
-        description: naturalDesc,
-        fullContent: body,
-        content: body,
-        wordCount: words,
-        readingTime,
-        category: s.category || 'romantic',
-        categoryId: s.categoryId || s.category || 'romantic',
-        categoryName: s.categoryName || 'සිංහල කතා',
-        tags: Array.isArray(s.tags) && s.tags.length > 0
-          ? s.tags.slice(0, 8)
-          : ['සිංහල වැල කතා', 'වල් කතා', 'වැල කතා', s.category || 'sinhala wal katha'],
-        coverImage: s.coverImage || '',
-        views: Number(s.views) || 12,
-        likes: Number(s.likes) || 0,
-        featured: Boolean(s.featured),
-        published: s.published !== false,
-        uploadDate: s.uploadDate || s.uploadedDate || '2026-05-01T00:00:00.000Z',
-        uploadedDate: s.uploadDate || s.uploadedDate || '2026-05-01T00:00:00.000Z',
-        updatedDate: new Date().toISOString(),
-      };
-
-      // 1) 'stories' collection (story metadata + content)
-      batch.set(doc(replicaDb, 'stories', storyId), storyPayload, { merge: true });
-
-      // 2) 'posts' dedicated collection for full story content
-      batch.set(doc(replicaDb, 'posts', storyId), {
-        id: storyId,
-        slug: storyPayload.slug,
-        title: storyPayload.title,
-        fullContent: body,
-        content: body,
-        shortDescription: naturalDesc,
-        wordCount: words,
-        readingTime,
-        category: storyPayload.category,
-        tags: storyPayload.tags,
-        published: true,
-        uploadDate: storyPayload.uploadDate,
-        updatedDate: storyPayload.updatedDate,
-      }, { merge: true });
-    }
-
-    await batch.commit();
-    synced += chunk.length;
-    if (synced % 100 === 0 || synced === allStories.length) {
-      console.log(`Synced ${synced}/${allStories.length} stories & full content documents...`);
-    }
-  }
-
-  const verifyStories = await getDocs(collection(replicaDb, 'stories'));
-  const verifyPosts = await getDocs(collection(replicaDb, 'posts'));
   console.log(
-    `Done! Firestore 'stories': ${verifyStories.size}, dedicated content 'posts': ${verifyPosts.size}`
+    `Total prepared: ${allDocs.length}. Remaining to update in walkathawa-93f80: ${docsNeedingPrimarySync.length}, in contentDb: ${docsNeedingContentSync.length}.`
   );
+
+  const batchSize = 20;
+
+  if (docsNeedingPrimarySync.length > 0) {
+    let syncedPrimary = 0;
+    for (let i = 0; i < docsNeedingPrimarySync.length; i += batchSize) {
+      const chunk = docsNeedingPrimarySync.slice(i, i + batchSize);
+      const primaryBatch = writeBatch(db);
+      for (const storyDoc of chunk) {
+        const docId = storyDoc.id;
+        primaryBatch.set(doc(db, 'stories', docId), storyDoc, { merge: true });
+        primaryBatch.set(
+          doc(db, 'posts', docId),
+          {
+            id: docId,
+            slug: storyDoc.slug,
+            title: storyDoc.title,
+            fullContent: storyDoc.fullContent,
+            content: storyDoc.content,
+            shortDescription: storyDoc.shortDescription,
+            wordCount: storyDoc.wordCount,
+            readingTime: storyDoc.readingTime,
+            category: storyDoc.category,
+            tags: storyDoc.tags,
+            published: storyDoc.published,
+            uploadDate: storyDoc.uploadDate,
+            updatedDate: storyDoc.updatedDate,
+          },
+          { merge: true }
+        );
+      }
+      await primaryBatch.commit();
+      syncedPrimary += chunk.length;
+      console.log(`Synced ${syncedPrimary}/${docsNeedingPrimarySync.length} remaining stories to walkathawa-93f80...`);
+    }
+  }
+
+  if (docsNeedingContentSync.length > 0) {
+    let syncedContent = 0;
+    for (let i = 0; i < docsNeedingContentSync.length; i += batchSize) {
+      const chunk = docsNeedingContentSync.slice(i, i + batchSize);
+      const contentBatch = writeBatch(contentDb);
+      for (const storyDoc of chunk) {
+        const docId = storyDoc.id;
+        contentBatch.set(doc(contentDb, 'stories', docId), storyDoc, { merge: true });
+        contentBatch.set(
+          doc(contentDb, 'posts', docId),
+          {
+            id: docId,
+            slug: storyDoc.slug,
+            title: storyDoc.title,
+            fullContent: storyDoc.fullContent,
+            content: storyDoc.content,
+            shortDescription: storyDoc.shortDescription,
+            wordCount: storyDoc.wordCount,
+            readingTime: storyDoc.readingTime,
+            category: storyDoc.category,
+            tags: storyDoc.tags,
+            published: storyDoc.published,
+            uploadDate: storyDoc.uploadDate,
+            updatedDate: storyDoc.updatedDate,
+          },
+          { merge: true }
+        );
+      }
+      try {
+        await contentBatch.commit();
+        syncedContent += chunk.length;
+        console.log(`Synced ${syncedContent}/${docsNeedingContentSync.length} remaining stories to contentDb...`);
+      } catch (err: any) {
+        console.warn('Notice on contentDb batch commit:', err.message);
+        break;
+      }
+    }
+  }
+
+  // Verify both databases after sync
+  const verifyPrimary = await getDocs(collection(db, 'stories'));
+  let primaryFullCount = 0;
+  verifyPrimary.forEach((d) => {
+    if ((d.data().fullContent || '').length > 500) primaryFullCount++;
+  });
+
+  console.log(
+    `VERIFIED walkathawa-93f80 (db): ${verifyPrimary.size} total stories, ${primaryFullCount} with fullContent > 500 chars!`
+  );
+
+  const verifyContent = await getDocs(collection(contentDb, 'stories')).catch(() => null);
+  if (verifyContent) {
+    let contentFullCount = 0;
+    verifyContent.forEach((d) => {
+      if ((d.data().fullContent || '').length > 500) contentFullCount++;
+    });
+    console.log(
+      `VERIFIED ai-studio-walkatha (contentDb): ${verifyContent.size} total stories, ${contentFullCount} with fullContent > 500 chars!`
+    );
+  }
   process.exit(0);
 }
 
-pushAllStories().catch((err) => {
-  console.error('Error pushing stories:', err);
+pushAllStoriesToBothFirestores().catch((err) => {
+  console.error('Error syncing full stories to Firestore:', err);
   process.exit(1);
 });

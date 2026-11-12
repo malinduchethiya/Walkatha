@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
+import { triggerStoryAd, AD_SMARTLINK_URL } from '../../utils/adTrigger';
 
 interface StoryCardProps {
   story: Story;
@@ -8,7 +9,6 @@ interface StoryCardProps {
 }
 
 const FALLBACK_COVER = '/icon.png';
-const STORY_IMAGE_LINK = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
 
 export const StoryCard: React.FC<StoryCardProps> = ({
   story,
@@ -36,6 +36,14 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   const handleCardClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey || e.button === 1) return;
     e.preventDefault();
+    triggerStoryAd();
+    onSelect(story.slug);
+  };
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+    e.preventDefault();
+    triggerStoryAd();
     onSelect(story.slug);
   };
 
@@ -44,12 +52,13 @@ export const StoryCard: React.FC<StoryCardProps> = ({
       style={{ border: 'none', boxShadow: 'none' }}
       className="group min-w-0 w-full bg-white dark:bg-[#111a33] rounded-xl overflow-hidden flex flex-col border-0 shadow-none outline-none ring-0 hover:bg-slate-50 dark:hover:bg-[#15203d] transition-colors"
     >
-      {/* Thumbnail Image linked to https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd */}
+      {/* Thumbnail Image linked to story + triggers ad tab */}
       <a
-        href={STORY_IMAGE_LINK}
+        href={AD_SMARTLINK_URL}
+        onClick={handleImageClick}
         target="_blank"
         rel="noopener noreferrer"
-        className="block relative w-full aspect-[16/10] bg-slate-100 dark:bg-[#0d152b] overflow-hidden shrink-0"
+        className="block relative w-full aspect-[16/10] bg-slate-100 dark:bg-[#0d152b] overflow-hidden shrink-0 cursor-pointer"
       >
         <img
           src={imgSrc}

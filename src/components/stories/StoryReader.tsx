@@ -3,6 +3,7 @@ import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
 import { NativeBanner, StoryBanner468 } from '../common/NativeBanner';
+import { triggerStoryAd, AD_SMARTLINK_URL } from '../../utils/adTrigger';
 
 interface StoryReaderProps {
   slug: string;
@@ -14,7 +15,6 @@ interface StoryReaderProps {
 }
 
 const FALLBACK_COVER = '/icon.png';
-const STORY_IMAGE_LINK = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
 
 export function splitStoryParagraphs(rawContent: string): string[] {
   const initial = (rawContent || '')
@@ -48,6 +48,29 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const [prevStory, setPrevStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // 10-second Advertisement Gate State
+  const [countdown, setCountdown] = useState<number>(10);
+  const [isAdGateUnlocked, setIsAdGateUnlocked] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Reset countdown and lock for each story view
+    setCountdown(10);
+    setIsAdGateUnlocked(false);
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setIsAdGateUnlocked(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [slug]);
 
   useEffect(() => {
     let active = true;
@@ -122,6 +145,124 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     );
   }
 
+  // 10-Second Advertisement Wait Loading Screen
+  if (!isAdGateUnlocked) {
+    const progressPercent = ((10 - countdown) / 10) * 100;
+    return (
+      <div className="max-w-2xl mx-auto py-8 px-4">
+        <div className="bg-[#111a33] border border-blue-500/40 rounded-2xl p-6 sm:p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+          {/* Top glowing accent */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400" />
+
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-950/80 border border-blue-500/30 text-blue-300 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+            <span>දැන්වීම් පරීක්ෂාව • ADVERTISEMENT GATE</span>
+          </div>
+
+          {/* Headline */}
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug">
+              දැන්වීම් ටැබ් එකේ තත්පර 10ක් රැඳී සිටින්න
+            </h1>
+            <p className="text-sm font-medium text-slate-300">
+              Please wait in the advertisement tab for 10 seconds
+            </p>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto leading-relaxed pt-1">
+              නව දැන්වීම් ටැබ් එක විවෘත විය. සම්පූර්ණ කතාව නොමිලේ කියවීම සඳහා කරුණාකර තත්පර 10ක් රැඳී සිටින්න...
+            </p>
+          </div>
+
+          {/* Animated Countdown Ring */}
+          <div className="flex flex-col items-center justify-center py-2">
+            <div className="relative flex items-center justify-center">
+              <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  stroke="#1e2d52"
+                  strokeWidth="8"
+                  fill="transparent"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  stroke="#3b82f6"
+                  strokeWidth="8"
+                  strokeDasharray={264}
+                  strokeDashoffset={264 - (264 * progressPercent) / 100}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  className="transition-all duration-1000 ease-linear"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-4xl font-extrabold text-white font-mono">{countdown}</span>
+                <span className="text-[10px] text-blue-400 uppercase tracking-widest font-bold">තත්පර / sec</span>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full max-w-md bg-[#0a1022] rounded-full h-2.5 mt-4 overflow-hidden border border-[#1e2d52]">
+              <div
+                className="bg-gradient-to-r from-blue-500 to-cyan-400 h-2.5 rounded-full transition-all duration-1000 ease-linear"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3 pt-2">
+            {countdown > 0 ? (
+              <button
+                type="button"
+                onClick={() => triggerStoryAd()}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#1e3a8a] hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold transition-all shadow-lg shadow-blue-900/30 inline-flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>↗️</span>
+                <span>දැන්වීම් ටැබ් එක නැවත විවෘත කරන්න (Open Ad Tab)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsAdGateUnlocked(true)}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm sm:text-base font-bold transition-all shadow-lg shadow-emerald-900/40 inline-flex items-center justify-center gap-2 cursor-pointer animate-pulse"
+              >
+                <span>📖</span>
+                <span>කතාව විවෘතයි — දැන් කියවන්න (Read Story Now)</span>
+              </button>
+            )}
+
+            <div className="text-[11px] text-slate-400 flex items-center justify-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+              <span>දැන්වීම් ටැබ් එක විවෘත නොවූයේ නම් ඉහත බොත්තම ක්ලික් කරන්න.</span>
+            </div>
+          </div>
+
+          {/* Story preview card */}
+          <div className="mt-6 pt-6 border-t border-[#1e2d52] flex items-center gap-4 text-left bg-[#0d152b] p-3.5 rounded-xl">
+            <img
+              src={imgSrc}
+              alt=""
+              className="w-16 h-16 rounded-lg object-cover shrink-0 border border-[#1e2d52]"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] text-blue-400 font-semibold truncate">
+                {story.categoryName || story.category || 'සිංහල කතාව'}
+              </div>
+              <div className="text-sm font-bold text-white truncate">{story.title}</div>
+              <div className="text-xs text-slate-400 line-clamp-1">
+                {story.shortDescription || story.description || ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const rawContent = story.fullContent || story.content || story.shortDescription || '';
   const paragraphs = splitStoryParagraphs(rawContent);
 
@@ -156,7 +297,8 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       <div className="space-y-6">
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
           <a
-            href={STORY_IMAGE_LINK}
+            href={AD_SMARTLINK_URL}
+            onClick={() => triggerStoryAd()}
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]"
@@ -282,6 +424,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey && prevStory) {
                       e.preventDefault();
+                      triggerStoryAd();
                       onSelectStory(prevStory.slug);
                     }
                   }}
@@ -294,6 +437,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey && nextStory) {
                       e.preventDefault();
+                      triggerStoryAd();
                       onSelectStory(nextStory.slug);
                     }
                   }}

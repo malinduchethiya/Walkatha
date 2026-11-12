@@ -520,7 +520,7 @@ export class StoryService {
     const targetId = found?.id || decodedSlug;
     let bestFirestoreStory: Story | null = found || null;
 
-    for (const firestoreInstance of [contentDb, db]) {
+    for (const firestoreInstance of [db, contentDb]) {
       const directSnap = await withTimeout(
         getDoc(doc(firestoreInstance, 'stories', targetId)),
         2500
@@ -620,7 +620,7 @@ export class StoryService {
       }).catch(() => {});
     }
 
-    for (const instance of [contentDb, db]) {
+    for (const instance of [db, contentDb]) {
       await withTimeout(setDoc(doc(instance, 'stories', storyId), newStory, { merge: true }), 2500);
     }
 
@@ -719,7 +719,7 @@ export class StoryService {
       }).catch(() => {});
     }
 
-    for (const instance of [contentDb, db]) {
+    for (const instance of [db, contentDb]) {
       await withTimeout(
         setDoc(doc(instance, 'stories', storyId), updatedStory, { merge: true }),
         2500
@@ -768,7 +768,7 @@ export class StoryService {
       }).catch(() => {});
     }
 
-    for (const instance of [contentDb, db]) {
+    for (const instance of [db, contentDb]) {
       await withTimeout(setDoc(doc(instance, 'stories', storyId), tombstone, { merge: true }), 2000);
     }
     await withTimeout(deleteDoc(doc(db, 'stories', storyId)), 2000);
@@ -825,7 +825,7 @@ export class StoryService {
       }).catch(() => {});
     }
 
-    for (const instance of [contentDb, db]) {
+    for (const instance of [db, contentDb]) {
       await withTimeout(setDoc(doc(instance, 'categories', cleanSlug), catDoc, { merge: true }), 2000);
     }
 
@@ -864,7 +864,7 @@ export class StoryService {
         isDeleted: true,
         deleted: true,
       };
-      for (const instance of [contentDb, db]) {
+      for (const instance of [db, contentDb]) {
         await withTimeout(setDoc(doc(instance, 'categories', key), tombstone, { merge: true }), 2000);
       }
       await withTimeout(deleteDoc(doc(db, 'categories', key)), 2000);

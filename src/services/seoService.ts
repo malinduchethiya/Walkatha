@@ -58,18 +58,6 @@ export function formatCleanDescription(rawDesc: string, fallbackTitle?: string):
 }
 
 export class SeoService {
-  private static appendBeforePopunder(node: HTMLElement) {
-    if (typeof document === 'undefined') return;
-    const popunder = document.head.querySelector(
-      'script[src*="ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"]'
-    );
-    if (popunder && popunder.parentNode === document.head) {
-      document.head.insertBefore(node, popunder);
-    } else {
-      document.head.appendChild(node);
-    }
-  }
-
   private static setMetaTag(attrName: 'name' | 'property', attrValue: string, content: string) {
     if (typeof document === 'undefined') return;
     let element = document.querySelector(
@@ -78,7 +66,7 @@ export class SeoService {
     if (!element) {
       element = document.createElement('meta');
       element.setAttribute(attrName, attrValue);
-      this.appendBeforePopunder(element);
+      document.head.appendChild(element);
     }
     element.setAttribute('content', content);
   }
@@ -95,7 +83,7 @@ export class SeoService {
     if (!link) {
       link = document.createElement('link');
       link.setAttribute('rel', rel);
-      this.appendBeforePopunder(link);
+      document.head.appendChild(link);
     }
     link.setAttribute('href', href);
   }
@@ -111,24 +99,13 @@ export class SeoService {
       script = document.createElement('script');
       script.id = id;
       script.type = 'application/ld+json';
-      this.appendBeforePopunder(script);
+      document.head.appendChild(script);
     }
     script.textContent = JSON.stringify(schemaData);
   }
 
-  static ensureHeadClosingScript(enabled: boolean) {
-    if (typeof document === 'undefined') return;
-    const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
-    const existing = document.head.querySelector(
-      `script[src="${POPUNDER_SRC}"]`
-    ) as HTMLScriptElement | null;
-
-    if (enabled && !existing) {
-      const script = document.createElement('script');
-      script.setAttribute('data-cfasync', 'false');
-      script.src = POPUNDER_SRC;
-      document.head.appendChild(script);
-    }
+  static ensureHeadClosingScript(_enabled: boolean) {
+    // Popunder removed
   }
 
   static updateHomeSeo(

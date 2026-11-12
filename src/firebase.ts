@@ -148,7 +148,7 @@ export function handleFirestoreError(
 export async function testConnection() {
   try {
     await Promise.race([
-      getDoc(doc(contentDb, 'stories', '_health')),
+      getDoc(doc(db, 'stories', '_health')),
       new Promise((resolve) => setTimeout(resolve, 2500)),
     ]);
   } catch (error) {
