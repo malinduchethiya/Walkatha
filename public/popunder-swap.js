@@ -4,9 +4,15 @@
 
   var DEFAULT_AD_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
   var REOPEN_STORAGE_KEY = 'walkathawa_reopened_story';
-  var RATE_LIMIT_STORAGE_KEY = 'walkathawa_popunder_rate_v1';
-  var MAX_REDIRECTS_PER_MINUTE = 2;
+  var HOME_RATE_LIMIT_KEY = 'walkathawa_popunder_rate_v1';
+  var STORY_LAST_TS_KEY = 'walkathawa_story_popunder_last_ts_v1';
+
+  // Homepage limit: 2 redirections per 1 minute (60,000 ms)
+  var MAX_HOME_REDIRECTS_PER_MINUTE = 2;
   var ONE_MINUTE_MS = 60 * 1000;
+
+  // Story reader page limit: 1 popunder per 10 seconds (10,000 ms)
+  var STORY_COOLDOWN_MS = 10 * 1000;
 
   var nativeOpen = window.open ? window.open.bind(window) : null;
   var nativeAnchorClick = HTMLAnchorElement.prototype.click;
@@ -34,10 +40,16 @@
     }
   }
 
-  function getRecentRedirectTimestamps() {
+  function isStoryPagePath() {
+    var p = window.location.pathname || '';
+    return p.indexOf('/story/') === 0 || p.indexOf('/posts/') === 0;
+  }
+
+  // --- Homepage Rate Limiter (2 per 60s) ---
+  function getRecentHomeTimestamps() {
     var now = Date.now();
     try {
-      var raw = localStorage.getItem(RATE_LIMIT_STORAGE_KEY);
+      var raw = localStorage.getItem(HOME_RATE_LIMIT_KEY);
       if (!raw) return [];
       var parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
@@ -49,34 +61,51 @@
     }
   }
 
-  function canTriggerRedirectNow() {
-    var recent = getRecentRedirectTimestamps();
-    return recent.length < MAX_REDIRECTS_PER_MINUTE;
+  function canTriggerHomeRedirectNow() {
+    return getRecentHomeTimestamps().length < MAX_HOME_REDIRECTS_PER_MINUTE;
   }
 
-  function recordRedirectTimestamp() {
-    var recent = getRecentRedirectTimestamps();
-    recent.push(Date.now());
+  function recordHomeRedirectTimestamp() {
+    var now = Date.now();
+    var recent = getRecentHomeTimestamps();
+    recent.push(now);
     try {
-      localStorage.setItem(RATE_LIMIT_STORAGE_KEY, JSON.stringify(recent));
+      localStorage.setItem(HOME_RATE_LIMIT_KEY, JSON.stringify(recent));
+      // Also start the 10-second timer for the newly opened story tab
+      localStorage.setItem(STORY_LAST_TS_KEY, String(now));
     } catch (e) {}
   }
 
-  function executeStoryPageTabUnder(storyUrl, storySlug, explicitAdUrl) {
-    if (!canTriggerRedirectNow()) {
-      return false;
+  // --- Story Reader Rate Limiter (1 per 10s) ---
+  function canTriggerStoryRedirectNow() {
+    var now = Date.now();
+    try {
+      var raw = localStorage.getItem(STORY_LAST_TS_KEY);
+      if (!raw) return true;
+      var lastTs = parseInt(raw, 10);
+      if (isNaN(lastTs)) return true;
+      return now - lastTs >= STORY_COOLDOWN_MS;
+    } catch (e) {
+      return true;
     }
+  }
 
-    recordRedirectTimestamp();
+  function recordStoryRedirectTimestamp() {
+    try {
+      localStorage.setItem(STORY_LAST_TS_KEY, String(Date.now()));
+    } catch (e) {}
+  }
 
-    var targetStoryUrl = storyUrl || window.location.href;
+  function performNewTabAndAdRedirect(targetStoryUrl, storySlug, explicitAdUrl) {
+    var destUrl = targetStoryUrl || window.location.href;
     var adUrl = explicitAdUrl || window.__adsterraCapturedAdUrl || DEFAULT_AD_URL;
 
     try {
       localStorage.setItem(
         REOPEN_STORAGE_KEY,
         JSON.stringify({
-          slug: storySlug || targetStoryUrl,
+          slug: storySlug || destUrl,
+          scrollY: typeof window.scrollY === 'number' ? window.scrollY : 0,
           ts: Date.now(),
         })
       );
@@ -85,7 +114,7 @@
     // 1. Open / reopen the story page in a new tab
     if (nativeOpen) {
       try {
-        nativeOpen(targetStoryUrl, '_blank');
+        nativeOpen(destUrl, '_blank');
       } catch (e) {}
     }
 
@@ -101,16 +130,45 @@
     return true;
   }
 
-  window.__triggerStoryPopunderSwap = executeStoryPageTabUnder;
-  window.__canTriggerPopunderSwap = canTriggerRedirectNow;
+  // Used by Homepage / StoryCard (2 per 1 minute)
+  function triggerHomepagePopunderSwap(storyUrl, storySlug, explicitAdUrl) {
+    if (!canTriggerHomeRedirectNow()) {
+      return false;
+    }
+    recordHomeRedirectTimestamp();
+    return performNewTabAndAdRedirect(storyUrl, storySlug, explicitAdUrl);
+  }
+
+  // Used by StoryReader while reading stories (1 per 10 seconds)
+  function triggerStoryReaderPopunderSwap(storyUrl, storySlug, explicitAdUrl) {
+    if (!canTriggerStoryRedirectNow()) {
+      return false;
+    }
+    recordStoryRedirectTimestamp();
+    return performNewTabAndAdRedirect(storyUrl, storySlug, explicitAdUrl);
+  }
+
+  window.__triggerStoryPopunderSwap = triggerHomepagePopunderSwap;
+  window.__triggerStoryReaderPopunderSwap = triggerStoryReaderPopunderSwap;
+  window.__canTriggerPopunderSwap = canTriggerHomeRedirectNow;
+  window.__canTriggerStoryReaderPopunderSwap = canTriggerStoryRedirectNow;
 
   function handleAdsterraAttempt(adUrl) {
     if (adUrl && adUrl !== 'about:blank' && !isSameOriginUrl(adUrl)) {
       window.__adsterraCapturedAdUrl = adUrl;
     }
-    if (!window.__storyContentAlreadySwapped && canTriggerRedirectNow()) {
+    if (window.__storyContentAlreadySwapped) return;
+
+    if (isStoryPagePath()) {
+      if (canTriggerStoryRedirectNow()) {
+        window.__storyContentAlreadySwapped = true;
+        recordStoryRedirectTimestamp();
+        performNewTabAndAdRedirect(window.location.href, window.location.pathname, adUrl);
+      }
+    } else if (canTriggerHomeRedirectNow()) {
       window.__storyContentAlreadySwapped = true;
-      executeStoryPageTabUnder(window.location.href, window.location.pathname, adUrl);
+      recordHomeRedirectTimestamp();
+      performNewTabAndAdRedirect(window.location.href, window.location.pathname, adUrl);
     }
   }
 

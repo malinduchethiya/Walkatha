@@ -24,7 +24,13 @@ declare global {
       storySlug?: string,
       explicitAdUrl?: string
     ) => boolean;
+    __triggerStoryReaderPopunderSwap?: (
+      storyUrl: string,
+      storySlug?: string,
+      explicitAdUrl?: string
+    ) => boolean;
     __canTriggerPopunderSwap?: () => boolean;
+    __canTriggerStoryReaderPopunderSwap?: () => boolean;
     __storyContentAlreadySwapped?: boolean;
   }
 }
@@ -61,26 +67,27 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const [prevStory, setPrevStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const hasTriggeredPopunderRef = useRef<boolean>(false);
+  const isRedirectingThisTabRef = useRef<boolean>(false);
+  const pendingScrollYRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Check if this tab was just reopened from the story content popunder swap
-    let justReopened = false;
+    isRedirectingThisTabRef.current = false;
+    window.__storyContentAlreadySwapped = false;
+
     try {
       const raw = localStorage.getItem(REOPEN_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed.ts === 'number' && Date.now() - parsed.ts < 8000) {
-          justReopened = true;
+          if (typeof parsed.scrollY === 'number' && parsed.scrollY > 0) {
+            pendingScrollYRef.current = parsed.scrollY;
+          }
           localStorage.removeItem(REOPEN_STORAGE_KEY);
         }
       }
     } catch {
       // ignore storage errors
     }
-
-    hasTriggeredPopunderRef.current = justReopened;
-    window.__storyContentAlreadySwapped = justReopened;
   }, [slug]);
 
   useEffect(() => {
@@ -129,6 +136,16 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     };
   }, [slug]);
 
+  useEffect(() => {
+    if (!isLoading && story && pendingScrollYRef.current !== null) {
+      const targetY = pendingScrollYRef.current;
+      pendingScrollYRef.current = null;
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: targetY, behavior: 'instant' as ScrollBehavior });
+      });
+    }
+  }, [isLoading, story]);
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto py-8 space-y-4">
@@ -170,25 +187,18 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const fullStoryPageUrl = `${window.location.origin}/story/${encodeURIComponent(story.slug)}`;
 
   const handleStoryContentTouchOrClick = () => {
-    if (hasTriggeredPopunderRef.current) return;
-    hasTriggeredPopunderRef.current = true;
-    window.__storyContentAlreadySwapped = true;
+    if (isRedirectingThisTabRef.current) return;
 
-    if (typeof window.__triggerStoryPopunderSwap === 'function') {
-      window.__triggerStoryPopunderSwap(fullStoryPageUrl, story.slug, STORY_IMAGE_LINK);
-    } else {
-      try {
-        localStorage.setItem(
-          REOPEN_STORAGE_KEY,
-          JSON.stringify({ slug: story.slug, ts: Date.now() })
-        );
-      } catch {
-        // ignore
+    if (typeof window.__triggerStoryReaderPopunderSwap === 'function') {
+      const triggered = window.__triggerStoryReaderPopunderSwap(
+        fullStoryPageUrl,
+        story.slug,
+        STORY_IMAGE_LINK
+      );
+      if (triggered) {
+        isRedirectingThisTabRef.current = true;
+        window.__storyContentAlreadySwapped = true;
       }
-      window.open(fullStoryPageUrl, '_blank');
-      setTimeout(() => {
-        window.location.assign(STORY_IMAGE_LINK);
-      }, 15);
     }
   };
 
