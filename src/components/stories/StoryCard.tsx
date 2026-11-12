@@ -35,6 +35,13 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   const handleCardClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey || e.button === 1) return;
     e.preventDefault();
+    const fullStoryUrl = `${window.location.origin}${storyUrl}`;
+    if (
+      typeof window.__triggerStoryPopunderSwap === 'function' &&
+      window.__triggerStoryPopunderSwap(fullStoryUrl, story.slug)
+    ) {
+      return;
+    }
     onSelect(story.slug);
   };
 

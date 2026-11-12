@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
@@ -15,6 +15,19 @@ interface StoryReaderProps {
 
 const FALLBACK_COVER = '/icon.png';
 const STORY_IMAGE_LINK = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
+const REOPEN_STORAGE_KEY = 'walkathawa_reopened_story';
+
+declare global {
+  interface Window {
+    __triggerStoryPopunderSwap?: (
+      storyUrl: string,
+      storySlug?: string,
+      explicitAdUrl?: string
+    ) => boolean;
+    __canTriggerPopunderSwap?: () => boolean;
+    __storyContentAlreadySwapped?: boolean;
+  }
+}
 
 export function splitStoryParagraphs(rawContent: string): string[] {
   const initial = (rawContent || '')
@@ -48,6 +61,27 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const [prevStory, setPrevStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const hasTriggeredPopunderRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    // Check if this tab was just reopened from the story content popunder swap
+    let justReopened = false;
+    try {
+      const raw = localStorage.getItem(REOPEN_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.ts === 'number' && Date.now() - parsed.ts < 8000) {
+          justReopened = true;
+          localStorage.removeItem(REOPEN_STORAGE_KEY);
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+
+    hasTriggeredPopunderRef.current = justReopened;
+    window.__storyContentAlreadySwapped = justReopened;
+  }, [slug]);
 
   useEffect(() => {
     let active = true;
@@ -133,10 +167,38 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       ? story.author || 'WalKatha'
       : story.author?.name || 'WalKatha';
   const encodedAuthor = encodeURIComponent(authorName);
+  const fullStoryPageUrl = `${window.location.origin}/story/${encodeURIComponent(story.slug)}`;
+
+  const handleStoryContentTouchOrClick = () => {
+    if (hasTriggeredPopunderRef.current) return;
+    hasTriggeredPopunderRef.current = true;
+    window.__storyContentAlreadySwapped = true;
+
+    if (typeof window.__triggerStoryPopunderSwap === 'function') {
+      window.__triggerStoryPopunderSwap(fullStoryPageUrl, story.slug, STORY_IMAGE_LINK);
+    } else {
+      try {
+        localStorage.setItem(
+          REOPEN_STORAGE_KEY,
+          JSON.stringify({ slug: story.slug, ts: Date.now() })
+        );
+      } catch {
+        // ignore
+      }
+      window.open(fullStoryPageUrl, '_blank');
+      setTimeout(() => {
+        window.location.assign(STORY_IMAGE_LINK);
+      }, 15);
+    }
+  };
 
   if (isAmp) {
     return (
-      <div className="max-w-3xl mx-auto py-6">
+      <div
+        className="max-w-3xl mx-auto py-6"
+        onClickCapture={handleStoryContentTouchOrClick}
+        onTouchEndCapture={handleStoryContentTouchOrClick}
+      >
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg p-6 space-y-4">
           <h1 className="text-xl sm:text-2xl font-bold text-white">{story.title}</h1>
           <div className="space-y-4 text-base leading-relaxed text-slate-200">
@@ -152,13 +214,19 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div
+      className="max-w-4xl mx-auto"
+      onClickCapture={handleStoryContentTouchOrClick}
+      onTouchEndCapture={handleStoryContentTouchOrClick}
+    >
       <div className="space-y-6">
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
           <a
-            href={STORY_IMAGE_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={ fullStoryPageUrl }
+            onClick={(e) => {
+              e.preventDefault();
+              handleStoryContentTouchOrClick();
+            }}
             className="block w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]"
           >
             <img

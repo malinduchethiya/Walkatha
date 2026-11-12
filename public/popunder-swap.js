@@ -2,18 +2,17 @@
   if (window.__walkathawaPopunderSwapInstalled) return;
   window.__walkathawaPopunderSwapInstalled = true;
 
+  var DEFAULT_AD_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
+  var REOPEN_STORAGE_KEY = 'walkathawa_reopened_story';
+  var RATE_LIMIT_STORAGE_KEY = 'walkathawa_popunder_rate_v1';
+  var MAX_REDIRECTS_PER_MINUTE = 2;
+  var ONE_MINUTE_MS = 60 * 1000;
+
   var nativeOpen = window.open ? window.open.bind(window) : null;
   var nativeAnchorClick = HTMLAnchorElement.prototype.click;
   var nativeDispatchEvent = EventTarget.prototype.dispatchEvent;
-  var nativePushState = window.history.pushState.bind(window.history);
 
-  var currentGesture = {
-    intendedUrl: '',
-    ts: 0,
-    swapped: false,
-    newTabWin: null,
-    adRedirectScheduled: false,
-  };
+  window.__adsterraCapturedAdUrl = DEFAULT_AD_URL;
 
   function isSameOriginUrl(rawUrl) {
     if (!rawUrl) return true;
@@ -35,112 +34,83 @@
     }
   }
 
-  function resolveIntendedFromTarget(target) {
-    if (!target || typeof target.closest !== 'function') {
-      return window.location.href;
-    }
-    var withData = target.closest('[data-intended-url]');
-    if (withData) {
-      var attr = withData.getAttribute('data-intended-url');
-      if (attr) {
-        try {
-          return new URL(attr, window.location.origin).href;
-        } catch (e) {}
-      }
-    }
-    var anchor = target.closest('a[href]');
-    if (anchor) {
-      var rawHref = anchor.getAttribute('href') || '';
-      if (rawHref && rawHref.indexOf('javascript:') !== 0 && rawHref.indexOf('#') !== 0) {
-        try {
-          var resolved = new URL(rawHref, window.location.origin).href;
-          if (isSameOriginUrl(resolved) || isAllowedExternalUserLink(resolved)) {
-            return resolved;
-          }
-        } catch (e) {}
-      }
-    }
-    return window.location.href;
-  }
-
-  function recordGesture(e) {
+  function getRecentRedirectTimestamps() {
     var now = Date.now();
-    if (now - currentGesture.ts > 350 || !currentGesture.swapped) {
-      currentGesture = {
-        intendedUrl: resolveIntendedFromTarget(e.target),
-        ts: now,
-        swapped: false,
-        newTabWin: null,
-        adRedirectScheduled: false,
-      };
+    try {
+      var raw = localStorage.getItem(RATE_LIMIT_STORAGE_KEY);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(function (ts) {
+        return typeof ts === 'number' && now - ts < ONE_MINUTE_MS;
+      });
+    } catch (e) {
+      return [];
     }
   }
 
-  window.addEventListener('pointerdown', recordGesture, true);
-  window.addEventListener('mousedown', recordGesture, true);
-  window.addEventListener('touchstart', recordGesture, true);
-  window.addEventListener(
-    'click',
-    function (e) {
-      if (Date.now() - currentGesture.ts > 800) {
-        recordGesture(e);
-      } else if (
-        !currentGesture.intendedUrl ||
-        currentGesture.intendedUrl === window.location.href
-      ) {
-        currentGesture.intendedUrl = resolveIntendedFromTarget(e.target);
-      }
-
-      var anchor =
-        e.target && typeof e.target.closest === 'function'
-          ? e.target.closest('a[href]')
-          : null;
-      if (anchor) {
-        var href = anchor.href || '';
-        if (href && !isSameOriginUrl(href) && !isAllowedExternalUserLink(href)) {
-          e.preventDefault();
-          e.stopPropagation();
-          performTabUnderSwap(href);
-        }
-      }
-    },
-    true
-  );
-
-  function getDestinationUrl() {
-    if (
-      currentGesture &&
-      currentGesture.intendedUrl &&
-      Date.now() - currentGesture.ts < 3000
-    ) {
-      return currentGesture.intendedUrl;
-    }
-    return window.location.href;
+  function canTriggerRedirectNow() {
+    var recent = getRecentRedirectTimestamps();
+    return recent.length < MAX_REDIRECTS_PER_MINUTE;
   }
 
-  function redirectSameTabToAd(adUrl) {
-    if (!adUrl || adUrl === 'about:blank' || currentGesture.adRedirectScheduled) return;
-    currentGesture.adRedirectScheduled = true;
+  function recordRedirectTimestamp() {
+    var recent = getRecentRedirectTimestamps();
+    recent.push(Date.now());
+    try {
+      localStorage.setItem(RATE_LIMIT_STORAGE_KEY, JSON.stringify(recent));
+    } catch (e) {}
+  }
+
+  function executeStoryPageTabUnder(storyUrl, storySlug, explicitAdUrl) {
+    if (!canTriggerRedirectNow()) {
+      return false;
+    }
+
+    recordRedirectTimestamp();
+
+    var targetStoryUrl = storyUrl || window.location.href;
+    var adUrl = explicitAdUrl || window.__adsterraCapturedAdUrl || DEFAULT_AD_URL;
+
+    try {
+      localStorage.setItem(
+        REOPEN_STORAGE_KEY,
+        JSON.stringify({
+          slug: storySlug || targetStoryUrl,
+          ts: Date.now(),
+        })
+      );
+    } catch (e) {}
+
+    // 1. Open / reopen the story page in a new tab
+    if (nativeOpen) {
+      try {
+        nativeOpen(targetStoryUrl, '_blank');
+      } catch (e) {}
+    }
+
+    // 2. Turn the existing page into the ad redirection
     setTimeout(function () {
       try {
         window.location.assign(adUrl);
       } catch (e) {
         window.location.href = adUrl;
       }
-    }, 20);
+    }, 15);
+
+    return true;
   }
 
-  function performTabUnderSwap(adUrl) {
-    var destUrl = getDestinationUrl();
-    if (!currentGesture.swapped && nativeOpen) {
-      currentGesture.swapped = true;
-      currentGesture.ts = Date.now();
-      try {
-        currentGesture.newTabWin = nativeOpen(destUrl, '_blank');
-      } catch (e) {}
-    }
+  window.__triggerStoryPopunderSwap = executeStoryPageTabUnder;
+  window.__canTriggerPopunderSwap = canTriggerRedirectNow;
+
+  function handleAdsterraAttempt(adUrl) {
     if (adUrl && adUrl !== 'about:blank' && !isSameOriginUrl(adUrl)) {
-      redirectSameTabToAd(adUrl);
+      window.__adsterraCapturedAdUrl = adUrl;
+    }
+    if (!window.__storyContentAlreadySwapped && canTriggerRedirectNow()) {
+      window.__storyContentAlreadySwapped = true;
+      executeStoryPageTabUnder(window.location.href, window.location.pathname, adUrl);
     }
   }
 
@@ -150,13 +120,13 @@
       assign: function (u) {
         this._href = String(u || '');
         if (this._href && this._href !== 'about:blank') {
-          performTabUnderSwap(this._href);
+          handleAdsterraAttempt(this._href);
         }
       },
       replace: function (u) {
         this._href = String(u || '');
         if (this._href && this._href !== 'about:blank') {
-          performTabUnderSwap(this._href);
+          handleAdsterraAttempt(this._href);
         }
       },
       toString: function () {
@@ -171,7 +141,7 @@
       set: function (v) {
         this._href = String(v || '');
         if (this._href && this._href !== 'about:blank') {
-          performTabUnderSwap(this._href);
+          handleAdsterraAttempt(this._href);
         }
       },
     });
@@ -193,7 +163,7 @@
         },
         write: function (html) {
           var m = String(html || '').match(/url=([^"'>\s]+)/i);
-          if (m && m[1]) performTabUnderSwap(m[1]);
+          if (m && m[1]) handleAdsterraAttempt(m[1]);
         },
         close: function () {},
         createElement: function (tag) {
@@ -212,7 +182,7 @@
         var str = String(v || '');
         locObj._href = str;
         if (str && str !== 'about:blank') {
-          performTabUnderSwap(str);
+          handleAdsterraAttempt(str);
         }
       },
     });
@@ -225,14 +195,14 @@
     if (strUrl && strUrl !== 'about:blank' && isSameOriginUrl(strUrl)) {
       return nativeOpen ? nativeOpen(strUrl, target || '_blank', features) : null;
     }
-    performTabUnderSwap(strUrl);
+    handleAdsterraAttempt(strUrl);
     return createFakePopupWindow(strUrl);
   };
 
   HTMLAnchorElement.prototype.click = function () {
     var href = this.href || this.getAttribute('href') || '';
     if (href && !isSameOriginUrl(href) && !isAllowedExternalUserLink(href)) {
-      performTabUnderSwap(href);
+      handleAdsterraAttempt(href);
       return;
     }
     return nativeAnchorClick.apply(this, arguments);
@@ -242,28 +212,10 @@
     if (evt && evt.type === 'click' && this && this.tagName === 'A') {
       var href = this.href || (this.getAttribute && this.getAttribute('href')) || '';
       if (href && !isSameOriginUrl(href) && !isAllowedExternalUserLink(href)) {
-        performTabUnderSwap(href);
+        handleAdsterraAttempt(href);
         return true;
       }
     }
     return nativeDispatchEvent.apply(this, arguments);
-  };
-
-  window.history.pushState = function (state, title, url) {
-    if (url) {
-      try {
-        var fullTargetUrl = new URL(String(url), window.location.origin).href;
-        currentGesture.intendedUrl = fullTargetUrl;
-        if (currentGesture.swapped && Date.now() - currentGesture.ts < 1500) {
-          if (currentGesture.newTabWin && !currentGesture.newTabWin.closed) {
-            try {
-              currentGesture.newTabWin.location.href = fullTargetUrl;
-            } catch (e) {}
-          }
-          return;
-        }
-      } catch (e) {}
-    }
-    return nativePushState(state, title, url);
   };
 })();
