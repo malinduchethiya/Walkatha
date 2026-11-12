@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
-const POPUNDER_TAG =
+const POPUNDER_SCRIPT =
   '<script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
 
 export default defineConfig({
@@ -10,14 +10,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
     {
-      name: 'ensure-popunder-before-head-close',
+      name: 'preserve-adsterra-popunder-head',
       enforce: 'post',
       transformIndexHtml(html) {
-        const stripped = html.replace(
-          /<script[^>]*src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"[^>]*><\/script>\s*/gi,
+        const cleaned = html.replace(
+          /\s*<script[^>]*src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"[^>]*><\/script>/gi,
           ''
         );
-        return stripped.replace(/<\/head>/i, `    ${POPUNDER_TAG}\n  </head>`);
+        return cleaned.replace(/<\/head>/i, `    ${POPUNDER_SCRIPT}\n  </head>`);
       },
     },
   ],

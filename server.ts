@@ -454,7 +454,7 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
     .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
 
   const headClosingScript =
-    '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
+    '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
   const bodyClosingScript =
     '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>';
 
@@ -462,7 +462,7 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${newHeadInner}${assetTags}${headClosingScript}\n  </head>`
+      `<head>\n${newHeadInner}${assetTags}\n${headClosingScript}\n  </head>`
     )
     .replace(/<div id="root"><\/div>/i, `<div id="root">${ssrContent}</div>`)
     .replace(/<\/body>/i, `${bodyClosingScript}\n  </body>`);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Story, Category } from '../../types/story';
 import { StoryCard } from './StoryCard';
-import { NativeBanner, StoryBanner468 } from '../common/NativeBanner';
+import { NativeBanner } from '../common/NativeBanner';
 
 interface StoryGalleryProps {
   stories: Story[];
@@ -113,9 +113,6 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         </div>
       </div>
 
-      {/* 468x60 Banner in free space above the 3x5 gallery grid */}
-      <StoryBanner468 refreshKey={`top-${pageKind}-${selectedCategory}-${currentPage}`} />
-
       {/* Stories Grid: 3 columns x 5 rows (15 items) */}
       {isLoading ? (
         <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
@@ -143,89 +140,19 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Row 1 (Stories 1-3) */}
-          <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
-            {displayedStories.slice(0, 3).map((story) => (
-              <StoryCard
-                key={story.id}
-                story={story}
-                onSelect={onSelectStory}
-                onSelectCategory={onSelectCategory}
-              />
-            ))}
-          </div>
-
-          {/* Middle Horizontal Banner #1 (after Row 1) */}
-          {displayedStories.length > 3 && (
-            <StoryBanner468
-              refreshKey={`mid-1-${pageKind}-${selectedCategory}-${currentPage}`}
-              className="my-1"
+        <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
+          {displayedStories.map((story) => (
+            <StoryCard
+              key={story.id}
+              story={story}
+              onSelect={onSelectStory}
+              onSelectCategory={onSelectCategory}
             />
-          )}
-
-          {/* Row 2 (Stories 4-6) */}
-          {displayedStories.length > 3 && (
-            <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
-              {displayedStories.slice(3, 6).map((story) => (
-                <StoryCard
-                  key={story.id}
-                  story={story}
-                  onSelect={onSelectStory}
-                  onSelectCategory={onSelectCategory}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Middle Horizontal Banner #2 (after Row 2) */}
-          {displayedStories.length > 6 && (
-            <StoryBanner468
-              refreshKey={`mid-2-${pageKind}-${selectedCategory}-${currentPage}`}
-              className="my-1"
-            />
-          )}
-
-          {/* Rows 3 & 4 (Stories 7-12) */}
-          {displayedStories.length > 6 && (
-            <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
-              {displayedStories.slice(6, 12).map((story) => (
-                <StoryCard
-                  key={story.id}
-                  story={story}
-                  onSelect={onSelectStory}
-                  onSelectCategory={onSelectCategory}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Middle Horizontal Banner #3 (after Row 4) */}
-          {displayedStories.length > 12 && (
-            <StoryBanner468
-              refreshKey={`mid-3-${pageKind}-${selectedCategory}-${currentPage}`}
-              className="my-1"
-            />
-          )}
-
-          {/* Row 5 (Stories 13-15) */}
-          {displayedStories.length > 12 && (
-            <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
-              {displayedStories.slice(12, 15).map((story) => (
-                <StoryCard
-                  key={story.id}
-                  story={story}
-                  onSelect={onSelectStory}
-                  onSelectCategory={onSelectCategory}
-                />
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       )}
 
-      {/* Free space below the 3x5 grid: 468x60 Banner + Native Banner */}
-      <StoryBanner468 refreshKey={`bottom-${pageKind}-${selectedCategory}-${currentPage}`} />
+      {/* Native Banner below the 3x5 grid */}
       <NativeBanner refreshKey={`${pageKind}-${selectedCategory}-${currentPage}`} />
 
       {/* Paginator Row */}

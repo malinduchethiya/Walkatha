@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
 import { NativeBanner, StoryBanner468 } from '../common/NativeBanner';
-import { triggerStoryAd, AD_SMARTLINK_URL } from '../../utils/adTrigger';
 
 interface StoryReaderProps {
   slug: string;
@@ -15,6 +14,7 @@ interface StoryReaderProps {
 }
 
 const FALLBACK_COVER = '/icon.png';
+const STORY_IMAGE_LINK = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
 
 export function splitStoryParagraphs(rawContent: string): string[] {
   const initial = (rawContent || '')
@@ -48,77 +48,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const [prevStory, setPrevStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // 10-second Advertisement Gate State
-  const [countdown, setCountdown] = useState<number>(10);
-  const [isAdGateUnlocked, setIsAdGateUnlocked] = useState<boolean>(false);
-  const [isFrozen, setIsFrozen] = useState<boolean>(() => {
-    return typeof document !== 'undefined' ? !document.hidden : true;
-  });
-
-  const hiddenStartTimeRef = useRef<number | null>(null);
-  const totalAdTimeMsRef = useRef<number>(0);
-
-  useEffect(() => {
-    // Reset countdown and ad time for each story slug
-    setCountdown(10);
-    setIsAdGateUnlocked(false);
-    totalAdTimeMsRef.current = 0;
-
-    const isCurrentlyHidden = typeof document !== 'undefined' ? document.hidden : false;
-    setIsFrozen(!isCurrentlyHidden);
-
-    if (isCurrentlyHidden) {
-      hiddenStartTimeRef.current = Date.now();
-    } else {
-      hiddenStartTimeRef.current = null;
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // User switched away to the advertisement tab -> resume countdown
-        hiddenStartTimeRef.current = Date.now();
-        setIsFrozen(false);
-      } else {
-        // User returned to the story tab -> freeze countdown
-        if (hiddenStartTimeRef.current) {
-          const elapsed = Date.now() - hiddenStartTimeRef.current;
-          totalAdTimeMsRef.current += elapsed;
-          hiddenStartTimeRef.current = null;
-        }
-        setIsFrozen(true);
-
-        const currentTotal = totalAdTimeMsRef.current;
-        const remaining = Math.max(0, Math.ceil((10000 - currentTotal) / 1000));
-        setCountdown(remaining);
-        if (currentTotal >= 10000) {
-          setIsAdGateUnlocked(true);
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Periodic check while hidden to keep countdown updated and unlock once 10s is reached
-    const interval = setInterval(() => {
-      let currentTotal = totalAdTimeMsRef.current;
-      if (typeof document !== 'undefined' && document.hidden && hiddenStartTimeRef.current) {
-        currentTotal += Date.now() - hiddenStartTimeRef.current;
-      }
-      const remaining = Math.max(0, Math.ceil((10000 - currentTotal) / 1000));
-      setCountdown(remaining);
-
-      if (currentTotal >= 10000) {
-        setIsAdGateUnlocked(true);
-        clearInterval(interval);
-      }
-    }, 250);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(interval);
-    };
-  }, [slug]);
 
   useEffect(() => {
     let active = true;
@@ -193,165 +122,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     );
   }
 
-  // 10-Second Advertisement Wait Loading Screen
-  if (!isAdGateUnlocked) {
-    const progressPercent = Math.min(100, Math.max(0, ((10 - countdown) / 10) * 100));
-    return (
-      <div className="max-w-2xl mx-auto py-8 px-4">
-        <div
-          className={`bg-[#111a33] border ${
-            isFrozen ? 'border-amber-500/50 shadow-amber-950/30' : 'border-blue-500/40 shadow-blue-900/30'
-          } rounded-2xl p-6 sm:p-8 text-center space-y-6 shadow-2xl relative overflow-hidden transition-all duration-300`}
-        >
-          {/* Top glowing accent */}
-          <div
-            className={`absolute top-0 left-0 right-0 h-1.5 transition-all duration-300 ${
-              isFrozen
-                ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400'
-                : 'bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400'
-            }`}
-          />
-
-          {/* Status Badge */}
-          {isFrozen ? (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs font-semibold animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>⏸️ කාල ගණනය නතර වී ඇත • COUNTDOWN FROZEN</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-950/80 border border-blue-500/40 text-blue-300 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>⏱️ දැන්වීම් කාලය ගණනය වෙමින් පවතී • COUNTING IN AD TAB</span>
-            </div>
-          )}
-
-          {/* Headline */}
-          <div className="space-y-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug">
-              {isFrozen
-                ? 'දැන්වීම් ටැබ් එක වෙත මාරු වන්න'
-                : 'දැන්වීම් ටැබ් එකේ තත්පර 10ක් රැඳී සිටින්න'}
-            </h1>
-            <p className={`text-sm font-semibold ${isFrozen ? 'text-amber-300' : 'text-slate-300'}`}>
-              {isFrozen
-                ? 'ඔබ මෙම පිටුවේ සිටින විට කාල ගණනය නතර වේ (Countdown is frozen on this tab)'
-                : 'Please stay on the advertisement tab for 10 seconds'}
-            </p>
-            <p className="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed pt-1">
-              {isFrozen
-                ? `කතාව විවෘත වීමට කරුණාකර දැන්වීම් ටැබ් එක වෙත මාරු වී එහි ඉතිරි තත්පර ${countdown} රැඳී සිටින්න. ඔබ දැන්වීම් ටැබ් එකේ සිටින විට පමණක් කාලය ගණනය වේ.`
-                : 'දැන්වීම් ටැබ් එකේ රැඳී සිටින කාලය ගණනය වේ. තත්පර 10 සම්පූර්ණ වූ පසු කතාව ස්වයංක්‍රීයව විවෘත වේ.'}
-            </p>
-          </div>
-
-          {/* Animated Countdown Ring */}
-          <div className="flex flex-col items-center justify-center py-2">
-            <div className="relative flex items-center justify-center">
-              <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  stroke="#1e2d52"
-                  strokeWidth="8"
-                  fill="transparent"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  stroke={isFrozen ? '#f59e0b' : '#3b82f6'}
-                  strokeWidth="8"
-                  strokeDasharray={264}
-                  strokeDashoffset={264 - (264 * progressPercent) / 100}
-                  strokeLinecap="round"
-                  fill="transparent"
-                  className="transition-all duration-300 ease-linear"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-4xl font-extrabold font-mono ${isFrozen ? 'text-amber-400' : 'text-white'}`}>
-                  {countdown}
-                </span>
-                <span className={`text-[10px] uppercase tracking-widest font-bold ${isFrozen ? 'text-amber-300' : 'text-blue-400'}`}>
-                  {isFrozen ? 'නතර විය / FROZEN' : 'තත්පර / SEC'}
-                </span>
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full max-w-md bg-[#0a1022] rounded-full h-2.5 mt-4 overflow-hidden border border-[#1e2d52]">
-              <div
-                className={`h-2.5 rounded-full transition-all duration-300 ease-linear ${
-                  isFrozen
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-400'
-                    : 'bg-gradient-to-r from-blue-500 to-cyan-400'
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            {isFrozen && (
-              <span className="text-[11px] text-amber-400 font-semibold mt-2.5 flex items-center justify-center gap-1.5">
-                <span>⏸️</span>
-                <span>කාල ගණනය නතර වී ඇත — දැන්වීම් ටැබ් එකට ගිය විට නැවත ආරම්භ වේ</span>
-              </span>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-3 pt-2">
-            {countdown > 0 ? (
-              <button
-                type="button"
-                onClick={() => triggerStoryAd()}
-                className={`w-full sm:w-auto px-7 py-3.5 rounded-xl text-white text-xs sm:text-sm font-bold transition-all shadow-lg inline-flex items-center justify-center gap-2 cursor-pointer ${
-                  isFrozen
-                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-orange-900/40 animate-pulse'
-                    : 'bg-[#1e3a8a] hover:bg-blue-700 shadow-blue-900/30'
-                }`}
-              >
-                <span>↗️</span>
-                <span>දැන්වීම් ටැබ් එක විවෘත කරන්න (Open & Switch to Ad Tab)</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsAdGateUnlocked(true)}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm sm:text-base font-bold transition-all shadow-lg shadow-emerald-900/40 inline-flex items-center justify-center gap-2 cursor-pointer animate-pulse"
-              >
-                <span>📖</span>
-                <span>කතාව විවෘතයි — දැන් කියවන්න (Read Story Now)</span>
-              </button>
-            )}
-
-            <div className="text-[11px] text-slate-400 flex items-center justify-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-              <span>ඉහත බොත්තම ඔබා විවෘත වන දැන්වීම් ටැබ් එකේ තත්පර 10ක් රැඳී සිටින්න.</span>
-            </div>
-          </div>
-
-          {/* Story preview card */}
-          <div className="mt-6 pt-6 border-t border-[#1e2d52] flex items-center gap-4 text-left bg-[#0d152b] p-3.5 rounded-xl">
-            <img
-              src={imgSrc}
-              alt=""
-              className="w-16 h-16 rounded-lg object-cover shrink-0 border border-[#1e2d52]"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] text-blue-400 font-semibold truncate">
-                {story.categoryName || story.category || 'සිංහල කතාව'}
-              </div>
-              <div className="text-sm font-bold text-white truncate">{story.title}</div>
-              <div className="text-xs text-slate-400 line-clamp-1">
-                {story.shortDescription || story.description || ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const rawContent = story.fullContent || story.content || story.shortDescription || '';
   const paragraphs = splitStoryParagraphs(rawContent);
 
@@ -386,8 +156,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       <div className="space-y-6">
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
           <a
-            href={AD_SMARTLINK_URL}
-            onClick={() => triggerStoryAd()}
+            href={STORY_IMAGE_LINK}
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]"
@@ -513,7 +282,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey && prevStory) {
                       e.preventDefault();
-                      triggerStoryAd();
                       onSelectStory(prevStory.slug);
                     }
                   }}
@@ -526,7 +294,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey && nextStory) {
                       e.preventDefault();
-                      triggerStoryAd();
                       onSelectStory(nextStory.slug);
                     }
                   }}

@@ -9,7 +9,6 @@ import { HtmlSitemapPage } from './components/common/HtmlSitemapPage';
 import { NotFoundPage } from './components/common/NotFoundPage';
 import { AdminRoot } from './components/admin/AdminRoot';
 import { SideVerticalBannerRail } from './components/common/NativeBanner';
-import { triggerStoryAd } from './utils/adTrigger';
 import { Story, Category } from './types/story';
 import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
@@ -53,15 +52,6 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
-    const existingPopunder = document.head.querySelector(`script[src*="ahuramazda.org"]`);
-    if (!existingPopunder) {
-      const script = document.createElement('script');
-      script.setAttribute('data-cfasync', 'false');
-      script.src = POPUNDER_SRC;
-      document.head.appendChild(script);
-    }
-
     const SOCIALBAR_SRC = 'https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da';
     const existingSocial = document.body.querySelector(`script[src="${SOCIALBAR_SRC}"]`);
     if (!existingSocial) {
@@ -280,7 +270,6 @@ export function App() {
   };
 
   const handleSelectStory = (slug: string) => {
-    triggerStoryAd();
     navigateTo(`/story/${encodeURIComponent(slug)}`);
   };
 
