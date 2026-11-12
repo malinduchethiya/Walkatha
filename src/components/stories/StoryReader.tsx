@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
@@ -52,24 +52,72 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   // 10-second Advertisement Gate State
   const [countdown, setCountdown] = useState<number>(10);
   const [isAdGateUnlocked, setIsAdGateUnlocked] = useState<boolean>(false);
+  const [isFrozen, setIsFrozen] = useState<boolean>(() => {
+    return typeof document !== 'undefined' ? !document.hidden : true;
+  });
+
+  const hiddenStartTimeRef = useRef<number | null>(null);
+  const totalAdTimeMsRef = useRef<number>(0);
 
   useEffect(() => {
-    // Reset countdown and lock for each story view
+    // Reset countdown and ad time for each story slug
     setCountdown(10);
     setIsAdGateUnlocked(false);
+    totalAdTimeMsRef.current = 0;
 
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setIsAdGateUnlocked(true);
-          return 0;
+    const isCurrentlyHidden = typeof document !== 'undefined' ? document.hidden : false;
+    setIsFrozen(!isCurrentlyHidden);
+
+    if (isCurrentlyHidden) {
+      hiddenStartTimeRef.current = Date.now();
+    } else {
+      hiddenStartTimeRef.current = null;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // User switched away to the advertisement tab -> resume countdown
+        hiddenStartTimeRef.current = Date.now();
+        setIsFrozen(false);
+      } else {
+        // User returned to the story tab -> freeze countdown
+        if (hiddenStartTimeRef.current) {
+          const elapsed = Date.now() - hiddenStartTimeRef.current;
+          totalAdTimeMsRef.current += elapsed;
+          hiddenStartTimeRef.current = null;
         }
-        return prev - 1;
-      });
-    }, 1000);
+        setIsFrozen(true);
 
-    return () => clearInterval(timer);
+        const currentTotal = totalAdTimeMsRef.current;
+        const remaining = Math.max(0, Math.ceil((10000 - currentTotal) / 1000));
+        setCountdown(remaining);
+        if (currentTotal >= 10000) {
+          setIsAdGateUnlocked(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Periodic check while hidden to keep countdown updated and unlock once 10s is reached
+    const interval = setInterval(() => {
+      let currentTotal = totalAdTimeMsRef.current;
+      if (typeof document !== 'undefined' && document.hidden && hiddenStartTimeRef.current) {
+        currentTotal += Date.now() - hiddenStartTimeRef.current;
+      }
+      const remaining = Math.max(0, Math.ceil((10000 - currentTotal) / 1000));
+      setCountdown(remaining);
+
+      if (currentTotal >= 10000) {
+        setIsAdGateUnlocked(true);
+        clearInterval(interval);
+      }
+    }, 250);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
+    };
   }, [slug]);
 
   useEffect(() => {
@@ -147,29 +195,52 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
   // 10-Second Advertisement Wait Loading Screen
   if (!isAdGateUnlocked) {
-    const progressPercent = ((10 - countdown) / 10) * 100;
+    const progressPercent = Math.min(100, Math.max(0, ((10 - countdown) / 10) * 100));
     return (
       <div className="max-w-2xl mx-auto py-8 px-4">
-        <div className="bg-[#111a33] border border-blue-500/40 rounded-2xl p-6 sm:p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+        <div
+          className={`bg-[#111a33] border ${
+            isFrozen ? 'border-amber-500/50 shadow-amber-950/30' : 'border-blue-500/40 shadow-blue-900/30'
+          } rounded-2xl p-6 sm:p-8 text-center space-y-6 shadow-2xl relative overflow-hidden transition-all duration-300`}
+        >
           {/* Top glowing accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400" />
+          <div
+            className={`absolute top-0 left-0 right-0 h-1.5 transition-all duration-300 ${
+              isFrozen
+                ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400'
+                : 'bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400'
+            }`}
+          />
 
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-950/80 border border-blue-500/30 text-blue-300 text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
-            <span>දැන්වීම් පරීක්ෂාව • ADVERTISEMENT GATE</span>
-          </div>
+          {/* Status Badge */}
+          {isFrozen ? (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs font-semibold animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span>⏸️ කාල ගණනය නතර වී ඇත • COUNTDOWN FROZEN</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-950/80 border border-blue-500/40 text-blue-300 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>⏱️ දැන්වීම් කාලය ගණනය වෙමින් පවතී • COUNTING IN AD TAB</span>
+            </div>
+          )}
 
           {/* Headline */}
           <div className="space-y-2">
             <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug">
-              දැන්වීම් ටැබ් එකේ තත්පර 10ක් රැඳී සිටින්න
+              {isFrozen
+                ? 'දැන්වීම් ටැබ් එක වෙත මාරු වන්න'
+                : 'දැන්වීම් ටැබ් එකේ තත්පර 10ක් රැඳී සිටින්න'}
             </h1>
-            <p className="text-sm font-medium text-slate-300">
-              Please wait in the advertisement tab for 10 seconds
+            <p className={`text-sm font-semibold ${isFrozen ? 'text-amber-300' : 'text-slate-300'}`}>
+              {isFrozen
+                ? 'ඔබ මෙම පිටුවේ සිටින විට කාල ගණනය නතර වේ (Countdown is frozen on this tab)'
+                : 'Please stay on the advertisement tab for 10 seconds'}
             </p>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto leading-relaxed pt-1">
-              නව දැන්වීම් ටැබ් එක විවෘත විය. සම්පූර්ණ කතාව නොමිලේ කියවීම සඳහා කරුණාකර තත්පර 10ක් රැඳී සිටින්න...
+            <p className="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed pt-1">
+              {isFrozen
+                ? `කතාව විවෘත වීමට කරුණාකර දැන්වීම් ටැබ් එක වෙත මාරු වී එහි ඉතිරි තත්පර ${countdown} රැඳී සිටින්න. ඔබ දැන්වීම් ටැබ් එකේ සිටින විට පමණක් කාලය ගණනය වේ.`
+                : 'දැන්වීම් ටැබ් එකේ රැඳී සිටින කාලය ගණනය වේ. තත්පර 10 සම්පූර්ණ වූ පසු කතාව ස්වයංක්‍රීයව විවෘත වේ.'}
             </p>
           </div>
 
@@ -189,28 +260,42 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   cx="50"
                   cy="50"
                   r="42"
-                  stroke="#3b82f6"
+                  stroke={isFrozen ? '#f59e0b' : '#3b82f6'}
                   strokeWidth="8"
                   strokeDasharray={264}
                   strokeDashoffset={264 - (264 * progressPercent) / 100}
                   strokeLinecap="round"
                   fill="transparent"
-                  className="transition-all duration-1000 ease-linear"
+                  className="transition-all duration-300 ease-linear"
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-extrabold text-white font-mono">{countdown}</span>
-                <span className="text-[10px] text-blue-400 uppercase tracking-widest font-bold">තත්පර / sec</span>
+                <span className={`text-4xl font-extrabold font-mono ${isFrozen ? 'text-amber-400' : 'text-white'}`}>
+                  {countdown}
+                </span>
+                <span className={`text-[10px] uppercase tracking-widest font-bold ${isFrozen ? 'text-amber-300' : 'text-blue-400'}`}>
+                  {isFrozen ? 'නතර විය / FROZEN' : 'තත්පර / SEC'}
+                </span>
               </div>
             </div>
 
             {/* Progress bar */}
             <div className="w-full max-w-md bg-[#0a1022] rounded-full h-2.5 mt-4 overflow-hidden border border-[#1e2d52]">
               <div
-                className="bg-gradient-to-r from-blue-500 to-cyan-400 h-2.5 rounded-full transition-all duration-1000 ease-linear"
+                className={`h-2.5 rounded-full transition-all duration-300 ease-linear ${
+                  isFrozen
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-400'
+                    : 'bg-gradient-to-r from-blue-500 to-cyan-400'
+                }`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+            {isFrozen && (
+              <span className="text-[11px] text-amber-400 font-semibold mt-2.5 flex items-center justify-center gap-1.5">
+                <span>⏸️</span>
+                <span>කාල ගණනය නතර වී ඇත — දැන්වීම් ටැබ් එකට ගිය විට නැවත ආරම්භ වේ</span>
+              </span>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -219,10 +304,14 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               <button
                 type="button"
                 onClick={() => triggerStoryAd()}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#1e3a8a] hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold transition-all shadow-lg shadow-blue-900/30 inline-flex items-center justify-center gap-2 cursor-pointer"
+                className={`w-full sm:w-auto px-7 py-3.5 rounded-xl text-white text-xs sm:text-sm font-bold transition-all shadow-lg inline-flex items-center justify-center gap-2 cursor-pointer ${
+                  isFrozen
+                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-orange-900/40 animate-pulse'
+                    : 'bg-[#1e3a8a] hover:bg-blue-700 shadow-blue-900/30'
+                }`}
               >
                 <span>↗️</span>
-                <span>දැන්වීම් ටැබ් එක නැවත විවෘත කරන්න (Open Ad Tab)</span>
+                <span>දැන්වීම් ටැබ් එක විවෘත කරන්න (Open & Switch to Ad Tab)</span>
               </button>
             ) : (
               <button
@@ -237,7 +326,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
             <div className="text-[11px] text-slate-400 flex items-center justify-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-              <span>දැන්වීම් ටැබ් එක විවෘත නොවූයේ නම් ඉහත බොත්තම ක්ලික් කරන්න.</span>
+              <span>ඉහත බොත්තම ඔබා විවෘත වන දැන්වීම් ටැබ් එකේ තත්පර 10ක් රැඳී සිටින්න.</span>
             </div>
           </div>
 
