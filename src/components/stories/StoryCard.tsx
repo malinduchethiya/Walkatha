@@ -8,7 +8,6 @@ interface StoryCardProps {
 }
 
 const FALLBACK_COVER = '/icon.png';
-const STORY_IMAGE_LINK = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
 
 export const StoryCard: React.FC<StoryCardProps> = ({
   story,
@@ -41,14 +40,14 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
   return (
     <article
+      data-intended-url={storyUrl}
       style={{ border: 'none', boxShadow: 'none' }}
       className="group min-w-0 w-full bg-white dark:bg-[#111a33] rounded-xl overflow-hidden flex flex-col border-0 shadow-none outline-none ring-0 hover:bg-slate-50 dark:hover:bg-[#15203d] transition-colors"
     >
-      {/* Thumbnail Image linked to https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd */}
+      {/* Thumbnail Image */}
       <a
-        href={STORY_IMAGE_LINK}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={storyUrl}
+        onClick={handleCardClick}
         className="block relative w-full aspect-[16/10] bg-slate-100 dark:bg-[#0d152b] overflow-hidden shrink-0"
       >
         <img

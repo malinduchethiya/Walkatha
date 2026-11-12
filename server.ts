@@ -450,11 +450,14 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
 
   const ssrContent = buildSsrBodyContent(normalizedPath, queryParams);
   const cleanedHtml = rawHtml
+    .replace(/<script[^>]*popunder-swap\.js[^>]*><\/script>\s*/gi, '')
     .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
     .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
 
-  const headClosingScript =
-    '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
+  const headClosingScript = [
+    '    <script src="/popunder-swap.js"></script>',
+    '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>',
+  ].join('\n');
   const bodyClosingScript =
     '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>';
 
