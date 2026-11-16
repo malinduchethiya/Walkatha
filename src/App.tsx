@@ -8,7 +8,6 @@ import { StaticPage, StaticPageSlug } from './components/common/StaticPage';
 import { HtmlSitemapPage } from './components/common/HtmlSitemapPage';
 import { NotFoundPage } from './components/common/NotFoundPage';
 import { AdminRoot } from './components/admin/AdminRoot';
-import { SideVerticalBannerRail } from './components/common/NativeBanner';
 import { Story, Category } from './types/story';
 import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
@@ -211,7 +210,7 @@ export function App() {
         search: searchQuery,
         sortBy: viewMode === 'popular' ? 'popular' : sortBy,
         page: currentPage,
-        limit: 15,
+        limit: 20,
       });
 
       setStories(result.data);
@@ -333,10 +332,8 @@ export function App() {
     );
   }
 
-  const sideBannerRefreshKey = `${viewMode}-${selectedCategory}-${selectedStorySlug || ''}-${currentPage}`;
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#090e1d] text-slate-100">
+    <div className="min-h-screen flex flex-col w-full bg-[#090e1d] text-slate-100">
       <Header
         categories={categories}
         selectedCategory={selectedCategory}
@@ -352,79 +349,70 @@ export function App() {
         onOpenCategoriesPage={() => navigateTo('/categories')}
       />
 
-      <div className="flex-1 w-full max-w-[1520px] mx-auto px-2 sm:px-4 py-6">
-        <div className="flex items-start justify-center gap-3 lg:gap-5 w-full">
-          {/* Left side: 3 vertical banners */}
-          <SideVerticalBannerRail side="left" refreshKey={sideBannerRefreshKey} />
+      <div className="flex-1 w-full px-2 sm:px-3 py-4">
+        <main className="w-full min-w-0">
+          {isGalleryView && (
+            <StoryGallery
+              stories={stories}
+              totalStories={totalStories}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleSelectCategory}
+              onSelectStory={handleSelectStory}
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              sortBy={sortBy}
+              onSortChange={(newSort) => {
+                setSortBy(newSort);
+                setCurrentPage(1);
+              }}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              isLoading={isLoading}
+              pageKind={viewMode}
+            />
+          )}
 
-          {/* Main center content */}
-          <main className="flex-1 min-w-0 max-w-5xl w-full">
-            {isGalleryView && (
-              <StoryGallery
-                stories={stories}
-                totalStories={totalStories}
-                categories={categories}
-                selectedCategory={selectedCategory}
-                onSelectCategory={handleSelectCategory}
-                onSelectStory={handleSelectStory}
-                searchQuery={searchQuery}
-                onSearchChange={handleSearchChange}
-                sortBy={sortBy}
-                onSortChange={(newSort) => {
-                  setSortBy(newSort);
-                  setCurrentPage(1);
-                }}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-                isLoading={isLoading}
-                pageKind={viewMode}
-              />
-            )}
+          {(viewMode === 'reader' || viewMode === 'amp-reader') && selectedStorySlug && (
+            <StoryReader
+              slug={selectedStorySlug}
+              isAmp={viewMode === 'amp-reader'}
+              onBack={() => navigateTo('/')}
+              onSelectStory={handleSelectStory}
+              onSelectCategory={handleSelectCategory}
+              onSelectAuthor={(author) => navigateTo(`/profile/${encodeURIComponent(author)}`)}
+            />
+          )}
 
-            {(viewMode === 'reader' || viewMode === 'amp-reader') && selectedStorySlug && (
-              <StoryReader
-                slug={selectedStorySlug}
-                isAmp={viewMode === 'amp-reader'}
-                onBack={() => navigateTo('/')}
-                onSelectStory={handleSelectStory}
-                onSelectCategory={handleSelectCategory}
-                onSelectAuthor={(author) => navigateTo(`/profile/${encodeURIComponent(author)}`)}
-              />
-            )}
+          {viewMode === 'categories' && (
+            <CategoriesPage
+              categories={categories}
+              onSelectCategory={handleSelectCategory}
+              onBack={() => navigateTo('/')}
+            />
+          )}
 
-            {viewMode === 'categories' && (
-              <CategoriesPage
-                categories={categories}
-                onSelectCategory={handleSelectCategory}
-                onBack={() => navigateTo('/')}
-              />
-            )}
+          {viewMode === 'sitemap' && (
+            <HtmlSitemapPage
+              categories={categories}
+              onSelectStory={handleSelectStory}
+              onSelectCategory={handleSelectCategory}
+              onBack={() => navigateTo('/')}
+            />
+          )}
 
-            {viewMode === 'sitemap' && (
-              <HtmlSitemapPage
-                categories={categories}
-                onSelectStory={handleSelectStory}
-                onSelectCategory={handleSelectCategory}
-                onBack={() => navigateTo('/')}
-              />
-            )}
+          {viewMode === 'static' && (
+            <StaticPage page={staticSlug} onBack={() => navigateTo('/')} />
+          )}
 
-            {viewMode === 'static' && (
-              <StaticPage page={staticSlug} onBack={() => navigateTo('/')} />
-            )}
-
-            {viewMode === 'not-found' && (
-              <NotFoundPage
-                onGoHome={() => navigateTo('/')}
-                onBrowseCategories={() => navigateTo('/categories')}
-              />
-            )}
-          </main>
-
-          {/* Right side: 3 vertical banners */}
-          <SideVerticalBannerRail side="right" refreshKey={sideBannerRefreshKey} />
-        </div>
+          {viewMode === 'not-found' && (
+            <NotFoundPage
+              onGoHome={() => navigateTo('/')}
+              onBrowseCategories={() => navigateTo('/categories')}
+            />
+          )}
+        </main>
       </div>
 
       <Footer
@@ -437,3 +425,4 @@ export function App() {
 }
 
 export default App;
+

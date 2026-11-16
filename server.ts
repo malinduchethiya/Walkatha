@@ -272,9 +272,9 @@ function buildHeadForRoute(reqPath: string, queryParams: URLSearchParams): strin
   const activeStories = store.stories.filter(
     (s) => s && !s.isDeleted && !s.deleted && s.published !== false
   );
-  const totalPages = Math.max(1, Math.ceil(activeStories.length / 15));
-  const startIdx = (page - 1) * 15;
-  const pageStories = activeStories.slice(startIdx, startIdx + 15);
+  const totalPages = Math.max(1, Math.ceil(activeStories.length / 20));
+  const startIdx = (page - 1) * 20;
+  const pageStories = activeStories.slice(startIdx, startIdx + 20);
 
   const title =
     page > 1
@@ -358,13 +358,13 @@ function buildSsrBodyContent(reqPath: string, queryParams: URLSearchParams): str
   );
 
   if (normalizedPath === '/') {
-    const startIdx = (page - 1) * 15;
-    const slice = activeStories.slice(startIdx, startIdx + 15);
+    const startIdx = (page - 1) * 20;
+    const slice = activeStories.slice(startIdx, startIdx + 20);
     const cardsHtml = slice
       .map((s) => {
         const slug = encodeURIComponent(stripZW(s.slug || s.id));
         const title = escapeHtmlText(stripZW(s.title));
-        return `<article class="card"><a href="https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd" target="_blank" rel="noopener noreferrer"><img src="/icon.png" alt=""></a><h2><a href="/story/${slug}">${title}</a></h2></article>`;
+        return `<article class="card"><h2><a href="/story/${slug}">${title}</a></h2></article>`;
       })
       .join('\n');
 

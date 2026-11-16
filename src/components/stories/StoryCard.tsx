@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Story } from '../../types/story';
 
 interface StoryCardProps {
@@ -7,23 +7,11 @@ interface StoryCardProps {
   onSelectCategory?: (category: string) => void;
 }
 
-const FALLBACK_COVER = '/icon.png';
-
 export const StoryCard: React.FC<StoryCardProps> = ({
   story,
   onSelect,
   onSelectCategory,
 }) => {
-  const [imgSrc, setImgSrc] = useState<string>(
-    story.coverImage && story.coverImage.trim() ? story.coverImage : FALLBACK_COVER
-  );
-
-  useEffect(() => {
-    setImgSrc(
-      story.coverImage && story.coverImage.trim() ? story.coverImage : FALLBACK_COVER
-    );
-  }, [story.coverImage]);
-
   const storyUrl = `/story/${encodeURIComponent(story.slug)}`;
   const categorySlug = story.category || 'romantic';
   const categoryLabel = story.categoryName || story.category || 'සිංහල කතා';
@@ -51,29 +39,9 @@ export const StoryCard: React.FC<StoryCardProps> = ({
       style={{ border: 'none', boxShadow: 'none' }}
       className="group min-w-0 w-full bg-white dark:bg-[#111a33] rounded-xl overflow-hidden flex flex-col border-0 shadow-none outline-none ring-0 hover:bg-slate-50 dark:hover:bg-[#15203d] transition-colors"
     >
-      {/* Thumbnail Image */}
-      <a
-        href={storyUrl}
-        onClick={handleCardClick}
-        className="block relative w-full aspect-[16/10] bg-slate-100 dark:bg-[#0d152b] overflow-hidden shrink-0"
-      >
-        <img
-          src={imgSrc}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={() => {
-            if (imgSrc !== FALLBACK_COVER) {
-              setImgSrc(FALLBACK_COVER);
-            }
-          }}
-          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-        />
-      </a>
-
-      {/* Clean Card Content */}
-      <div className="p-2.5 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5">
-        <div className="space-y-1">
+      {/* Clean Card Content (no story image) */}
+      <div className="p-3 sm:p-4 flex flex-col flex-1 justify-between gap-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-1.5 text-[10px] sm:text-[11px]">
             <a
               href={`/category/${encodeURIComponent(categorySlug)}`}
@@ -96,7 +64,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           </h2>
 
           {excerpt && (
-            <p className="hidden sm:line-clamp-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p className="hidden sm:line-clamp-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               {excerpt}
             </p>
           )}
@@ -111,3 +79,4 @@ export const StoryCard: React.FC<StoryCardProps> = ({
     </article>
   );
 };
+

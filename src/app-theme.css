@@ -10,29 +10,29 @@
   }
 }
 
-/* 3-column x 5-row gallery grid */
+/* 4-column gallery grid */
 .story-grid-3x5,
 .story-grid-2col {
   display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  column-gap: 12px !important;
-  row-gap: 14px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  column-gap: 10px !important;
+  row-gap: 12px !important;
   width: 100%;
 }
 
 @media (min-width: 640px) {
   .story-grid-3x5,
   .story-grid-2col {
-    column-gap: 16px !important;
-    row-gap: 18px !important;
+    column-gap: 14px !important;
+    row-gap: 16px !important;
   }
 }
 
 @media (min-width: 1024px) {
   .story-grid-3x5,
   .story-grid-2col {
-    column-gap: 20px !important;
-    row-gap: 22px !important;
+    column-gap: 16px !important;
+    row-gap: 18px !important;
   }
 }
 
@@ -43,3 +43,4 @@
 :root:not(.dark) {
   color-scheme: light;
 }
+

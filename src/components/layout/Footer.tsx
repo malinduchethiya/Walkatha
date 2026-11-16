@@ -1,6 +1,5 @@
 import React from 'react';
 import { Category } from '../../types/story';
-import { StoryBanner468 } from '../common/NativeBanner';
 
 interface FooterProps {
   categories: Category[];
@@ -21,10 +20,8 @@ export const Footer: React.FC<FooterProps> = ({
   };
 
   return (
-    <footer className="bg-[#0b1224] border-t border-[#1c2b4f] mt-12 transition-colors">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <StoryBanner468 refreshKey="footer-banner-top" className="my-1" />
-
+    <footer className="w-full bg-[#0b1224] border-t border-[#1c2b4f] mt-8 transition-colors">
+      <div className="w-full px-2 sm:px-3 py-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-400">
           <div>
             <div className="text-sm font-bold text-white mb-2">
@@ -85,8 +82,6 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
         </div>
 
-        <StoryBanner468 refreshKey="footer-banner-bottom" className="my-1" />
-
         {/* §9: Footer link list on every page: Privacy Policy, Terms and Conditions, Send Your Story, Disclaimer */}
         <div className="pt-4 border-t border-[#1c2b4f] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
           <div className="flex flex-wrap items-center gap-3">
@@ -135,4 +130,5 @@ export const Footer: React.FC<FooterProps> = ({
     </footer>
   );
 };
+
 

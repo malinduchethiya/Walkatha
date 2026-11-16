@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
-import { NativeBanner, StoryBanner468 } from '../common/NativeBanner';
 
 interface StoryReaderProps {
   slug: string;
@@ -148,7 +147,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto py-8 space-y-4">
+      <div className="w-full py-6 space-y-4">
         <div className="h-8 w-2/3 rounded bg-[#111a33] animate-pulse" />
         <div className="h-96 rounded-lg bg-[#111a33] border border-[#1e2d52] animate-pulse" />
       </div>
@@ -157,7 +156,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
   if (!story) {
     return (
-      <div className="max-w-xl mx-auto py-12 text-center bg-[#111a33] border border-[#1e2d52] rounded-lg p-6">
+      <div className="w-full py-12 text-center bg-[#111a33] border border-[#1e2d52] rounded-lg p-6">
         <h1 className="text-lg font-bold text-white mb-2">Story Not Found</h1>
         <p className="text-xs text-slate-300 mb-4">
           ඔබ සෙවූ කතාව දැනට ලබාගත නොහැක. වෙනත් සිංහල වැල කතාවක් තෝරාගන්න.
@@ -205,7 +204,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   if (isAmp) {
     return (
       <div
-        className="max-w-3xl mx-auto py-6"
+        className="w-full py-4"
         onClickCapture={handleStoryContentTouchOrClick}
         onTouchEndCapture={handleStoryContentTouchOrClick}
       >
@@ -225,14 +224,14 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
   return (
     <div
-      className="max-w-4xl mx-auto"
+      className="w-full"
       onClickCapture={handleStoryContentTouchOrClick}
       onTouchEndCapture={handleStoryContentTouchOrClick}
     >
       <div className="space-y-6">
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
           <a
-            href={ fullStoryPageUrl }
+            href={fullStoryPageUrl}
             onClick={(e) => {
               e.preventDefault();
               handleStoryContentTouchOrClick();
@@ -317,22 +316,15 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             </header>
 
             <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-200 select-text">
-              {paragraphs.map((para, i) => {
-                const insertAfterIndex = paragraphs.length >= 3 ? 1 : 0;
-                return (
-                  <React.Fragment key={i}>
-                    <p
-                      data-reading-content
-                      className="leading-[1.95] tracking-normal break-words"
-                    >
-                      {para}
-                    </p>
-                    {i === insertAfterIndex && (
-                      <StoryBanner468 refreshKey={`${story.slug}-p2`} />
-                    )}
-                  </React.Fragment>
-                );
-              })}
+              {paragraphs.map((para, i) => (
+                <p
+                  key={i}
+                  data-reading-content
+                  className="leading-[1.95] tracking-normal break-words"
+                >
+                  {para}
+                </p>
+              ))}
             </div>
 
             <blockquote className="mt-6 p-4 rounded-lg bg-[#0d152b] border-l-4 border-blue-500 text-xs sm:text-sm text-slate-300 space-y-1">
@@ -348,10 +340,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 </a>
               </p>
             </blockquote>
-
-            {/* Free space below story body: 468x60 Banner + Native Banner */}
-            <StoryBanner468 refreshKey={`${story.slug}-bottom`} className="mt-6" />
-            <NativeBanner refreshKey={story.slug} className="mt-4" />
 
             <footer className="mt-8 pt-6 border-t border-[#1e2d52] space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -387,3 +375,4 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     </div>
   );
 };
+

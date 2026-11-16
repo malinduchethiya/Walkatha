@@ -10,29 +10,29 @@
   }
 }
 
-/* 3-column x 5-row gallery grid */
+/* 4-column gallery grid */
 .story-grid-3x5,
 .story-grid-2col {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 14px;
-  row-gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 10px;
+  row-gap: 12px;
   width: 100%;
 }
 
 @media (min-width: 640px) {
   .story-grid-3x5,
   .story-grid-2col {
-    column-gap: 18px;
-    row-gap: 20px;
+    column-gap: 14px;
+    row-gap: 16px;
   }
 }
 
 @media (min-width: 1024px) {
   .story-grid-3x5,
   .story-grid-2col {
-    column-gap: 20px;
-    row-gap: 22px;
+    column-gap: 16px;
+    row-gap: 18px;
   }
 }
 
@@ -43,3 +43,4 @@
 :root:not(.dark) {
   color-scheme: light;
 }
+

@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Category, PaginatedResponse, Story, StoryFilterParams } from '../types/story';
 import { StoryService } from '../services/storyService';
-import { INITIAL_CATEGORIES } from '../data/seedStories';
 
 export function useStories(initialParams: StoryFilterParams = {}) {
   const mergedInitialParams: StoryFilterParams = {
@@ -16,12 +15,13 @@ export function useStories(initialParams: StoryFilterParams = {}) {
   const [response, setResponse] = useState<PaginatedResponse<Story>>({
     data: [],
     total: 0,
+    currentPage: 1,
     page: 1,
     totalPages: 1,
     hasMore: false,
     limit: 20,
   });
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 

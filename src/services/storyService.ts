@@ -119,6 +119,13 @@ function isDocDeleted(data: Record<string, any> | undefined): boolean {
   return Boolean(data.isDeleted === true || data.deleted === true || data.published === false);
 }
 
+export function normalizeFirestoreStory(
+  id: string,
+  data: Record<string, any>
+): Story & { chunkIndex?: number } {
+  return normalizeStoryDoc(id, data);
+}
+
 function normalizeStoryDoc(id: string, data: Record<string, any>): Story & { chunkIndex?: number } {
   const fullBody = stripZeroWidth(data.fullContent || data.content || '');
   const rawDesc = stripZeroWidth(data.shortDescription || data.description || data.excerpt || '');

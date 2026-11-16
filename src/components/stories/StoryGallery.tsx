@@ -1,7 +1,6 @@
 import React from 'react';
 import { Story, Category } from '../../types/story';
 import { StoryCard } from './StoryCard';
-import { NativeBanner } from '../common/NativeBanner';
 
 interface StoryGalleryProps {
   stories: Story[];
@@ -80,11 +79,11 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
       ? 'Wal Katha - Sinhala Wal Katha & Wela Katha'
       : `Wal Katha - ${selectedCategory}`);
 
-  // 3 columns x 5 rows = 15 stories per page
-  const displayedStories = stories.slice(0, 15);
+  // 4 columns x 5 rows = 20 stories per page
+  const displayedStories = stories.slice(0, 20);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 w-full">
       <h1 className="sr-only">{h1Label}</h1>
 
       {/* Sorting option & Story Count below header */}
@@ -113,13 +112,13 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         </div>
       </div>
 
-      {/* Stories Grid: 3 columns x 5 rows (15 items) */}
+      {/* Stories Grid: 4 columns */}
       {isLoading ? (
-        <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
-          {Array.from({ length: 15 }).map((_, idx) => (
+        <div className="story-grid-3x5 grid grid-cols-4 gap-3 sm:gap-4 w-full">
+          {Array.from({ length: 20 }).map((_, idx) => (
             <div
               key={idx}
-              className="min-w-0 w-full h-52 sm:h-60 rounded-xl bg-[#111a33] p-3 animate-pulse"
+              className="min-w-0 w-full h-36 sm:h-40 rounded-xl bg-[#111a33] p-3 animate-pulse"
             />
           ))}
         </div>
@@ -140,7 +139,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           </button>
         </div>
       ) : (
-        <div className="story-grid-3x5 grid grid-cols-3 gap-3 sm:gap-5">
+        <div className="story-grid-3x5 grid grid-cols-4 gap-3 sm:gap-4 w-full">
           {displayedStories.map((story) => (
             <StoryCard
               key={story.id}
@@ -151,9 +150,6 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           ))}
         </div>
       )}
-
-      {/* Native Banner below the 3x5 grid */}
-      <NativeBanner refreshKey={`${pageKind}-${selectedCategory}-${currentPage}`} />
 
       {/* Paginator Row */}
       <nav
@@ -225,3 +221,4 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
     </div>
   );
 };
+

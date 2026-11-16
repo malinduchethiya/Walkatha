@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-[#0d152b]/95 backdrop-blur border-b border-slate-200 dark:border-[#1e2d52] transition-colors">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      <div className="w-full px-2 sm:px-3">
         <div className="flex items-center justify-between h-14 gap-3">
           {/* Brand link */}
           <a

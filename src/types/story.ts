@@ -25,6 +25,7 @@ export interface Story {
   updatedDate?: string;
   createdAt?: string;
   updatedAt?: string;
+  date?: string;
 }
 
 export function toW3CDatetime(raw: unknown): string | null {
@@ -79,7 +80,7 @@ export function hasSubstantiveStoryChanges(
   incoming: Partial<Story> | Record<string, any>
 ): boolean {
   const norm = (v: unknown) => String(v || '').trim();
-  if ( incoming.title !== undefined && norm(incoming.title) !== norm(existing.title)) return true;
+  if (incoming.title !== undefined && norm(incoming.title) !== norm(existing.title)) return true;
   if (
     (incoming.fullContent !== undefined || incoming.content !== undefined) &&
     norm(incoming.fullContent || incoming.content) !== norm(existing.fullContent || existing.content)
@@ -113,6 +114,7 @@ export interface Category {
 
 export type ReadingTheme = 'light' | 'dark' | 'sepia';
 export type FontSize = 'sm' | 'md' | 'lg' | 'xl';
+export type FontFamily = 'serif' | 'sans';
 
 export interface StoryQueryParams {
   category?: string;
@@ -122,9 +124,17 @@ export interface StoryQueryParams {
   limit?: number;
 }
 
+export type StoryFilterParams = StoryQueryParams;
+
 export interface PagedResult<T> {
   data: T[];
   total: number;
   totalPages: number;
   currentPage: number;
+  page?: number;
+  hasMore?: boolean;
+  limit?: number;
 }
+
+export type PaginatedResponse<T> = PagedResult<T>;
+
