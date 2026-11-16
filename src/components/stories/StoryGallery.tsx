@@ -112,9 +112,9 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         </div>
       </div>
 
-      {/* Stories Grid: 4 columns */}
+      {/* Stories Grid: 1 column on mobile, 2 on sm, 4 on lg */}
       {isLoading ? (
-        <div className="story-grid-3x5 grid grid-cols-4 gap-3 sm:gap-4 w-full">
+        <div className="story-grid-3x5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
           {Array.from({ length: 20 }).map((_, idx) => (
             <div
               key={idx}
@@ -139,7 +139,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           </button>
         </div>
       ) : (
-        <div className="story-grid-3x5 grid grid-cols-4 gap-3 sm:gap-4 w-full">
+        <div className="story-grid-3x5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
           {displayedStories.map((story) => (
             <StoryCard
               key={story.id}

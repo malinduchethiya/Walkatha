@@ -10,11 +10,11 @@
   }
 }
 
-/* 4-column gallery grid */
+/* Responsive gallery grid: 1 column on mobile, 2 on sm, 4 on lg */
 .story-grid-3x5,
 .story-grid-2col {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   column-gap: 10px !important;
   row-gap: 12px !important;
   width: 100%;
@@ -23,6 +23,7 @@
 @media (min-width: 640px) {
   .story-grid-3x5,
   .story-grid-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     column-gap: 14px !important;
     row-gap: 16px !important;
   }
@@ -31,6 +32,7 @@
 @media (min-width: 1024px) {
   .story-grid-3x5,
   .story-grid-2col {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     column-gap: 16px !important;
     row-gap: 18px !important;
   }

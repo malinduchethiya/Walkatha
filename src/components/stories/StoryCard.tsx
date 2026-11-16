@@ -64,7 +64,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           </h2>
 
           {excerpt && (
-            <p className="hidden sm:line-clamp-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p className="line-clamp-2 sm:line-clamp-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               {excerpt}
             </p>
           )}
