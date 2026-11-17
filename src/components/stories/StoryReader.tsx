@@ -197,6 +197,10 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       if (triggered) {
         isRedirectingThisTabRef.current = true;
         window.__storyContentAlreadySwapped = true;
+        window.setTimeout(() => {
+          isRedirectingThisTabRef.current = false;
+          window.__storyContentAlreadySwapped = false;
+        }, 1000);
       }
     }
   };

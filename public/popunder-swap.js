@@ -4,15 +4,10 @@
 
   var DEFAULT_AD_URL = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
   var REOPEN_STORAGE_KEY = 'walkathawa_reopened_story';
-  var HOME_RATE_LIMIT_KEY = 'walkathawa_popunder_rate_v1';
-  var STORY_LAST_TS_KEY = 'walkathawa_story_popunder_last_ts_v1';
+  var POPUNDER_LAST_TS_KEY = 'walkathawa_story_popunder_last_ts_v1';
 
-  // Homepage limit: 2 redirections per 1 minute (60,000 ms)
-  var MAX_HOME_REDIRECTS_PER_MINUTE = 2;
-  var ONE_MINUTE_MS = 60 * 1000;
-
-  // Story reader page limit: 1 popunder per 10 seconds (10,000 ms)
-  var STORY_COOLDOWN_MS = 10 * 1000;
+  // Popunder limit: 1 ad per 5 seconds (5,000 ms)
+  var POPUNDER_COOLDOWN_MS = 5 * 1000;
 
   var nativeOpen = window.open ? window.open.bind(window) : null;
   var nativeAnchorClick = HTMLAnchorElement.prototype.click;
@@ -40,59 +35,23 @@
     }
   }
 
-  function isStoryPagePath() {
-    var p = window.location.pathname || '';
-    return p.indexOf('/story/') === 0 || p.indexOf('/posts/') === 0;
-  }
-
-  // --- Homepage Rate Limiter (2 per 60s) ---
-  function getRecentHomeTimestamps() {
+  // --- Rate Limiter: 1 popunder per 5 seconds (5,000 ms) ---
+  function canTriggerPopunderRedirectNow() {
     var now = Date.now();
     try {
-      var raw = localStorage.getItem(HOME_RATE_LIMIT_KEY);
-      if (!raw) return [];
-      var parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter(function (ts) {
-        return typeof ts === 'number' && now - ts < ONE_MINUTE_MS;
-      });
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function canTriggerHomeRedirectNow() {
-    return getRecentHomeTimestamps().length < MAX_HOME_REDIRECTS_PER_MINUTE;
-  }
-
-  function recordHomeRedirectTimestamp() {
-    var now = Date.now();
-    var recent = getRecentHomeTimestamps();
-    recent.push(now);
-    try {
-      localStorage.setItem(HOME_RATE_LIMIT_KEY, JSON.stringify(recent));
-      // Also start the 10-second timer for the newly opened story tab
-      localStorage.setItem(STORY_LAST_TS_KEY, String(now));
-    } catch (e) {}
-  }
-
-  // --- Story Reader Rate Limiter (1 per 10s) ---
-  function canTriggerStoryRedirectNow() {
-    var now = Date.now();
-    try {
-      var raw = localStorage.getItem(STORY_LAST_TS_KEY);
+      var raw = localStorage.getItem(POPUNDER_LAST_TS_KEY);
       if (!raw) return true;
       var lastTs = parseInt(raw, 10);
       if (isNaN(lastTs)) return true;
-      return now - lastTs >= STORY_COOLDOWN_MS;
+      return now - lastTs >= POPUNDER_COOLDOWN_MS;
     } catch (e) {
       return true;
     }
   }
 
-  function recordStoryRedirectTimestamp() {
+  function recordPopunderRedirectTimestamp() {
     try {
-      localStorage.setItem(STORY_LAST_TS_KEY, String(Date.now()));
+      localStorage.setItem(POPUNDER_LAST_TS_KEY, String(Date.now()));
     } catch (e) {}
   }
 
@@ -111,7 +70,7 @@
       );
     } catch (e) {}
 
-    // 1. Open / reopen the story page in a new tab
+    // 1. Open / reopen the target page in a new tab
     if (nativeOpen) {
       try {
         nativeOpen(destUrl, '_blank');
@@ -130,28 +89,19 @@
     return true;
   }
 
-  // Used by Homepage / StoryCard (2 per 1 minute)
-  function triggerHomepagePopunderSwap(storyUrl, storySlug, explicitAdUrl) {
-    if (!canTriggerHomeRedirectNow()) {
+  // Used by Homepage / StoryCard & StoryReader (1 ad per 5 seconds)
+  function triggerPopunderSwap(storyUrl, storySlug, explicitAdUrl) {
+    if (!canTriggerPopunderRedirectNow()) {
       return false;
     }
-    recordHomeRedirectTimestamp();
+    recordPopunderRedirectTimestamp();
     return performNewTabAndAdRedirect(storyUrl, storySlug, explicitAdUrl);
   }
 
-  // Used by StoryReader while reading stories (1 per 10 seconds)
-  function triggerStoryReaderPopunderSwap(storyUrl, storySlug, explicitAdUrl) {
-    if (!canTriggerStoryRedirectNow()) {
-      return false;
-    }
-    recordStoryRedirectTimestamp();
-    return performNewTabAndAdRedirect(storyUrl, storySlug, explicitAdUrl);
-  }
-
-  window.__triggerStoryPopunderSwap = triggerHomepagePopunderSwap;
-  window.__triggerStoryReaderPopunderSwap = triggerStoryReaderPopunderSwap;
-  window.__canTriggerPopunderSwap = canTriggerHomeRedirectNow;
-  window.__canTriggerStoryReaderPopunderSwap = canTriggerStoryRedirectNow;
+  window.__triggerStoryPopunderSwap = triggerPopunderSwap;
+  window.__triggerStoryReaderPopunderSwap = triggerPopunderSwap;
+  window.__canTriggerPopunderSwap = canTriggerPopunderRedirectNow;
+  window.__canTriggerStoryReaderPopunderSwap = canTriggerPopunderRedirectNow;
 
   function handleAdsterraAttempt(adUrl) {
     if (adUrl && adUrl !== 'about:blank' && !isSameOriginUrl(adUrl)) {
@@ -159,15 +109,12 @@
     }
     if (window.__storyContentAlreadySwapped) return;
 
-    if (isStoryPagePath()) {
-      if (canTriggerStoryRedirectNow()) {
-        window.__storyContentAlreadySwapped = true;
-        recordStoryRedirectTimestamp();
-        performNewTabAndAdRedirect(window.location.href, window.location.pathname, adUrl);
-      }
-    } else if (canTriggerHomeRedirectNow()) {
+    if (canTriggerPopunderRedirectNow()) {
       window.__storyContentAlreadySwapped = true;
-      recordHomeRedirectTimestamp();
+      setTimeout(function () {
+        window.__storyContentAlreadySwapped = false;
+      }, 1000);
+      recordPopunderRedirectTimestamp();
       performNewTabAndAdRedirect(window.location.href, window.location.pathname, adUrl);
     }
   }
