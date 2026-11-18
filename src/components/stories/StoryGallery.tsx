@@ -118,7 +118,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           {Array.from({ length: 20 }).map((_, idx) => (
             <div
               key={idx}
-              className="min-w-0 w-full h-36 sm:h-40 rounded-xl bg-[#111a33] p-3 animate-pulse"
+              className="min-w-0 w-full h-64 sm:h-72 rounded-xl bg-[#111a33] p-3 animate-pulse"
             />
           ))}
         </div>

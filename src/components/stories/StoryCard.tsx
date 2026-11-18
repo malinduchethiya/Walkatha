@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
 
 interface StoryCardProps {
@@ -6,6 +6,8 @@ interface StoryCardProps {
   onSelect: (slug: string) => void;
   onSelectCategory?: (category: string) => void;
 }
+
+const FALLBACK_COVER = '/icon.png';
 
 export const StoryCard: React.FC<StoryCardProps> = ({
   story,
@@ -15,6 +17,14 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   const storyUrl = `/story/${encodeURIComponent(story.slug)}`;
   const categorySlug = story.category || 'romantic';
   const categoryLabel = story.categoryName || story.category || 'සිංහල කතා';
+  const resolvedCover =
+    story.coverImage && story.coverImage.trim() ? story.coverImage.trim() : FALLBACK_COVER;
+  const [imgSrc, setImgSrc] = useState<string>(resolvedCover);
+
+  useEffect(() => {
+    setImgSrc(resolvedCover);
+  }, [resolvedCover]);
+
   const excerpt =
     story.shortDescription ||
     story.description ||
@@ -39,7 +49,25 @@ export const StoryCard: React.FC<StoryCardProps> = ({
       style={{ border: 'none', boxShadow: 'none' }}
       className="group min-w-0 w-full bg-white dark:bg-[#111a33] rounded-xl overflow-hidden flex flex-col border-0 shadow-none outline-none ring-0 hover:bg-slate-50 dark:hover:bg-[#15203d] transition-colors"
     >
-      {/* Clean Card Content (no story image) */}
+      <a
+        href={storyUrl}
+        onClick={handleCardClick}
+        className="block w-full aspect-[16/9] bg-slate-200 dark:bg-[#0d152b] overflow-hidden shrink-0"
+      >
+        <img
+          src={imgSrc}
+          alt={story.title}
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            if (imgSrc !== FALLBACK_COVER) {
+              setImgSrc(FALLBACK_COVER);
+            }
+          }}
+          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+        />
+      </a>
+
       <div className="p-3 sm:p-4 flex flex-col flex-1 justify-between gap-2">
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-1.5 text-[10px] sm:text-[11px]">
