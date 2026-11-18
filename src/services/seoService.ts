@@ -104,8 +104,18 @@ export class SeoService {
     script.textContent = JSON.stringify(schemaData);
   }
 
-  static ensureHeadClosingScript(_enabled: boolean) {
-    // Popunder removed
+  static ensureHeadClosingScript(enabled = true) {
+    if (!enabled || typeof document === 'undefined' || !document.head) return;
+    const src = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
+    let script = document.head.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement('script');
+      script.setAttribute('data-cfasync', 'false');
+      script.src = src;
+    }
+    if (document.head.lastElementChild !== script) {
+      document.head.appendChild(script);
+    }
   }
 
   static updateHomeSeo(
@@ -212,7 +222,7 @@ export class SeoService {
           : []),
       ],
     });
-    this.ensureHeadClosingScript(!isCategory);
+    this.ensureHeadClosingScript(true);
   }
 
   /**
@@ -335,6 +345,7 @@ export class SeoService {
     if (typeof document !== 'undefined') document.title = title;
     this.setMetaTag('name', 'description', description);
     this.setCanonical(canonicalUrl);
+    this.ensureHeadClosingScript(true);
   }
 
   static updatePopularSeo() {
@@ -358,6 +369,7 @@ export class SeoService {
     const canonicalUrl = `${SITE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
     if (typeof document !== 'undefined') document.title = title;
     this.setCanonical(canonicalUrl);
+    this.ensureHeadClosingScript(true);
   }
 
   static updateSitemapPageSeo(_totalStories = 614) {
