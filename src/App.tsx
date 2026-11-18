@@ -51,6 +51,15 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
+    const existingPopunder = document.head.querySelector(`script[src="${POPUNDER_SRC}"]`);
+    if (!existingPopunder) {
+      const popunderScript = document.createElement('script');
+      popunderScript.setAttribute('data-cfasync', 'false');
+      popunderScript.src = POPUNDER_SRC;
+      document.head.appendChild(popunderScript);
+    }
+
     const SOCIALBAR_SRC = 'https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da';
     const existingSocial = document.body.querySelector(`script[src="${SOCIALBAR_SRC}"]`);
     if (!existingSocial) {

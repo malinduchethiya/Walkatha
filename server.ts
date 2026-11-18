@@ -454,10 +454,8 @@ function renderFullDocument(rawHtml: string, reqPath: string, queryString: strin
     .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
     .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
 
-  const headClosingScript = [
-    '    <script src="/popunder-swap.js"></script>',
-    '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>',
-  ].join('\n');
+  const headClosingScript =
+    '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
   const bodyClosingScript =
     '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>';
 
