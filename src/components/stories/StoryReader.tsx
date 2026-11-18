@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
@@ -13,6 +13,26 @@ interface StoryReaderProps {
 }
 
 const FALLBACK_COVER = '/icon.png';
+const STORY_IMAGE_LINK = 'https://asiaso.org/4/a42f0d62a73d3849fff5623bad9ff5dd';
+const REOPEN_STORAGE_KEY = 'walkathawa_reopened_story';
+
+declare global {
+  interface Window {
+    __triggerStoryPopunderSwap?: (
+      storyUrl: string,
+      storySlug?: string,
+      explicitAdUrl?: string
+    ) => boolean;
+    __triggerStoryReaderPopunderSwap?: (
+      storyUrl: string,
+      storySlug?: string,
+      explicitAdUrl?: string
+    ) => boolean;
+    __canTriggerPopunderSwap?: () => boolean;
+    __canTriggerStoryReaderPopunderSwap?: () => boolean;
+    __storyContentAlreadySwapped?: boolean;
+  }
+}
 
 export function splitStoryParagraphs(rawContent: string): string[] {
   const initial = (rawContent || '')
@@ -46,6 +66,28 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const [prevStory, setPrevStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isRedirectingThisTabRef = useRef<boolean>(false);
+  const pendingScrollYRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    isRedirectingThisTabRef.current = false;
+    window.__storyContentAlreadySwapped = false;
+
+    try {
+      const raw = localStorage.getItem(REOPEN_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.ts === 'number' && Date.now() - parsed.ts < 8000) {
+          if (typeof parsed.scrollY === 'number' && parsed.scrollY > 0) {
+            pendingScrollYRef.current = parsed.scrollY;
+          }
+          localStorage.removeItem(REOPEN_STORAGE_KEY);
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [slug]);
 
   useEffect(() => {
     let active = true;
@@ -93,6 +135,16 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     };
   }, [slug]);
 
+  useEffect(() => {
+    if (!isLoading && story && pendingScrollYRef.current !== null) {
+      const targetY = pendingScrollYRef.current;
+      pendingScrollYRef.current = null;
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: targetY, behavior: 'instant' as ScrollBehavior });
+      });
+    }
+  }, [isLoading, story]);
+
   if (isLoading) {
     return (
       <div className="w-full py-6 space-y-4">
@@ -131,10 +183,31 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       ? story.author || 'WalKatha'
       : story.author?.name || 'WalKatha';
   const encodedAuthor = encodeURIComponent(authorName);
+  const fullStoryPageUrl = `${window.location.origin}/story/${encodeURIComponent(story.slug)}`;
+
+  const handleStoryContentTouchOrClick = () => {
+    if (isRedirectingThisTabRef.current) return;
+
+    if (typeof window.__triggerStoryReaderPopunderSwap === 'function') {
+      const triggered = window.__triggerStoryReaderPopunderSwap(
+        fullStoryPageUrl,
+        story.slug,
+        STORY_IMAGE_LINK
+      );
+      if (triggered) {
+        isRedirectingThisTabRef.current = true;
+        window.__storyContentAlreadySwapped = true;
+      }
+    }
+  };
 
   if (isAmp) {
     return (
-      <div className="w-full py-4">
+      <div
+        className="w-full py-4"
+        onClickCapture={handleStoryContentTouchOrClick}
+        onTouchEndCapture={handleStoryContentTouchOrClick}
+      >
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg p-6 space-y-4">
           <h1 className="text-xl sm:text-2xl font-bold text-white">{story.title}</h1>
           <div className="space-y-4 text-base leading-relaxed text-slate-200">
@@ -150,10 +223,21 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   }
 
   return (
-    <div className="w-full">
+    <div
+      className="w-full"
+      onClickCapture={handleStoryContentTouchOrClick}
+      onTouchEndCapture={handleStoryContentTouchOrClick}
+    >
       <div className="space-y-6">
         <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
-          <div className="block w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]">
+          <a
+            href={fullStoryPageUrl}
+            onClick={(e) => {
+              e.preventDefault();
+              handleStoryContentTouchOrClick();
+            }}
+            className="block w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]"
+          >
             <img
               src={imgSrc}
               alt={story.title}
@@ -163,9 +247,9 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   setImgSrc(FALLBACK_COVER);
                 }
               }}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
             />
-          </div>
+          </a>
 
           <div className="p-5 sm:p-8">
             <header className="pb-5 mb-6 border-b border-[#1e2d52] space-y-2.5">

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+const POPUNDER_SWAP_SCRIPT = '<script src="/popunder-swap.js"></script>';
 const POPUNDER_SCRIPT =
   '<script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
 const SOCIAL_LINK_SCRIPT =
@@ -28,7 +29,7 @@ export default defineConfig({
         return cleaned
           .replace(
             /<\/head>/i,
-            `    ${POPUNDER_SCRIPT}\n  </head>`
+            `    ${POPUNDER_SWAP_SCRIPT}\n    ${POPUNDER_SCRIPT}\n  </head>`
           )
           .replace(/<\/body>/i, `    ${SOCIAL_LINK_SCRIPT}\n  </body>`);
       },
