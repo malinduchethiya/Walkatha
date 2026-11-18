@@ -8,23 +8,60 @@ function stripZW(val: unknown): string {
 }
 
 function readSyncStore(): { stories: any[]; categories: any[] } {
-  const candidates = [
-    path.resolve(process.cwd(), 'server-data', 'firestore-sync.json'),
-    path.resolve(process.cwd(), 'public', 'api-data', 'catalog.json'),
-  ];
-  for (const filePath of candidates) {
-    try {
-      if (fs.existsSync(filePath)) {
-        const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const syncPath = path.resolve(process.cwd(), 'server-data', 'firestore-sync.json');
+  try {
+    if (fs.existsSync(syncPath)) {
+      const raw = JSON.parse(fs.readFileSync(syncPath, 'utf8'));
+      const stories = Array.isArray(raw.stories) ? raw.stories : [];
+      if (stories.length > 0) {
         return {
-          stories: Array.isArray(raw.stories) ? raw.stories : [],
+          stories,
           categories: Array.isArray(raw.categories) ? raw.categories : [],
         };
       }
+    }
+  } catch {
+    // ignore
+  }
+
+  const catalogDirs = [
+    path.resolve(process.cwd(), 'public', 'api-data'),
+    path.resolve(process.cwd(), 'dist', 'api-data'),
+  ];
+  for (const apiDataDir of catalogDirs) {
+    const catalogPath = path.join(apiDataDir, 'catalog.json');
+    try {
+      if (!fs.existsSync(catalogPath)) continue;
+      const raw = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+      const byId = new Map<string, any>();
+      for (const s of Array.isArray(raw.stories) ? raw.stories : []) {
+        if (s && (s.id || s.slug)) byId.set(String(s.id || s.slug), { ...s });
+      }
+      const chunksDir = path.join(apiDataDir, 'chunks');
+      if (fs.existsSync(chunksDir)) {
+        for (const f of fs.readdirSync(chunksDir).filter((n) => n.endsWith('.json')).sort()) {
+          try {
+            const cRaw = JSON.parse(fs.readFileSync(path.join(chunksDir, f), 'utf8'));
+            for (const cs of Array.isArray(cRaw.stories) ? cRaw.stories : []) {
+              if (cs && (cs.id || cs.slug)) {
+                const k = String(cs.id || cs.slug);
+                byId.set(k, { ...(byId.get(k) || {}), ...cs });
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+      return {
+        stories: Array.from(byId.values()),
+        categories: Array.isArray(raw.categories) ? raw.categories : [],
+      };
     } catch {
       // ignore
     }
   }
+
   return { stories: [], categories: [] };
 }
 
@@ -100,7 +137,7 @@ export default async function handler(req: any, res: any) {
     return res.end(JSON.stringify({ categories: store.categories }));
   }
 
-  res.statusCode = 200;
+  res.statusCode = 404;
   res.setHeader('Content-Type', 'application/json');
-  return res.end(JSON.stringify({ status: 'ok', message: 'Walkathawa API endpoint' }));
+  return res.end(JSON.stringify({ error: 'Not found' }));
 }

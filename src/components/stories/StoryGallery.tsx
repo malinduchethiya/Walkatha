@@ -76,8 +76,8 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
   const h1Label =
     headingText ||
     (isStrictHome
-      ? 'Wal Katha - Sinhala Wal Katha & Wela Katha'
-      : `Wal Katha - ${selectedCategory}`);
+      ? 'Walkathawa (වල් කතාව) | Sinhala Stories Online'
+      : `Walkathawa — ${selectedCategory}`);
 
   // 4 columns x 5 rows = 20 stories per page
   const displayedStories = stories.slice(0, 20);
@@ -125,7 +125,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
       ) : displayedStories.length === 0 ? (
         <div className="bg-[#111a33] rounded-xl p-8 text-center">
           <p className="text-sm text-slate-300 mb-3">
-            ඔබ සෙවූ කතාව හමු නොවීය. සියලුම සිංහල වැල කතා පිරික්සන්න.
+            ඔබ සෙවූ කතාව හමු නොවීය. සියලුම සිංහල කතා පිරික්සන්න.
           </p>
           <button
             type="button"

@@ -43,10 +43,10 @@ export const HtmlSitemapPage: React.FC<HtmlSitemapPageProps> = ({
       <div className="bg-[#111a33] rounded-xl p-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg sm:text-2xl font-bold text-white">
-            Wal Katha — Complete Sitemap
+            Walkathawa — Complete Sitemap
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 mt-1">
-            Wal Katha වෙබ් අඩවියේ ඇති සියලුම සිංහල වැල කතා, වල් කතා සහ Wela Katha ({allStories.length}) එකම පිටුවකින්.
+            Walkathawa වෙබ් අඩවියේ ඇති සියලුම සිංහල කතා ({allStories.length}) එකම පිටුවකින්.
           </p>
         </div>
         <button
@@ -86,7 +86,7 @@ export const HtmlSitemapPage: React.FC<HtmlSitemapPageProps> = ({
 
       <section className="bg-[#111a33] rounded-xl p-5 space-y-3">
         <div className="text-sm sm:text-base font-bold text-white">
-          2. සියලුම සිංහල වැල කතා ලැයිස්තුව ({allStories.length} Stories)
+          2. සියලුම කතා ලැයිස්තුව ({allStories.length} Stories)
         </div>
         {isLoading ? (
           <p className="text-xs text-slate-500">කතා ලැයිස්තුව පූරණය වෙමින් පවතී...</p>
@@ -95,7 +95,7 @@ export const HtmlSitemapPage: React.FC<HtmlSitemapPageProps> = ({
             {allStories.map((story) => (
               <li key={story.id} className="truncate">
                 <a
-                  href={`/posts/${encodeURIComponent(story.slug)}`}
+                  href={`/story/${encodeURIComponent(story.slug)}`}
                   onClick={(e) => {
                     if (!e.ctrlKey && !e.metaKey) {
                       e.preventDefault();

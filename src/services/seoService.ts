@@ -4,28 +4,6 @@ export const SITE_URL = 'https://www.walkathawa.site';
 export const SITE_NAME = 'Walkathawa';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/icon.png`;
 
-export const PRIMARY_SINHALA_KEYWORDS = [
-  'සිංහල වල කතා',
-  'සිංහල වැල කතා',
-  'වල් කතා',
-  'වැල කතා',
-  'Sinhala Wal Katha',
-  'Wela Katha',
-  'Walkathawa',
-];
-
-export const TARGET_SITE_KEYWORDS = [
-  'සිංහල වල කතා',
-  'සිංහල වැල කතා',
-  'වල් කතා',
-  'වැල කතා',
-  'Sinhala Wal Katha',
-  'Wela Katha',
-  'Walkathawa',
-  'Sinhala Katha',
-  'Aluth wal katha',
-];
-
 export const HOME_FAQ_ENTRIES: { question: string; answer: string }[] = [];
 
 export function formatCleanTitle(rawTitle: string): string {
@@ -49,8 +27,8 @@ export function formatCleanDescription(rawDesc: string, fallbackTitle?: string):
 
   if (!cleaned || cleaned.length < 35) {
     const base = fallbackTitle
-      ? `${fallbackTitle} — සිංහල වල කතා (Sinhala Wal Katha) සහ අලුත්ම කතා Walkathawa වෙතින් නොමිලේ කියවන්න.`
-      : 'සිංහල වල කතා — අලුත්ම සිංහල කතා, වල් කතා සහ කෙටි කතා 600+ එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.';
+      ? `${fallbackTitle} — සිංහල කතා Walkathawa වෙතින් නොමිලේ කියවන්න.`
+      : 'Walkathawa (වල් කතාව) — අලුත්ම සිංහල කතා, ආදර කතා සහ කෙටි කතා එකතුව නොමිලේ කියවන්න.';
     return base.slice(0, 158);
   }
   if (cleaned.length <= 158) return cleaned;
@@ -69,6 +47,22 @@ export class SeoService {
       document.head.appendChild(element);
     }
     element.setAttribute('content', content);
+  }
+
+  private static removeMetaTag(attrName: 'name' | 'property', attrValue: string) {
+    if (typeof document === 'undefined') return;
+    const element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+  }
+
+  private static setRobots(robotsValue: string | null) {
+    if (!robotsValue) {
+      this.removeMetaTag('name', 'robots');
+      return;
+    }
+    this.setMetaTag('name', 'robots', robotsValue);
   }
 
   private static setLinkRel(rel: string, href: string | null) {
@@ -125,16 +119,19 @@ export class SeoService {
     totalPages = 1
   ) {
     const isCategory = Boolean(category && category.slug && category.slug !== 'all');
+    const categoryLabel = category?.sinhalaName || category?.name || category?.slug || '';
     const title = isCategory
-      ? `${category?.sinhalaName || category?.name} | Walkathawa`
+      ? page > 1
+        ? `${categoryLabel} — පිටුව ${page} | Walkathawa`
+        : `${categoryLabel} | Walkathawa`
       : page > 1
-      ? `සිංහල වල කතා — පිටුව ${page} | Walkathawa`
-      : `සිංහල වල කතා — අලුත්ම කතා | Walkathawa`;
+      ? `Walkathawa (වල් කතාව) — පිටුව ${page}`
+      : 'Walkathawa (වල් කතාව) | Sinhala Stories Online';
 
     const description = formatCleanDescription(
       isCategory
-        ? `${category?.sinhalaName || category?.name} — සිංහල වල කතා එකතුව Walkathawa වෙතින් කියවන්න.`
-        : 'සිංහල වල කතා — අලුත්ම සිංහල කතා, වල් කතා සහ කෙටි කතා 600+ එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.'
+        ? `${categoryLabel} — සිංහල කතා එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`
+        : 'Walkathawa (වල් කතාව) — අලුත්ම සිංහල කතා, ආදර කතා සහ කෙටි කතා එකතුව නොමිලේ කියවන්න.'
     );
 
     const basePath = isCategory
@@ -166,8 +163,9 @@ export class SeoService {
       document.title = title;
     }
 
+    this.removeMetaTag('name', 'keywords');
+    this.setRobots(null);
     this.setMetaTag('name', 'description', description);
-    this.setMetaTag('name', 'keywords', TARGET_SITE_KEYWORDS.join(', '));
     this.setMetaTag('property', 'og:type', 'website');
     this.setMetaTag('property', 'og:site_name', SITE_NAME);
     this.setMetaTag('property', 'og:title', title);
@@ -183,9 +181,9 @@ export class SeoService {
     this.setLinkRel('prev', prevUrl);
     this.setLinkRel('next', nextUrl);
 
-    const itemListElements = stories.slice(0, 30).map((story, idx) => ({
+    const itemListElements = stories.slice(0, 20).map((story, idx) => ({
       '@type': 'ListItem',
-      position: (page - 1) * 30 + idx + 1,
+      position: (page - 1) * 20 + idx + 1,
       name: story.title,
       url: `${SITE_URL}/story/${encodeURIComponent(story.slug)}`,
     }));
@@ -225,10 +223,6 @@ export class SeoService {
     this.ensureHeadClosingScript(true);
   }
 
-  /**
-   * Task 1: Uses resolveStoryTimestamps(story) for Article.datePublished and Article.dateModified
-   * so sitemap-stories.xml <lastmod> and Article.dateModified never disagree.
-   */
   static updateStorySeo(story: Story, _relatedStories: Story[] = []) {
     const title = formatCleanTitle(story.title);
     const bodyText = story.fullContent || story.content || '';
@@ -250,6 +244,8 @@ export class SeoService {
       document.title = title;
     }
 
+    this.removeMetaTag('name', 'keywords');
+    this.setRobots(null);
     this.setMetaTag('name', 'description', description);
     this.setMetaTag('property', 'og:type', 'article');
     this.setMetaTag('property', 'og:site_name', SITE_NAME);
@@ -286,7 +282,7 @@ export class SeoService {
       inLanguage: 'si-LK',
       wordCount,
       timeRequired: `PT${readingMinutes}M`,
-      articleSection: story.categoryName || story.category || 'සිංහල වල කතා',
+      articleSection: story.categoryName || story.category || 'සිංහල කතා',
       image: [imageUrl],
       ...(datePublished ? { datePublished } : {}),
       ...(dateModified ? { dateModified } : {}),
@@ -322,7 +318,7 @@ export class SeoService {
             {
               '@type': 'ListItem',
               position: 2,
-              name: story.categoryName || story.category || 'සිංහල වල කතා',
+              name: story.categoryName || story.category || 'සිංහල කතා',
               item: `${SITE_URL}/category/${encodeURIComponent(story.category || 'romantic')}`,
             },
             {
@@ -339,40 +335,90 @@ export class SeoService {
   }
 
   static updateCategoriesSeo(_categories: Category[] = []) {
-    const title = 'වර්ගීකරණ | Walkathawa';
-    const description = 'සිංහල වල කතා වර්ගීකරණ එකතුව Walkathawa වෙතින් පිරික්සන්න.';
-    const canonicalUrl = `${SITE_URL}/categories`;
-    if (typeof document !== 'undefined') document.title = title;
-    this.setMetaTag('name', 'description', description);
-    this.setCanonical(canonicalUrl);
-    this.ensureHeadClosingScript(true);
+    this.updateStaticPageSeo(
+      'වර්ගීකරණ',
+      '/categories',
+      'Walkathawa සිංහල කතා වර්ගීකරණ එකතුව පිරික්සන්න.'
+    );
   }
 
   static updatePopularSeo() {
-    this.updateStaticPageSeo('ජනප්‍රිය කතා', '/popular');
+    this.updateStaticPageSeo(
+      'ජනප්‍රිය කතා',
+      '/popular',
+      'Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව.'
+    );
   }
 
   static updateArchivesSeo() {
-    this.updateStaticPageSeo('ලේඛනාගාරය', '/archives');
+    this.updateStaticPageSeo(
+      'ලේඛනාගාරය',
+      '/archives',
+      'Walkathawa සිංහල කතා ලේඛනාගාරය — පැරණි හා අලුත් කතා සියල්ල.'
+    );
   }
 
   static updateProfileSeo(authorName: string) {
-    this.updateStaticPageSeo(authorName, `/profile/${encodeURIComponent(authorName)}`);
+    this.updateStaticPageSeo(
+      authorName,
+      `/profile/${encodeURIComponent(authorName)}`,
+      `${authorName} විසින් Walkathawa හි පළ කරන ලද සිංහල කතා එකතුව.`
+    );
   }
 
   static updateSearchSeo() {
-    this.updateStaticPageSeo('සෙවුම් ප්‍රතිඵල', '/search');
+    this.updateNoIndexSeo('සෙවුම් ප්‍රතිඵල', '/search');
   }
 
-  static updateStaticPageSeo(pageTitle: string, canonicalPath: string) {
+  static updateNotFoundSeo() {
+    this.updateNoIndexSeo('404 — පිටුව හමු නොවීය', '/404');
+  }
+
+  static updateNoIndexSeo(pageTitle: string, canonicalPath?: string) {
     const title = `${pageTitle} | Walkathawa`;
-    const canonicalUrl = `${SITE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
     if (typeof document !== 'undefined') document.title = title;
-    this.setCanonical(canonicalUrl);
+    this.removeMetaTag('name', 'keywords');
+    this.setRobots('noindex, nofollow');
+    this.setLinkRel('prev', null);
+    this.setLinkRel('next', null);
+    if (canonicalPath && canonicalPath !== '/404') {
+      const canonicalUrl = `${SITE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
+      this.setCanonical(canonicalUrl);
+    }
     this.ensureHeadClosingScript(true);
   }
 
-  static updateSitemapPageSeo(_totalStories = 614) {
-    this.updateStaticPageSeo('සම්පූර්ණ කතා නාමාවලිය', '/sitemap');
+  static updateStaticPageSeo(pageTitle: string, canonicalPath: string, customDescription?: string) {
+    const title = `${pageTitle} | Walkathawa`;
+    const description =
+      customDescription ||
+      `${pageTitle} — Walkathawa (වල් කතාව) සිංහල කතා වෙබ් අඩවිය.`;
+    const canonicalUrl = `${SITE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
+    if (typeof document !== 'undefined') document.title = title;
+    this.removeMetaTag('name', 'keywords');
+    this.setRobots(null);
+    this.setMetaTag('name', 'description', description);
+    this.setMetaTag('property', 'og:type', 'website');
+    this.setMetaTag('property', 'og:site_name', SITE_NAME);
+    this.setMetaTag('property', 'og:title', title);
+    this.setMetaTag('property', 'og:description', description);
+    this.setMetaTag('property', 'og:url', canonicalUrl);
+    this.setMetaTag('property', 'og:image', DEFAULT_OG_IMAGE);
+    this.setMetaTag('name', 'twitter:card', 'summary_large_image');
+    this.setMetaTag('name', 'twitter:title', title);
+    this.setMetaTag('name', 'twitter:description', description);
+    this.setMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
+    this.setCanonical(canonicalUrl);
+    this.setLinkRel('prev', null);
+    this.setLinkRel('next', null);
+    this.ensureHeadClosingScript(true);
+  }
+
+  static updateSitemapPageSeo(_totalStories = 613) {
+    this.updateStaticPageSeo(
+      'සම්පූර්ණ කතා නාමාවලිය',
+      '/sitemap',
+      'Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා සහ වර්ගීකරණ එකම පිටුවකින්.'
+    );
   }
 }

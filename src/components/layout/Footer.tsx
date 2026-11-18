@@ -25,18 +25,17 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-400">
           <div>
             <div className="text-sm font-bold text-white mb-2">
-              Wal Katha - Sinhala Wal Katha &amp; Wela Katha
+              Walkathawa (වල් කතාව)
             </div>
             <p className="leading-relaxed">
-              ශ්‍රී ලංකාවේ විශාලතම සිංහල වැල කතා (Sinhala Wal Katha), වල් කතා, Wela Katha, Walkatha9,
-              අම්මා වල් කතා 2026, අක්කා මල්ලි කතා, ඇන්ටි කතා සහ පවුලේ වැල කතා එකතුව. දිනපතා අලුත් වන
-              රසවත් සිංහල කතා 600කට වැඩි ප්‍රමාණයක් නොමිලේ කියවන්න.
+              Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala
+              katha, romantic stories, fictional stories, and short stories updated regularly.
             </p>
           </div>
 
           <div>
             <div className="text-sm font-bold text-white mb-2">
-              සිංහල වල් කතා වර්ගීකරණ (Categories)
+              වර්ගීකරණ (Categories)
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1.5">
               {categories.map((cat) => {
@@ -85,7 +84,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* §9: Footer link list on every page: Privacy Policy, Terms and Conditions, Send Your Story, Disclaimer */}
         <div className="pt-4 border-t border-[#1c2b4f] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <span>© {new Date().getFullYear()} Wal Katha.</span>
+            <span>© {new Date().getFullYear()} Walkathawa.</span>
             <a
               href="/page/privacy-policy"
               onClick={(e) => handleLink(e, '/page/privacy-policy')}
@@ -116,6 +115,7 @@ export const Footer: React.FC<FooterProps> = ({
             </a>
             <a
               href="/admin"
+              rel="nofollow"
               onClick={(e) => handleLink(e, '/admin')}
               className="hover:underline text-slate-400"
             >
@@ -123,7 +123,7 @@ export const Footer: React.FC<FooterProps> = ({
             </a>
           </div>
           <span className="text-slate-400 font-medium">
-            Wal Katha - Sinhala Wal Katha &amp; Wela Katha
+            Walkathawa (වල් කතාව)
           </span>
         </div>
       </div>

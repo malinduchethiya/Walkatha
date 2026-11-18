@@ -38,10 +38,10 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-baseline gap-2 shrink-0"
           >
             <span className="text-lg font-bold tracking-tight text-[#0f172a] dark:text-white">
-              Wal Katha
+              Walkathawa
             </span>
             <span className="text-xs font-medium text-blue-700 dark:text-blue-400 hidden sm:inline">
-              සිංහල වැල කතා
+              වල් කතාව
             </span>
           </a>
 
@@ -52,8 +52,8 @@ export const Header: React.FC<HeaderProps> = ({
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="සිංහල වැල කතා, වල් කතා සොයන්න..."
-              aria-label="සිංහල වැල කතා සොයන්න"
+              placeholder="සිංහල කතා සොයන්න..."
+              aria-label="සිංහල කතා සොයන්න"
               className="w-full pl-9 pr-8 py-1.5 text-sm rounded-lg bg-slate-100 dark:bg-[#131f3e] text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 border border-slate-200 dark:border-[#243763] focus:outline-none focus:border-blue-600 dark:focus:border-blue-400"
             />
             {searchQuery && (

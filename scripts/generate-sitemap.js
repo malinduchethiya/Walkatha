@@ -341,8 +341,21 @@ async function generateSitemaps() {
     fs.mkdirSync(publicDir, { recursive: true });
   }
 
+  const legacySitemapFiles = [
+    'sitemap_index.xml',
+    'sitemap-main.xml',
+    'sitemap-stories.xml',
+    'sitemap2.xml',
+    'sitmap.xml',
+  ];
+
   fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), unifiedSitemapXml, 'utf8');
-  fs.writeFileSync(path.join(publicDir, 'sitemap_index.xml'), unifiedSitemapXml, 'utf8');
+  for (const legacyFile of legacySitemapFiles) {
+    const legacyPath = path.join(publicDir, legacyFile);
+    if (fs.existsSync(legacyPath)) {
+      fs.unlinkSync(legacyPath);
+    }
+  }
 
   // Generate lightweight /api-data/catalog.json + /api-data/chunks/chunk-N.json
   const CHUNK_SIZE = 105;
@@ -378,7 +391,12 @@ async function generateSitemaps() {
   const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {
     fs.writeFileSync(path.join(distDir, 'sitemap.xml'), unifiedSitemapXml, 'utf8');
-    fs.writeFileSync(path.join(distDir, 'sitemap_index.xml'), unifiedSitemapXml, 'utf8');
+    for (const legacyFile of legacySitemapFiles) {
+      const legacyPath = path.join(distDir, legacyFile);
+      if (fs.existsSync(legacyPath)) {
+        fs.unlinkSync(legacyPath);
+      }
+    }
 
     const distApiDataDir = path.join(distDir, 'api-data');
     const distChunksDir = path.join(distApiDataDir, 'chunks');

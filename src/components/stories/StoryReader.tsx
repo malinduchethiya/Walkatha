@@ -121,6 +121,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           setNextStory(next);
         } else {
           setStory(null);
+          SeoService.updateNotFoundSeo();
         }
       } catch {
         if (active) setStory(null);
@@ -180,8 +181,8 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const secondaryCatSlug = story.tags && story.tags[0] ? story.tags[0] : null;
   const authorName: string =
     typeof story.author === 'string'
-      ? story.author || 'WalKatha'
-      : story.author?.name || 'WalKatha';
+      ? story.author || 'Walkathawa'
+      : story.author?.name || 'Walkathawa';
   const encodedAuthor = encodeURIComponent(authorName);
   const fullStoryPageUrl = `${window.location.origin}/story/${encodeURIComponent(story.slug)}`;
 

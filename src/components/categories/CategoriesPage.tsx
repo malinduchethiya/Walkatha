@@ -22,10 +22,10 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
       <div className="bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] rounded-lg p-5 flex items-center justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-            සිංහල වැල කතා වර්ගීකරණ (Story Categories)
+            වර්ගීකරණ (Story Categories)
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">
-            ඔබ කැමතිම වල් කතා සහ සිංහල වැල කතා වර්ගීකරණය තෝරා කියවන්න.
+            Walkathawa හි ඔබ කැමතිම සිංහල කතා වර්ගීකරණය තෝරා කියවන්න.
           </p>
         </div>
         <button

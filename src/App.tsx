@@ -33,7 +33,7 @@ export function App() {
   const [staticSlug, setStaticSlug] = useState<StaticPageSlug>('privacy-policy');
   const [selectedStorySlug, setSelectedStorySlug] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedAuthor, setSelectedAuthor] = useState<string>('WalKatha');
+  const [selectedAuthor, setSelectedAuthor] = useState<string>('Walkathawa');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'oldest'>('latest');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -46,7 +46,7 @@ export function App() {
 
   useEffect(() => {
     testConnection();
-    document.documentElement.setAttribute('lang', 'en');
+    document.documentElement.setAttribute('lang', 'si');
     document.documentElement.classList.add('dark');
   }, []);
 
@@ -83,6 +83,7 @@ export function App() {
 
     if (path === '/admin' || path.startsWith('/admin/')) {
       setViewMode('admin');
+      SeoService.updateNoIndexSeo('Admin', '/admin');
       return;
     }
 
@@ -120,7 +121,7 @@ export function App() {
     }
 
     if (path.startsWith('/profile/') || path.startsWith('/followers/') || path.startsWith('/following/')) {
-      const author = path.replace(/^\/(profile|followers|following)\//, '').trim() || 'WalKatha';
+      const author = path.replace(/^\/(profile|followers|following)\//, '').trim() || 'Walkathawa';
       setSelectedAuthor(author);
       setViewMode('profile');
       setSelectedStorySlug(null);
@@ -180,6 +181,13 @@ export function App() {
         .replace(/\/amp$/, '')
         .trim();
       if (slug) {
+        if (path.startsWith('/posts/')) {
+          window.history.replaceState(
+            {},
+            '',
+            `/story/${encodeURIComponent(slug)}${isAmp ? '/amp' : ''}`
+          );
+        }
         setSelectedStorySlug(slug);
         setViewMode(isAmp ? 'amp-reader' : 'reader');
         return;
@@ -187,6 +195,7 @@ export function App() {
     }
 
     setViewMode('not-found');
+    SeoService.updateNotFoundSeo();
   }, []);
 
   useEffect(() => {

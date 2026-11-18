@@ -19,60 +19,66 @@ interface StaticPageProps {
   onBack: () => void;
 }
 
-const PAGE_MAP: Record<StaticPageSlug, { title: string; canonicalPath: string; body: string }> = {
+const PAGE_MAP: Record<
+  StaticPageSlug,
+  { title: string; canonicalPath: string; noIndex?: boolean; body: string }
+> = {
   'privacy-policy': {
     title: 'Privacy Policy',
     canonicalPath: '/page/privacy-policy',
-    body: `Wal Katha (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ඉහළින්ම ගරු කරයි.\n\n1. තොරතුරු රැස්කිරීම: අප පරිශීලකයන්ගේ පෞද්ගලික තොරතුරු අනවසරයෙන් රැස් නොකරයි.\n2. කුකීස්: වෙබ් අඩවියේ වේගය සහ ක්‍රියාකාරීත්වය වැඩිදියුණු කිරීමට පමණක් භාවිත වේ.`,
+    body: `Walkathawa (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ඉහළින්ම ගරු කරයි.\n\n1. තොරතුරු රැස්කිරීම: අප පරිශීලකයන්ගේ පෞද්ගලික තොරතුරු අනවසරයෙන් රැස් නොකරයි.\n2. කුකීස්: වෙබ් අඩවියේ වේගය සහ ක්‍රියාකාරීත්වය වැඩිදියුණු කිරීමට පමණක් භාවිත වේ.`,
   },
   privacy: {
     title: 'Privacy Policy',
     canonicalPath: '/page/privacy-policy',
-    body: `Wal Katha (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ඉහළින්ම ගරු කරයි.\n\n1. තොරතුරු රැස්කිරීම: අප පරිශීලකයන්ගේ පෞද්ගලික තොරතුරු අනවසරයෙන් රැස් නොකරයි.\n2. කුකීස්: වෙබ් අඩවියේ වේගය සහ ක්‍රියාකාරීත්වය වැඩිදියුණු කිරීමට පමණක් භාවිත වේ.`,
+    body: `Walkathawa (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ඉහළින්ම ගරු කරයි.\n\n1. තොරතුරු රැස්කිරීම: අප පරිශීලකයන්ගේ පෞද්ගලික තොරතුරු අනවසරයෙන් රැස් නොකරයි.\n2. කුකීස්: වෙබ් අඩවියේ වේගය සහ ක්‍රියාකාරීත්වය වැඩිදියුණු කිරීමට පමණක් භාවිත වේ.`,
   },
   'terms-and-conditions': {
     title: 'Terms and Conditions',
     canonicalPath: '/page/terms-and-conditions',
-    body: `Wal Katha වෙබ් අඩවිය භාවිතා කිරීමෙන් ඔබ පහත කොන්දේසි වලට එකඟ වේ:\n\n1. වයස් සීමාව: මෙම වෙබ් අඩවියේ පළවන සිංහල වැල කතා සහ වල් කතා නිර්මාණ වැඩිහිටියන් (18+) සඳහා පමණක් සීමා වේ.\n2. අන්තර්ගත භාවිතය: සියලු කතා හුදෙක් ප්‍රබන්ධ සහ සාහිත්‍ය රසවින්දනය සඳහා පමණක් පළකෙරේ.`,
+    body: `Walkathawa වෙබ් අඩවිය භාවිතා කිරීමෙන් ඔබ පහත කොන්දේසි වලට එකඟ වේ:\n\n1. වයස් සීමාව: මෙම වෙබ් අඩවියේ පළවන නිර්මාණ වැඩිහිටියන් (18+) සඳහා පමණක් සීමා වේ.\n2. අන්තර්ගත භාවිතය: සියලු කතා හුදෙක් ප්‍රබන්ධ සහ සාහිත්‍ය රසවින්දනය සඳහා පමණක් පළකෙරේ.`,
   },
   terms: {
     title: 'Terms and Conditions',
     canonicalPath: '/page/terms-and-conditions',
-    body: `Wal Katha වෙබ් අඩවිය භාවිතා කිරීමෙන් ඔබ පහත කොන්දේසි වලට එකඟ වේ:\n\n1. වයස් සීමාව: මෙම වෙබ් අඩවියේ පළවන සිංහල වැල කතා සහ වල් කතා නිර්මාණ වැඩිහිටියන් (18+) සඳහා පමණක් සීමා වේ.\n2. අන්තර්ගත භාවිතය: සියලු කතා හුදෙක් ප්‍රබන්ධ සහ සාහිත්‍ය රසවින්දනය සඳහා පමණක් පළකෙරේ.`,
+    body: `Walkathawa වෙබ් අඩවිය භාවිතා කිරීමෙන් ඔබ පහත කොන්දේසි වලට එකඟ වේ:\n\n1. වයස් සීමාව: මෙම වෙබ් අඩවියේ පළවන නිර්මාණ වැඩිහිටියන් (18+) සඳහා පමණක් සීමා වේ.\n2. අන්තර්ගත භාවිතය: සියලු කතා හුදෙක් ප්‍රබන්ධ සහ සාහිත්‍ය රසවින්දනය සඳහා පමණක් පළකෙරේ.`,
   },
   'send-your-story': {
     title: 'Send Your Story',
     canonicalPath: '/page/send-your-story',
-    body: `ඔබ විසින් රචිත නිර්මාණාත්මක සිංහල වැල කතා සහ වල් කතා Wal Katha වෙබ් අඩවියේ පළ කිරීමට අප වෙත එවන්න.\n\nEmail: stories@walkathawa.site\nTelegram: https://t.me/walkathawa`,
+    body: `ඔබ විසින් රචිත නිර්මාණාත්මක සිංහල කතා Walkathawa වෙබ් අඩවියේ පළ කිරීමට අප වෙත එවන්න.\n\nEmail: stories@walkathawa.site\nTelegram: https://t.me/walkathawa`,
   },
   disclaimer: {
     title: 'Disclaimer',
     canonicalPath: '/page/disclaimer',
-    body: `Wal Katha (walkathawa.site) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ (fictional adult stories) වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ කිසිදු සම්බන්ධයක් නොමැත. වයස අවුරුදු 18ට වැඩි පාඨකයන් සඳහා පමණි.`,
+    body: `Walkathawa (walkathawa.site) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ (fictional stories) වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ කිසිදු සම්බන්ධයක් නොමැත. වයස අවුරුදු 18ට වැඩි පාඨකයන් සඳහා පමණි.`,
   },
   about: {
     title: 'About Us',
     canonicalPath: '/about',
-    body: `Wal Katha යනු ශ්‍රී ලාංකික පාඨකයන් සඳහා වෙන්වූ අන්තර්ජාල සිංහල වැල කතා සහ වල් කතා කියවීමේ ප්‍රමුඛතම වේදිකාවයි.`,
+    body: `Walkathawa යනු ශ්‍රී ලාංකික පාඨකයන් සඳහා වෙන්වූ අන්තර්ජාල සිංහල කතා කියවීමේ වේදිකාවයි.`,
   },
   contact: {
     title: 'Contact Us',
     canonicalPath: '/contact',
-    body: `Wal Katha සම්බන්ධයෙන් ඕනෑම විමසීමක් සඳහා අප හා සම්බන්ධ වන්න:\n\nEmail: contact@walkathawa.site`,
+    body: `Walkathawa සම්බන්ධයෙන් ඕනෑම විමසීමක් සඳහා අප හා සම්බන්ධ වන්න:\n\nEmail: contact@walkathawa.site`,
   },
   login: {
     title: 'Login',
     canonicalPath: '/login',
-    body: `Wal Katha සාමාජික ගිණුමට පිවිසෙන්න.`,
+    noIndex: true,
+    body: `Walkathawa සාමාජික ගිණුමට පිවිසෙන්න.`,
   },
   register: {
     title: 'Register',
     canonicalPath: '/register',
-    body: `Wal Katha නව සාමාජික ගිණුමක් ලියාපදිංචි කරන්න.`,
+    noIndex: true,
+    body: `Walkathawa නව සාමාජික ගිණුමක් ලියාපදිංචි කරන්න.`,
   },
   'forgot-password': {
     title: 'Forgot Password',
     canonicalPath: '/forgot-password',
+    noIndex: true,
     body: `මුරපදය යළි පිහිටුවීම සඳහා ඔබගේ විද්‍යුත් තැපෑල භාවිත කරන්න.`,
   },
 };
@@ -81,8 +87,12 @@ export const StaticPage: React.FC<StaticPageProps> = ({ page, onBack }) => {
   const info = PAGE_MAP[page] || PAGE_MAP['privacy-policy'];
 
   useEffect(() => {
-    SeoService.updateStaticPageSeo(info.title, info.canonicalPath);
-  }, [info.title, info.canonicalPath]);
+    if (info.noIndex) {
+      SeoService.updateNoIndexSeo(info.title, info.canonicalPath);
+    } else {
+      SeoService.updateStaticPageSeo(info.title, info.canonicalPath);
+    }
+  }, [info.title, info.canonicalPath, info.noIndex]);
 
   return (
     <div className="max-w-3xl mx-auto py-8 space-y-4">
