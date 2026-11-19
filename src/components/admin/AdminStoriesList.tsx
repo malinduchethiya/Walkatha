@@ -329,7 +329,7 @@ export const AdminStoriesList: React.FC<AdminStoriesListProps> = ({
               <h3 className="text-base font-bold text-white">Delete Story Permanently?</h3>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Are you sure you want to delete <strong className="text-white">"{storyToDelete.title}"</strong>? This will permanently remove the story and any associated individual ad code from the website.
+              Are you sure you want to delete <strong className="text-white">"{storyToDelete.title}"</strong>? This will permanently remove the story from the website.
             </p>
             <div className="flex justify-end gap-3 pt-3">
               <button

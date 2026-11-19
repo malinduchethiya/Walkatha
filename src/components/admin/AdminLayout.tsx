@@ -4,7 +4,6 @@ import {
   BookOpen,
   PlusCircle,
   Tag,
-  Megaphone,
   Settings,
   LogOut,
   ExternalLink,

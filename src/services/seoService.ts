@@ -1,5 +1,4 @@
 import { Story, Category, resolveStoryTimestamps } from '../types/story';
-import { isSearchEngineCrawler } from '../utils/botDetection';
 import {
   SITE_ORIGIN,
   SITE_NAME,
@@ -124,21 +123,6 @@ export class SeoService {
     script.textContent = JSON.stringify(schemaData);
   }
 
-  static ensureHeadClosingScript(enabled = true) {
-    if (!enabled || typeof document === 'undefined' || !document.head) return;
-    if (isSearchEngineCrawler()) return;
-    const src = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
-    let script = document.head.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
-    if (!script) {
-      script = document.createElement('script');
-      script.setAttribute('data-cfasync', 'false');
-      script.src = src;
-    }
-    if (document.head.lastElementChild !== script) {
-      document.head.appendChild(script);
-    }
-  }
-
   static updateHomeSeo(
     category?: Category | null,
     page = 1,
@@ -255,7 +239,6 @@ export class SeoService {
       '@context': 'https://schema.org',
       '@graph': graphNodes,
     });
-    this.ensureHeadClosingScript(true);
   }
 
   static updateStorySeo(story: Story, _relatedStories: Story[] = []) {
@@ -380,7 +363,6 @@ export class SeoService {
         },
       ],
     });
-    this.ensureHeadClosingScript(true);
   }
 
   static updateCategoriesSeo(_categories: Category[] = []) {
@@ -435,7 +417,6 @@ export class SeoService {
     } else {
       this.setCanonical(null);
     }
-    this.ensureHeadClosingScript(true);
   }
 
   static updateStaticPageSeo(pageTitle: string, canonicalPath: string, customDescription?: string) {
@@ -485,7 +466,6 @@ export class SeoService {
         },
       ],
     });
-    this.ensureHeadClosingScript(true);
   }
 
   static updateSitemapPageSeo(_totalStories = 613) {

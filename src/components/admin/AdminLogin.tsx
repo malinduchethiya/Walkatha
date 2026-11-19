@@ -81,7 +81,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onBackToSite 
             Walkathawa <span className="text-rose-400 font-sans text-xl">(වල් කතාව)</span>
           </h2>
           <p className="mt-2 text-xs text-blue-200/80">
-            Secure administrative access for managing Sinhala stories, SEO, and ad monetization
+            Secure administrative access for managing Sinhala stories and SEO
           </p>
         </div>
 

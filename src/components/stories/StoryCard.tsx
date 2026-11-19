@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
-import { isSearchEngineCrawler } from '../../utils/botDetection';
 
 interface StoryCardProps {
   story: Story;
@@ -36,15 +35,6 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   const handleCardClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey || e.button === 1) return;
     e.preventDefault();
-    const fullStoryUrl = `${window.location.origin}${storyUrl}`;
-    if (
-      !isSearchEngineCrawler() &&
-      e.nativeEvent?.isTrusted &&
-      typeof window.__triggerStoryPopunderSwap === 'function' &&
-      window.__triggerStoryPopunderSwap(fullStoryUrl, story.slug)
-    ) {
-      return;
-    }
     onSelect(story.slug);
   };
 

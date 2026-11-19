@@ -190,14 +190,15 @@ async function runTests() {
     assert(catsDirRes.body.includes('rel="canonical" href="https://www.walkathawa.site/categories"'), 'Categories directory must have self-referencing canonical');
     console.log('✔ Categories Directory SSR verified');
 
-    // 16. Googlebot Ad Isolation
-    console.log('Testing: Search Engine Bot Ad Isolation (Googlebot)...');
+    // 16. Zero Ad Scripts Verification
+    console.log('Testing: Zero Ad Scripts (Googlebot)...');
     const botRes = await request('/', { 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' });
     assert.strictEqual(botRes.statusCode, 200, 'Googlebot homepage request must return 200');
-    assert(!botRes.body.includes('pl31237534.profitableratecpmnetwork.com'), 'Googlebot must NOT receive popunder ad scripts');
-    assert(!botRes.body.includes('highperformanceformat.com'), 'Googlebot must NOT receive 320x50 ad script');
-    assert(botRes.body.includes('[Ad Script Disabled for Search Engine Crawler]'), 'Googlebot must receive crawler-safe sanitized HTML');
-    console.log('✔ Googlebot Ad Isolation verified');
+    assert(!botRes.body.includes('popunder-swap.js'), 'Response must NOT receive popunder scripts');
+    assert(!botRes.body.includes('ahuramazda.org'), 'Response must NOT receive ahuramazda scripts');
+    assert(!botRes.body.includes('brijmohan.org'), 'Response must NOT receive brijmohan scripts');
+    assert(!botRes.body.includes('asiaso.org'), 'Response must NOT receive asiaso links');
+    console.log('✔ Zero Ad Scripts verified');
 
     // 17. Rich Article Schema & Contextual Related Stories
     console.log('Testing: Rich Article Schema & Contextual Related Stories...');

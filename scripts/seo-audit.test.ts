@@ -138,6 +138,18 @@ test('dist build artifacts: robots.txt, strict GSC sitemap.xml, _worker.js, and 
   assert.ok(sitemap.includes('<loc>https://www.walkathawa.site/about</loc>'));
   assert.ok(sitemap.includes('<loc>https://www.walkathawa.site/category/wife</loc>'));
 
+  assert.ok(!fs.existsSync(path.join(DIST_DIR, 'popunder-swap.js')), 'dist/popunder-swap.js must not exist');
+  const POPUNDER_SNIPPET =
+    '<script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
+  const countPopunder = (html: string) => html.split('ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e').length - 1;
+
+  const spaHtml = fs.readFileSync(path.join(DIST_DIR, '_spa.html'), 'utf8');
+  assert.ok(!spaHtml.includes('popunder-swap.js'), 'dist/_spa.html must not include popunder-swap.js');
+  assert.equal(countPopunder(spaHtml), 1, 'dist/_spa.html must have exactly 1 popunder script');
+  assert.match(spaHtml, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
+  assert.ok(!spaHtml.includes('brijmohan.org'), 'dist/_spa.html must not include brijmohan.org');
+  assert.ok(!spaHtml.includes('asiaso.org'), 'dist/_spa.html must not include asiaso.org');
+
   // Prerendered homepage, about, categories, category checks
   for (const check of [
     { file: 'index.html', expectedCanonical: 'https://www.walkathawa.site/' },
@@ -153,6 +165,12 @@ test('dist build artifacts: robots.txt, strict GSC sitemap.xml, _worker.js, and 
     assert.equal(canonicals.length, 1, `${check.file} must have exactly 1 canonical tag`);
     assert.equal(canonicals[0], check.expectedCanonical, `${check.file} canonical mismatch`);
     assert.ok(!html.includes('walkathawa.com'), `${check.file} must not contain walkathawa.com URLs`);
+    assert.ok(!html.includes('popunder-swap.js'), `${check.file} must not include popunder-swap.js`);
+    assert.equal(countPopunder(html), 1, `${check.file} must include exactly 1 popunder script`);
+    assert.ok(html.includes(POPUNDER_SNIPPET), `${check.file} must include exact popunder snippet`);
+    assert.match(html, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
+    assert.ok(!html.includes('brijmohan.org'), `${check.file} must not include brijmohan.org`);
+    assert.ok(!html.includes('asiaso.org'), `${check.file} must not include asiaso.org`);
     assert.ok(html.includes('application/ld+json'), `${check.file} must include JSON-LD`);
   }
 
@@ -182,18 +200,36 @@ test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC si
   const sampleSlug = getSampleStorySlug();
   const encodedSlug = encodeURIComponent(sampleSlug);
 
-  // 1. Homepage 200
+  // 1. Homepage 200 (human response has exactly 1 popunder right before </head>)
+  const countPopunder = (html: string) => html.split('ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e').length - 1;
   const homeRes = await worker.fetch(new Request('https://www.walkathawa.site/'), env);
   assert.equal(homeRes.status, 200);
   const homeHtml = await homeRes.text();
   assert.ok(homeHtml.includes('rel="canonical" href="https://www.walkathawa.site/"'));
+  assert.ok(!homeHtml.includes('popunder-swap.js'));
+  assert.equal(countPopunder(homeHtml), 1);
+  assert.match(homeHtml, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
+  assert.ok(!homeHtml.includes('brijmohan.org'));
+  assert.ok(!homeHtml.includes('asiaso.org'));
 
   // 2. /posts -> 301 /
   const postsRes = await worker.fetch(new Request('https://www.walkathawa.site/posts'), env);
   assert.equal(postsRes.status, 301);
   assert.equal(postsRes.headers.get('Location'), 'https://www.walkathawa.site/');
 
-  // 3. Existing story -> 200 + BlogPosting + Googlebot ad stripping
+  // 3. Existing story -> 200 + BlogPosting + 1 popunder for humans, 0 for Googlebot
+  const storyHumanRes = await worker.fetch(
+    new Request(`https://www.walkathawa.site/story/${encodedSlug}`),
+    env
+  );
+  assert.equal(storyHumanRes.status, 200);
+  const storyHumanHtml = await storyHumanRes.text();
+  assert.ok(!storyHumanHtml.includes('popunder-swap.js'));
+  assert.equal(countPopunder(storyHumanHtml), 1);
+  assert.match(storyHumanHtml, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
+  assert.ok(!storyHumanHtml.includes('brijmohan.org'));
+  assert.ok(!storyHumanHtml.includes('asiaso.org'));
+
   const storyBotRes = await worker.fetch(
     new Request(`https://www.walkathawa.site/story/${encodedSlug}`, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
@@ -208,6 +244,9 @@ test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC si
   );
   assert.ok(storyBotHtml.includes('"@type": "BlogPosting"'));
   assert.ok(!storyBotHtml.includes('popunder-swap.js'));
+  assert.ok(!storyBotHtml.includes('ahuramazda.org'));
+  assert.ok(!storyBotHtml.includes('brijmohan.org'));
+  assert.ok(!storyBotHtml.includes('asiaso.org'));
 
   // 4. Missing story -> real HTTP 404 + noindex
   const missingStoryRes = await worker.fetch(
@@ -239,4 +278,24 @@ test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC si
     apexRes.headers.get('Location'),
     `https://www.walkathawa.site/story/${encodedSlug}`
   );
+});
+
+test('BannerAd: exact side (160x600) and home middle (320x50) atOptions snippets', async () => {
+  const {
+    SIDE_BANNER_CONFIG,
+    HOME_MIDDLE_BANNER_CONFIG,
+    buildBannerSrcDoc,
+  } = await import('../src/components/common/BannerAd.tsx');
+
+  const sideDoc = buildBannerSrcDoc(SIDE_BANNER_CONFIG);
+  assert.ok(sideDoc.includes("'key' : '05ee890ed059b98d213910f338ece6d0'"));
+  assert.ok(sideDoc.includes("'height' : 600"));
+  assert.ok(sideDoc.includes("'width' : 160"));
+  assert.ok(sideDoc.includes('<script src="https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0"></script>'));
+
+  const midDoc = buildBannerSrcDoc(HOME_MIDDLE_BANNER_CONFIG);
+  assert.ok(midDoc.includes("'key' : '2e5f19d0bbe93686082673c139a7b1b1'"));
+  assert.ok(midDoc.includes("'height' : 50"));
+  assert.ok(midDoc.includes("'width' : 320"));
+  assert.ok(midDoc.includes('<script src="https://brijmohan.org/22/2e5f19d0bbe93686082673c139a7b1b1"></script>'));
 });

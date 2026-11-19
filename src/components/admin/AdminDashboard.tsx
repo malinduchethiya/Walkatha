@@ -3,7 +3,6 @@ import {
   BookOpen,
   CheckCircle,
   FileText,
-  Megaphone,
   Plus,
   ArrowUpRight,
   Sparkles,

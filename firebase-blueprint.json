@@ -34,8 +34,7 @@
         "readingTime": "number",
         "views": "number",
         "published": "boolean",
-        "featured": "boolean",
-        "directAdLink": "string"
+        "featured": "boolean"
       }
     },
     {
@@ -65,24 +64,6 @@
         "googleAnalyticsId": "string",
         "searchConsoleVerification": "string",
         "publisherName": "string"
-      }
-    },
-    {
-      "name": "advertisements",
-      "description": "Global ads. Use document ID 'settings'",
-      "schema": {
-        "enabled": "boolean",
-        "globalDirectLink": "string",
-        "maxTriggers": "number",
-        "updatedAt": "string"
-      }
-    },
-    {
-      "name": "storyAdvertisements",
-      "description": "Story-specific ads. Document ID should be story ID",
-      "schema": {
-        "storyId": "string",
-        "adCode": "string"
       }
     }
   ]

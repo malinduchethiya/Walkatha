@@ -938,6 +938,9 @@ function resolveRouteForSsr(
   };
 }
 
+const POPUNDER_SCRIPT_TAG =
+  '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
+
 function renderFullDocument(
   rawHtml: string,
   reqPath: string,
@@ -966,22 +969,14 @@ function renderFullDocument(
     }
   }
 
-  const cleanedHtml = rawHtml
-    .replace(/<script[^>]*popunder-swap\.js[^>]*><\/script>\s*/gi, '')
-    .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
-    .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
-
   const isAdmin = normalizedPath === '/admin' || normalizedPath.startsWith('/admin/');
-  const skipAds = isBot || isAdmin || resolved.noIndex;
+  const popunderTag = isBot || isAdmin || resolved.noIndex ? '' : POPUNDER_SCRIPT_TAG;
 
-  // popunder-swap.js handles crawler isolation and loads human ad scripts cleanly once
-  const headClosingScript = skipAds ? '' : '\n    <script src="/popunder-swap.js"></script>';
-
-  const html = cleanedHtml
+  const html = rawHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${resolved.headHtml}${assetTags}${headClosingScript}\n  </head>`
+      `<head>\n${resolved.headHtml}${assetTags}${popunderTag}\n  </head>`
     )
     .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${resolved.bodyHtml}</div>`);
 

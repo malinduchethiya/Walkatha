@@ -8,7 +8,7 @@ import { Story, Category } from './types/story';
 import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
 import { testConnection } from './firebase';
-import { isSearchEngineCrawler } from './utils/botDetection';
+import { BannerAd, SIDE_BANNER_CONFIG } from './components/common/BannerAd';
 
 const CategoriesPage = lazy(() =>
   import('./components/categories/CategoriesPage').then((m) => ({ default: m.CategoriesPage }))
@@ -210,30 +210,6 @@ export function App() {
     document.documentElement.setAttribute('lang', 'si');
     document.documentElement.classList.add('dark');
   }, []);
-
-  useEffect(() => {
-    if (viewMode === 'admin' || isSearchEngineCrawler()) {
-      return;
-    }
-
-    const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
-    const existingPopunder = document.head.querySelector(`script[src="${POPUNDER_SRC}"]`);
-    if (!existingPopunder) {
-      const popunderScript = document.createElement('script');
-      popunderScript.setAttribute('data-cfasync', 'false');
-      popunderScript.src = POPUNDER_SRC;
-      document.head.appendChild(popunderScript);
-    }
-
-    const SOCIALBAR_SRC = 'https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da';
-    const existingSocial = document.body.querySelector(`script[src="${SOCIALBAR_SRC}"]`);
-    if (!existingSocial) {
-      const socialScript = document.createElement('script');
-      socialScript.setAttribute('data-cfasync', 'false');
-      socialScript.src = SOCIALBAR_SRC;
-      document.body.appendChild(socialScript);
-    }
-  }, [viewMode, selectedStorySlug, currentPage]);
 
   const parseRoute = useCallback(() => {
     const resolved = resolveRouteFromLocation();
@@ -447,8 +423,21 @@ export function App() {
         onOpenCategoriesPage={() => navigateTo('/categories')}
       />
 
-      <div className="flex-1 w-full px-2 sm:px-3 py-4">
-        <main className="w-full min-w-0">
+      <div className="flex-1 w-full px-2 sm:px-3 py-4 flex items-start justify-center gap-3">
+        <aside
+          aria-label="Left side banners"
+          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px]"
+        >
+          {[0, 1, 2, 3].map((idx) => (
+            <BannerAd
+              key={`left-side-${idx}`}
+              slotId={`left-side-${idx}`}
+              {...SIDE_BANNER_CONFIG}
+            />
+          ))}
+        </aside>
+
+        <main className="flex-1 min-w-0">
           {isGalleryView && (
             <StoryGallery
               stories={stories}
@@ -519,6 +508,19 @@ export function App() {
             </Suspense>
           )}
         </main>
+
+        <aside
+          aria-label="Right side banners"
+          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px]"
+        >
+          {[0, 1, 2, 3].map((idx) => (
+            <BannerAd
+              key={`right-side-${idx}`}
+              slotId={`right-side-${idx}`}
+              {...SIDE_BANNER_CONFIG}
+            />
+          ))}
+        </aside>
       </div>
 
       <Footer

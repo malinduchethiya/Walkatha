@@ -4,7 +4,7 @@ import { X, ShieldCheck } from 'lucide-react';
 interface PrivacyTermsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'privacy' | 'terms' | 'ads';
+  type: 'privacy' | 'terms';
 }
 
 export const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({
@@ -27,7 +27,6 @@ export const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({
             <span>
               {type === 'privacy' && 'Privacy Policy & Cookie Policy'}
               {type === 'terms' && 'Terms of Service'}
-              {type === 'ads' && 'Advertising & Privacy Notice'}
             </span>
           </div>
           <button
@@ -55,12 +54,6 @@ export const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({
               <p>
                 We use browser localStorage and cookies solely to preserve your reading preferences (e.g., navy/dark mode, comfortable font sizes) and to record read counts anonymously.
               </p>
-              <h5 className="font-bold text-white text-sm mt-3">
-                Third-Party Advertising Partners
-              </h5>
-              <p>
-                We work with authorized advertising networks to display relevant advertisements. These third-party partners may use cookies or non-personalized identifiers to deliver and measure ad performance.
-              </p>
             </>
           )}
 
@@ -81,22 +74,6 @@ export const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({
               <p>
                 We strive to keep the reading experience high-speed, lightweight, and accessible 24/7 across mobile and desktop devices.
               </p>
-            </>
-          )}
-
-          {type === 'ads' && (
-            <>
-              <h5 className="font-bold text-white text-sm">
-                Advertising Guidelines & Disclosures
-              </h5>
-              <p>
-                This platform is structured to ensure high readability while supporting content creators through ad monetization:
-              </p>
-              <ul className="list-disc pl-5 space-y-1 mt-2 text-blue-200/80">
-                <li>Advertisements comply with standard digital publishing policies</li>
-                <li>Popunders and direct sponsorships trigger responsibly with frequency limits</li>
-                <li>Content reading areas remain uninterrupted for optimal user experience</li>
-              </ul>
             </>
           )}
         </div>

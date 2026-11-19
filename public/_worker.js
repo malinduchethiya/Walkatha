@@ -3,11 +3,10 @@
  *
  * Responsibilities:
  * 1. Single-hop 301 canonical redirects (old domains, www, http, slashes, legacy paths)
- * 2. Canonical /robots.txt serving https://walkathawa.com/sitemap.xml
+ * 2. Canonical /robots.txt serving https://www.walkathawa.site/sitemap.xml
  * 3. Live Firestore-synced /sitemap.xml (edge-cached 5m, static fallback, auto sitemap-index >45k URLs)
  * 4. Live SSR HTML for published stories, categories, and pages + real HTTP 404 for missing/deleted routes
- * 5. Crawler isolation (removes ad scripts for Googlebot / crawlers and /admin, sets Vary: User-Agent)
- * 6. Authenticated POST /api/trigger-rebuild (Firebase ID token verified, purges edge cache, optional CF_DEPLOY_HOOK_URL)
+ * 5. Authenticated POST /api/trigger-rebuild (Firebase ID token verified, purges edge cache, optional CF_DEPLOY_HOOK_URL)
  */
 
 const SITE_ORIGIN = 'https://www.walkathawa.site';
@@ -458,7 +457,10 @@ function buildCardsShell(h1Text, storiesSlice, prevUrl = null, nextUrl = null) {
 </div>`;
 }
 
-function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isBot, isAdmin) {
+const POPUNDER_SCRIPT_TAG =
+  '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
+
+function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isBot = false, isAdmin = false) {
   const headMatch = rawSpaHtml.match(/<head>([\s\S]*?)<\/head>/i);
   const preservedAssets = [];
   if (headMatch) {
@@ -476,19 +478,13 @@ function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isBot, isAdmin) {
     }
   }
   const assetTags = preservedAssets.length > 0 ? `\n${preservedAssets.join('\n')}` : '';
-  const cleaned = rawSpaHtml
-    .replace(/<script[^>]*popunder-swap\.js[^>]*><\/script>\s*/gi, '')
-    .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
-    .replace(/<script[^>]*brijmohan\.org[^>]*><\/script>\s*/gi, '');
+  const popunderTag = isBot || isAdmin || headOpts.noIndex ? '' : POPUNDER_SCRIPT_TAG;
 
-  const skipAds = isBot || isAdmin || headOpts.noIndex;
-  const headAdScript = skipAds ? '' : '\n    <script src="/popunder-swap.js"></script>';
-
-  return cleaned
+  return rawSpaHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${buildHead(headOpts)}${assetTags}${headAdScript}\n  </head>`
+      `<head>\n${buildHead(headOpts)}${assetTags}${popunderTag}\n  </head>`
     )
     .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${bodyHtml}</div>`);
 }
@@ -827,7 +823,7 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    // 6. Dynamic SSR for HTML routes (ensures live Firestore stories, accurate 404s, and crawler isolation)
+    // 6. Dynamic SSR for HTML routes (ensures live Firestore stories and accurate 404s)
     const userAgent = request.headers.get('User-Agent') || '';
     const isBot = isBotUserAgent(userAgent);
     let decodedPath = pathname;

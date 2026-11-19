@@ -101,14 +101,7 @@ async function runVercelRouteTests() {
     assert(adminCatsRes.body.includes('/assets/'), 'Admin categories must contain React assets');
     console.log('✔ Admin categories direct navigation passed');
 
-    // 6. GET /admin/advertisements
-    console.log('6. Testing GET /admin/advertisements...');
-    const adminAdsRes = await testRequest('/admin/advertisements');
-    assert.strictEqual(adminAdsRes.statusCode, 200, 'Admin advertisements must return 200');
-    assert(adminAdsRes.body.includes('/assets/'), 'Admin advertisements must contain React assets');
-    console.log('✔ Admin advertisements direct navigation passed');
-
-    // 7. GET /search
+    // 6. GET /search
     console.log('7. Testing GET /search (Search page direct navigation / refresh)...');
     const searchRes = await testRequest('/search');
     assert.strictEqual(searchRes.statusCode, 200, 'Search page must return 200');

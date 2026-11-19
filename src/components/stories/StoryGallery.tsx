@@ -1,6 +1,7 @@
 import React from 'react';
 import { Story, Category } from '../../types/story';
 import { StoryCard } from './StoryCard';
+import { BannerAd, HOME_MIDDLE_BANNER_CONFIG } from '../common/BannerAd';
 
 interface StoryGalleryProps {
   stories: Story[];
@@ -141,13 +142,22 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
       ) : (
         <div className="story-grid-3x5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
           {displayedStories.map((story, idx) => (
-            <StoryCard
-              key={story.id}
-              story={story}
-              priority={idx < 2}
-              onSelect={onSelectStory}
-              onSelectCategory={onSelectCategory}
-            />
+            <React.Fragment key={story.id}>
+              <StoryCard
+                story={story}
+                priority={idx < 2}
+                onSelect={onSelectStory}
+                onSelectCategory={onSelectCategory}
+              />
+              {isStrictHome && (idx === 3 || idx === 7 || idx === 11) && (
+                <div className="col-span-full flex justify-center py-1">
+                  <BannerAd
+                    slotId={`home-middle-${idx === 3 ? 1 : idx === 7 ? 2 : 3}`}
+                    {...HOME_MIDDLE_BANNER_CONFIG}
+                  />
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </div>
       )}

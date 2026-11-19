@@ -146,10 +146,7 @@ function extractTemplateParts(rawSpaHtml) {
   }
   return {
     assetTags: preservedAssets.length > 0 ? `\n${preservedAssets.join('\n')}` : '',
-    baseHtml: rawSpaHtml
-      .replace(/<script[^>]*popunder-swap\.js[^>]*><\/script>\s*/gi, '')
-      .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
-      .replace(/<script[^>]*brijmohan\.org[^>]*><\/script>\s*/gi, ''),
+    baseHtml: rawSpaHtml,
   };
 }
 
@@ -197,14 +194,17 @@ function buildHead(opts) {
   return lines.join('\n');
 }
 
+const POPUNDER_SCRIPT_TAG =
+  '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
+
 function renderDocument(templateParts, headOpts, bodyHtml) {
   const headHtml = buildHead(headOpts);
-  const popunderScript = headOpts.noIndex ? '' : '\n    <script src="/popunder-swap.js"></script>';
+  const popunderTag = headOpts.noIndex ? '' : POPUNDER_SCRIPT_TAG;
   return templateParts.baseHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${headHtml}${templateParts.assetTags}${popunderScript}\n  </head>`
+      `<head>\n${headHtml}${templateParts.assetTags}${popunderTag}\n  </head>`
     )
     .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${bodyHtml}</div>`);
 }
