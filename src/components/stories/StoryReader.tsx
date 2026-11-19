@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
+import { isSearchEngineCrawler } from '../../utils/botDetection';
 
 interface StoryReaderProps {
   slug: string;
@@ -186,7 +187,9 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const encodedAuthor = encodeURIComponent(authorName);
   const fullStoryPageUrl = `${window.location.origin}/story/${encodeURIComponent(story.slug)}`;
 
-  const handleStoryContentTouchOrClick = () => {
+  const handleStoryContentTouchOrClick = (e?: React.SyntheticEvent) => {
+    if (isSearchEngineCrawler()) return;
+    if (e && e.nativeEvent && !e.nativeEvent.isTrusted) return;
     if (isRedirectingThisTabRef.current) return;
 
     if (typeof window.__triggerStoryReaderPopunderSwap === 'function') {

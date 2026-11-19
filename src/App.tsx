@@ -12,6 +12,7 @@ import { Story, Category } from './types/story';
 import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
 import { testConnection } from './firebase';
+import { isSearchEngineCrawler } from './utils/botDetection';
 
 type ViewMode =
   | 'home'
@@ -51,6 +52,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (viewMode === 'admin' || isSearchEngineCrawler()) {
+      return;
+    }
+
     const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
     const existingPopunder = document.head.querySelector(`script[src="${POPUNDER_SRC}"]`);
     if (!existingPopunder) {

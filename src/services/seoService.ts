@@ -1,4 +1,5 @@
 import { Story, Category, resolveStoryTimestamps } from '../types/story';
+import { isSearchEngineCrawler } from '../utils/botDetection';
 
 export const SITE_URL = 'https://www.walkathawa.site';
 export const SITE_NAME = 'Walkathawa';
@@ -100,6 +101,7 @@ export class SeoService {
 
   static ensureHeadClosingScript(enabled = true) {
     if (!enabled || typeof document === 'undefined' || !document.head) return;
+    if (isSearchEngineCrawler()) return;
     const src = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
     let script = document.head.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
     if (!script) {

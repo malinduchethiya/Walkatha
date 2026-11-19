@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { resolveStoryTimestamps, hasSubstantiveStoryChanges } from './src/types/story.js';
+import { isBotUserAgent } from './src/utils/botDetection.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -409,7 +410,12 @@ function buildStandardHead(opts: {
   return lines.join('\n');
 }
 
-function buildCardsShellHtml(h1Text: string, slice: any[]): string {
+function buildCardsShellHtml(
+  h1Text: string,
+  slice: any[],
+  prevUrl?: string | null,
+  nextUrl?: string | null
+): string {
   const cardsHtml = slice
     .map((s) => {
       const slug = encodeURIComponent(stripZW(s.slug || s.id));
@@ -418,11 +424,16 @@ function buildCardsShellHtml(h1Text: string, slice: any[]): string {
     })
     .join('\n');
 
+  const navLinks: string[] = [];
+  if (prevUrl) navLinks.push(`<a rel="prev" href="${escapeHtmlAttr(prevUrl)}">Previous</a>`);
+  if (nextUrl) navLinks.push(`<a rel="next" href="${escapeHtmlAttr(nextUrl)}">Next</a>`);
+  const navHtml = navLinks.length > 0 ? `\n  <nav aria-label="Pagination">${navLinks.join(' ')}</nav>` : '';
+
   return `<div class="ssr-shell">
   <h1 class="sr-only">${escapeHtmlText(h1Text)}</h1>
   <div class="story-grid-3x5">
     ${cardsHtml}
-  </div>
+  </div>${navHtml}
 </div>`;
 }
 
@@ -893,7 +904,7 @@ function resolveRouteForSsr(
         nextUrl,
         jsonLd,
       }),
-      bodyHtml: buildCardsShellHtml(title, pageStories),
+      bodyHtml: buildCardsShellHtml(title, pageStories, prevUrl, nextUrl),
     };
   }
 
@@ -914,8 +925,10 @@ function resolveRouteForSsr(
 function renderFullDocument(
   rawHtml: string,
   reqPath: string,
-  queryString: string
+  queryString: string,
+  isBot = false
 ): { html: string; status: number; noIndex: boolean } {
+  const normalizedPath = reqPath.replace(/\/+$/, '') || '/';
   const queryParams = new URLSearchParams(queryString);
   const resolved = resolveRouteForSsr(reqPath, queryParams);
 
@@ -940,21 +953,28 @@ function renderFullDocument(
     .replace(/<script[^>]*ahuramazda\.org[^>]*><\/script>\s*/gi, '')
     .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
 
-  const headClosingScript = [
-    '    <script src="/popunder-swap.js"></script>',
-    '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>',
-  ].join('\n');
-  const bodyClosingScript =
-    '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>';
+  const isAdmin = normalizedPath === '/admin' || normalizedPath.startsWith('/admin/');
+  const skipAds = isBot || isAdmin;
+
+  const headClosingScript = skipAds
+    ? ''
+    : '\n' +
+      [
+        '    <script src="/popunder-swap.js"></script>',
+        '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>',
+      ].join('\n');
+  const bodyClosingScript = skipAds
+    ? ''
+    : '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>\n';
 
   const html = cleanedHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${resolved.headHtml}${assetTags}\n${headClosingScript}\n  </head>`
+      `<head>\n${resolved.headHtml}${assetTags}${headClosingScript}\n  </head>`
     )
     .replace(/<div id="root"><\/div>/i, `<div id="root">${resolved.bodyHtml}</div>`)
-    .replace(/<\/body>/i, `${bodyClosingScript}\n  </body>`);
+    .replace(/<\/body>/i, `${bodyClosingScript}  </body>`);
 
   return { html, status: resolved.status, noIndex: resolved.noIndex };
 }
@@ -1219,7 +1239,9 @@ async function startServer() {
         template = await vite.transformIndexHtml(req.originalUrl, template);
         const [rawPath, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
         const reqPath = decodeURIComponent(rawPath || '/');
-        const rendered = renderFullDocument(template, reqPath, rawQuery);
+        const isBot = isBotUserAgent(String(req.headers['user-agent'] || ''));
+        const rendered = renderFullDocument(template, reqPath, rawQuery, isBot);
+        res.setHeader('Vary', 'User-Agent');
         if (rendered.noIndex) {
           res.setHeader('X-Robots-Tag', 'noindex, nofollow');
         }
@@ -1244,7 +1266,9 @@ async function startServer() {
         const rawHtml = fs.readFileSync(indexFile, 'utf8');
         const [rawPath, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
         const reqPath = decodeURIComponent(rawPath || '/');
-        const rendered = renderFullDocument(rawHtml, reqPath, rawQuery);
+        const isBot = isBotUserAgent(String(req.headers['user-agent'] || ''));
+        const rendered = renderFullDocument(rawHtml, reqPath, rawQuery, isBot);
+        res.setHeader('Vary', 'User-Agent');
         if (rendered.noIndex) {
           res.setHeader('X-Robots-Tag', 'noindex, nofollow');
           res.setHeader('Cache-Control', 'no-store');
