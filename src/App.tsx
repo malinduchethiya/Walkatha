@@ -428,7 +428,7 @@ export function App() {
           aria-label="Left side banners"
           className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px]"
         >
-          {[0, 1, 2, 3].map((idx) => (
+          {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
             <BannerAd
               key={`left-side-${idx}`}
               slotId={`left-side-${idx}`}
@@ -513,7 +513,7 @@ export function App() {
           aria-label="Right side banners"
           className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px]"
         >
-          {[0, 1, 2, 3].map((idx) => (
+          {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
             <BannerAd
               key={`right-side-${idx}`}
               slotId={`right-side-${idx}`}
