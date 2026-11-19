@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-const SITE_ORIGIN = 'https://walkathawa.com';
+const SITE_ORIGIN = 'https://www.walkathawa.site';
 const SITE_NAME = 'Walkathawa';
 const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/icon.png`;
 
@@ -25,8 +25,8 @@ const STATIC_PAGES = [
     route: '/page/privacy-policy',
     file: 'page/privacy-policy.html',
     title: 'Privacy Policy',
-    description: 'Walkathawa (walkathawa.com) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
-    body: 'Walkathawa (walkathawa.com) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
+    description: 'Walkathawa (walkathawa.site) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
+    body: 'Walkathawa (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
   },
   {
     route: '/page/terms-and-conditions',
@@ -46,8 +46,8 @@ const STATIC_PAGES = [
     route: '/page/disclaimer',
     file: 'page/disclaimer.html',
     title: 'Disclaimer',
-    description: 'Walkathawa (walkathawa.com) වගකීම් ප්‍රකාශය.',
-    body: 'Walkathawa (walkathawa.com) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
+    description: 'Walkathawa (walkathawa.site) වගකීම් ප්‍රකාශය.',
+    body: 'Walkathawa (walkathawa.site) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
   },
 ];
 

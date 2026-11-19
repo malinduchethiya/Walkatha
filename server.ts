@@ -83,8 +83,8 @@ const STATIC_PAGES: Record<
   '/page/privacy-policy': {
     title: 'Privacy Policy',
     canonicalPath: '/page/privacy-policy',
-    description: 'Walkathawa (walkathawa.com) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
-    body: 'Walkathawa (walkathawa.com) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
+    description: 'Walkathawa (walkathawa.site) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
+    body: 'Walkathawa (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
   },
   '/page/terms-and-conditions': {
     title: 'Terms and Conditions',
@@ -101,8 +101,8 @@ const STATIC_PAGES: Record<
   '/page/disclaimer': {
     title: 'Disclaimer',
     canonicalPath: '/page/disclaimer',
-    description: 'Walkathawa (walkathawa.com) වගකීම් ප්‍රකාශය.',
-    body: 'Walkathawa (walkathawa.com) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
+    description: 'Walkathawa (walkathawa.site) වගකීම් ප්‍රකාශය.',
+    body: 'Walkathawa (walkathawa.site) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
   },
 };
 

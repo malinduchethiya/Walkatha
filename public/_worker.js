@@ -10,19 +10,20 @@
  * 6. Authenticated POST /api/trigger-rebuild (Firebase ID token verified, purges edge cache, optional CF_DEPLOY_HOOK_URL)
  */
 
-const SITE_ORIGIN = 'https://walkathawa.com';
-const SITE_HOSTNAME = 'walkathawa.com';
+const SITE_ORIGIN = 'https://www.walkathawa.site';
+const SITE_HOSTNAME = 'www.walkathawa.site';
 const SITE_NAME = 'Walkathawa';
 const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/icon.png`;
 const FIREBASE_PROJECT_ID = 'walkathawa-93f80';
 const FIREBASE_API_KEY = 'AIzaSyDWIC_GSMIOliCrhHKPgZgNUAZKUZ96nh4';
 const DEFAULT_ADMIN_EMAIL = 'merlinfiverr0@gmail.com';
 const MAX_URLS_PER_SITEMAP = 45000;
+const BULK_MIGRATION_PREFIX = '2026-11-09T12:0';
 
 const LEGACY_HOSTS = new Set([
-  'www.walkathawa.com',
   'walkathawa.site',
-  'www.walkathawa.site',
+  'walkathawa.com',
+  'www.walkathawa.com',
 ]);
 
 const PRODUCTION_HOSTS = new Set([SITE_HOSTNAME, ...LEGACY_HOSTS]);
@@ -65,8 +66,8 @@ const STATIC_PAGE_CONTENT = {
   },
   '/page/privacy-policy': {
     title: 'Privacy Policy',
-    description: 'Walkathawa (walkathawa.com) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
-    body: 'Walkathawa (walkathawa.com) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
+    description: 'Walkathawa (walkathawa.site) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
+    body: 'Walkathawa (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
   },
   '/page/terms-and-conditions': {
     title: 'Terms and Conditions',
@@ -80,8 +81,8 @@ const STATIC_PAGE_CONTENT = {
   },
   '/page/disclaimer': {
     title: 'Disclaimer',
-    description: 'Walkathawa (walkathawa.com) වගකීම් ප්‍රකාශය.',
-    body: 'Walkathawa (walkathawa.com) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
+    description: 'Walkathawa (walkathawa.site) වගකීම් ප්‍රකාශය.',
+    body: 'Walkathawa (walkathawa.site) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
   },
 };
 
@@ -521,70 +522,66 @@ async function handleSitemapRequest(request, env, ctx, shardNumber = null) {
   }
 
   const seenLocs = new Set();
-  const nowMs = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
   let latestStoryMod = null;
   const storyBlocks = [];
 
+  const toValidAsciiLoc = (rawUrl) => {
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.origin !== SITE_ORIGIN) return null;
+      const href = parsed.href;
+      if (href.length > 2048 || !/^[\x21-\x7E]+$/.test(href)) return null;
+      return href;
+    } catch {
+      return null;
+    }
+  };
+
   for (const story of store.stories) {
-    const loc = `${SITE_ORIGIN}/story/${encodeSlug(story.slug || story.id)}`;
-    if (seenLocs.has(loc)) continue;
+    const loc = toValidAsciiLoc(`${SITE_ORIGIN}/story/${encodeSlug(story.slug || story.id)}`);
+    if (!loc || seenLocs.has(loc)) continue;
     seenLocs.add(loc);
-    const lastmod =
-      toIsoDate(story.updatedAt || story.updatedDate) ||
+
+    const rawUpdated = typeof story.updatedAt === 'string' ? story.updatedAt : story.updatedDate;
+    const isBulkStamp =
+      typeof rawUpdated === 'string' && rawUpdated.startsWith(BULK_MIGRATION_PREFIX);
+    const iso =
+      (!isBulkStamp ? toIsoDate(rawUpdated) : null) ||
       toIsoDate(story.createdAt || story.uploadDate || story.uploadedDate) ||
       toIsoDate(story._updateTime);
+    const lastmod = iso ? iso.slice(0, 10) : null;
     if (lastmod && (!latestStoryMod || lastmod > latestStoryMod)) latestStoryMod = lastmod;
-    const ageDays = lastmod ? Math.max(0, (nowMs - new Date(lastmod).getTime()) / dayMs) : 365;
-    const changefreq = ageDays <= 7 ? 'daily' : ageDays <= 30 ? 'weekly' : ageDays <= 180 ? 'monthly' : 'yearly';
-    const priority = ageDays <= 7 ? '0.9' : ageDays <= 30 ? '0.8' : ageDays <= 180 ? '0.7' : '0.6';
-    const cover =
-      story.coverImage && String(story.coverImage).startsWith('http')
-        ? String(story.coverImage).trim()
-        : null;
 
     const lines = ['  <url>', `    <loc>${escapeXml(loc)}</loc>`];
     if (lastmod) lines.push(`    <lastmod>${escapeXml(lastmod)}</lastmod>`);
-    lines.push(`    <changefreq>${changefreq}</changefreq>`);
-    lines.push(`    <priority>${priority}</priority>`);
-    if (cover) {
-      lines.push('    <image:image>');
-      lines.push(`      <image:loc>${escapeXml(cover)}</image:loc>`);
-      lines.push(`      <image:title>${escapeXml(stripZW(story.title))}</image:title>`);
-      lines.push('    </image:image>');
-    }
     lines.push('  </url>');
     storyBlocks.push(lines.join('\n'));
   }
 
-  const topLastmod = latestStoryMod || new Date().toISOString();
+  const topLastmod = latestStoryMod || new Date().toISOString().slice(0, 10);
   const pageBlocks = [];
   for (const p of STATIC_SITE_PAGES) {
-    const loc = p.path === '/' ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${p.path}`;
-    if (seenLocs.has(loc)) continue;
+    const loc = toValidAsciiLoc(p.path === '/' ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${p.path}`);
+    if (!loc || seenLocs.has(loc)) continue;
     seenLocs.add(loc);
     pageBlocks.push(
       [
         '  <url>',
         `    <loc>${escapeXml(loc)}</loc>`,
         `    <lastmod>${escapeXml(topLastmod)}</lastmod>`,
-        `    <changefreq>${p.changefreq}</changefreq>`,
-        `    <priority>${p.priority}</priority>`,
         '  </url>',
       ].join('\n')
     );
   }
   for (const c of store.categories) {
-    const loc = `${SITE_ORIGIN}/category/${encodeSlug(c.slug || c.id)}`;
-    if (seenLocs.has(loc)) continue;
+    const loc = toValidAsciiLoc(`${SITE_ORIGIN}/category/${encodeSlug(c.slug || c.id)}`);
+    if (!loc || seenLocs.has(loc)) continue;
     seenLocs.add(loc);
     pageBlocks.push(
       [
         '  <url>',
         `    <loc>${escapeXml(loc)}</loc>`,
         `    <lastmod>${escapeXml(topLastmod)}</lastmod>`,
-        '    <changefreq>daily</changefreq>',
-        '    <priority>0.8</priority>',
         '  </url>',
       ].join('\n')
     );
@@ -605,7 +602,7 @@ async function handleSitemapRequest(request, env, ctx, shardNumber = null) {
       );
       xml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
         ...slice,
         '</urlset>',
         '',
@@ -636,7 +633,7 @@ async function handleSitemapRequest(request, env, ctx, shardNumber = null) {
     }
     xml = [
       '<?xml version="1.0" encoding="UTF-8"?>',
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
       ...allBlocks,
       '</urlset>',
       '',

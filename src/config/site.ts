@@ -1,12 +1,12 @@
-export const SITE_ORIGIN = 'https://walkathawa.com';
-export const SITE_HOSTNAME = 'walkathawa.com';
+export const SITE_ORIGIN = 'https://www.walkathawa.site';
+export const SITE_HOSTNAME = 'www.walkathawa.site';
 export const SITE_NAME = 'Walkathawa';
 export const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/icon.png`;
 
 export const LEGACY_REDIRECT_HOSTS = new Set<string>([
-  'www.walkathawa.com',
   'walkathawa.site',
-  'www.walkathawa.site',
+  'walkathawa.com',
+  'www.walkathawa.com',
 ]);
 
 export const PRODUCTION_HOSTS = new Set<string>([

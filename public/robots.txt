@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /cgi-bin/
 
-Sitemap: https://walkathawa.com/sitemap.xml
+Sitemap: https://www.walkathawa.site/sitemap.xml

@@ -3,10 +3,9 @@ import path from 'path';
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, collection, getDocs, terminate } from 'firebase/firestore';
 
-const SITE_URL = 'https://walkathawa.com';
+const SITE_URL = 'https://www.walkathawa.site';
 const MAX_URLS_PER_SITEMAP = 45000;
-const NOW_MS = Date.now();
-const DAY_MS = 24 * 60 * 60 * 1000;
+const BULK_MIGRATION_PREFIX = '2026-11-09T12:0';
 
 const PRIMARY_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyDWIC_GSMIOliCrhHKPgZgNUAZKUZ96nh4',
@@ -73,56 +72,53 @@ function encodeSlug(rawSlug) {
   }
 }
 
-function toW3CDatetime(raw) {
+function toW3CDate(raw) {
   if (!raw) return null;
+  let d = null;
   if (typeof raw === 'object' && typeof raw.toDate === 'function') {
-    const d = raw.toDate();
-    return isNaN(d.getTime()) ? null : d.toISOString();
+    d = raw.toDate();
+  } else if (typeof raw === 'object' && typeof raw.seconds === 'number') {
+    d = new Date(raw.seconds * 1000);
+  } else if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    d = new Date(trimmed);
   }
-  if (typeof raw === 'object' && typeof raw.seconds === 'number') {
-    const d = new Date(raw.seconds * 1000);
-    return isNaN(d.getTime()) ? null : d.toISOString();
-  }
-  if (typeof raw !== 'string') return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const parsed = new Date(trimmed);
-  if (isNaN(parsed.getTime())) return null;
-  return parsed.toISOString();
+  if (!d || isNaN(d.getTime())) return null;
+  const iso = d.toISOString();
+  // Clean W3C YYYY-MM-DD format accepted universally by Google Search Console
+  return iso.slice(0, 10);
 }
 
 function resolveStoryLastmod(story) {
-  const updatedW3C = toW3CDatetime(story.updatedAt || story.updatedDate);
-  const createdW3C = toW3CDatetime(story.createdAt || story.uploadDate || story.uploadedDate);
+  const rawUpdated = typeof story.updatedAt === 'string' ? story.updatedAt : story.updatedDate;
+  const isBulkStamp =
+    typeof rawUpdated === 'string' && rawUpdated.startsWith(BULK_MIGRATION_PREFIX);
 
-  if (updatedW3C) {
-    return { lastmod: updatedW3C, source: 'updatedAt' };
+  const updatedDate = !isBulkStamp ? toW3CDate(rawUpdated) : null;
+  const createdDate = toW3CDate(story.createdAt || story.uploadDate || story.uploadedDate);
+
+  if (updatedDate) {
+    return { lastmod: updatedDate, source: 'updatedAt' };
   }
-  if (createdW3C) {
-    return { lastmod: createdW3C, source: 'createdAt' };
+  if (createdDate) {
+    return { lastmod: createdDate, source: 'createdAt' };
   }
   return { lastmod: null, source: 'none' };
 }
 
-function getRecencyChangefreqAndPriority(lastmodIso) {
-  if (!lastmodIso) {
-    return { changefreq: 'yearly', priority: '0.6' };
+function toValidAsciiSitemapLoc(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.origin !== SITE_URL) return null;
+    const href = parsed.href;
+    if (href.length > 2048) return null;
+    // RFC 3986 / Sitemap Protocol requires strictly ASCII printable URLs with no whitespace
+    if (!/^[\x21-\x7E]+$/.test(href)) return null;
+    return href;
+  } catch {
+    return null;
   }
-  const ts = new Date(lastmodIso).getTime();
-  if (isNaN(ts)) {
-    return { changefreq: 'yearly', priority: '0.6' };
-  }
-  const ageDays = Math.max(0, (NOW_MS - ts) / DAY_MS);
-  if (ageDays <= 7) {
-    return { changefreq: 'daily', priority: '0.9' };
-  }
-  if (ageDays <= 30) {
-    return { changefreq: 'weekly', priority: '0.8' };
-  }
-  if (ageDays <= 180) {
-    return { changefreq: 'monthly', priority: '0.7' };
-  }
-  return { changefreq: 'yearly', priority: '0.6' };
 }
 
 function isPublishableStory(story) {
@@ -306,7 +302,7 @@ async function loadStore() {
 function buildUrlsetXml(urlBlocks) {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ...urlBlocks,
     '</urlset>',
     '',
@@ -379,8 +375,8 @@ async function generateSitemaps() {
 
   for (const story of stories) {
     const encoded = encodeSlug(story.slug);
-    const loc = `${SITE_URL}/story/${encoded}`;
-    if (seenLocs.has(loc)) continue;
+    const loc = toValidAsciiSitemapLoc(`${SITE_URL}/story/${encoded}`);
+    if (!loc || seenLocs.has(loc)) continue;
     seenLocs.add(loc);
 
     const { lastmod, source: modSource } = resolveStoryLastmod(story);
@@ -393,56 +389,36 @@ async function generateSitemaps() {
       latestStoryMod = lastmod;
     }
 
-    const { changefreq, priority } = getRecencyChangefreqAndPriority(lastmod);
-    const coverUrl =
-      story.coverImage && String(story.coverImage).startsWith('http')
-        ? String(story.coverImage).trim()
-        : null;
-
     const lines = ['  <url>', `    <loc>${escapeXml(loc)}</loc>`];
     if (lastmod) {
       lines.push(`    <lastmod>${escapeXml(lastmod)}</lastmod>`);
-    }
-    lines.push(`    <changefreq>${changefreq}</changefreq>`);
-    lines.push(`    <priority>${priority}</priority>`);
-    if (coverUrl) {
-      lines.push('    <image:image>');
-      lines.push(`      <image:loc>${escapeXml(coverUrl)}</image:loc>`);
-      lines.push(`      <image:title>${escapeXml(story.title)}</image:title>`);
-      lines.push('    </image:image>');
     }
     lines.push('  </url>');
     storyEntries.push(lines.join('\n'));
   }
 
-  const topLastmod = latestStoryMod || new Date().toISOString();
+  const topLastmod = latestStoryMod || new Date().toISOString().slice(0, 10);
   const pageEntries = [];
 
   const staticAndCategoryItems = [
     ...STATIC_SITE_PAGES.map((p) => ({
-      loc: p.path === '/' ? `${SITE_URL}/` : `${SITE_URL}${p.path}`,
+      loc: toValidAsciiSitemapLoc(p.path === '/' ? `${SITE_URL}/` : `${SITE_URL}${p.path}`),
       lastmod: topLastmod,
-      changefreq: p.changefreq,
-      priority: p.priority,
     })),
     ...categories.map((c) => ({
-      loc: `${SITE_URL}/category/${encodeSlug(c.slug || c.id)}`,
+      loc: toValidAsciiSitemapLoc(`${SITE_URL}/category/${encodeSlug(c.slug || c.id)}`),
       lastmod: topLastmod,
-      changefreq: 'daily',
-      priority: '0.8',
     })),
   ];
 
   for (const u of staticAndCategoryItems) {
-    if (seenLocs.has(u.loc)) continue;
+    if (!u.loc || seenLocs.has(u.loc)) continue;
     seenLocs.add(u.loc);
     pageEntries.push(
       [
         '  <url>',
         `    <loc>${escapeXml(u.loc)}</loc>`,
         `    <lastmod>${escapeXml(u.lastmod)}</lastmod>`,
-        `    <changefreq>${u.changefreq}</changefreq>`,
-        `    <priority>${u.priority}</priority>`,
         '  </url>',
       ].join('\n')
     );
