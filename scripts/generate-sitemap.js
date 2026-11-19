@@ -3,7 +3,8 @@ import path from 'path';
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, collection, getDocs, terminate } from 'firebase/firestore';
 
-const SITE_URL = 'https://www.walkathawa.site';
+const SITE_URL = 'https://walkathawa.com';
+const MAX_URLS_PER_SITEMAP = 45000;
 const NOW_MS = Date.now();
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -38,6 +39,16 @@ const STATIC_SITE_PAGES = [
   { path: '/page/disclaimer', changefreq: 'monthly', priority: '0.4' },
 ];
 
+const CANONICAL_ROBOTS_TXT = [
+  'User-agent: *',
+  'Allow: /',
+  'Disallow: /admin',
+  'Disallow: /cgi-bin/',
+  '',
+  `Sitemap: ${SITE_URL}/sitemap.xml`,
+  '',
+].join('\n');
+
 function stripZW(val) {
   return String(val || '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -63,7 +74,16 @@ function encodeSlug(rawSlug) {
 }
 
 function toW3CDatetime(raw) {
-  if (!raw || typeof raw !== 'string') return null;
+  if (!raw) return null;
+  if (typeof raw === 'object' && typeof raw.toDate === 'function') {
+    const d = raw.toDate();
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof raw === 'object' && typeof raw.seconds === 'number') {
+    const d = new Date(raw.seconds * 1000);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
   const parsed = new Date(trimmed);
@@ -105,7 +125,19 @@ function getRecencyChangefreqAndPriority(lastmodIso) {
   return { changefreq: 'yearly', priority: '0.6' };
 }
 
-function withTimeout(promise, ms = 8000) {
+function isPublishableStory(story) {
+  if (!story || typeof story !== 'object') return false;
+  if (story.isDeleted || story.deleted) return false;
+  if (story.published === false) return false;
+  if (story.private === true || story.isPrivate === true || story.noindex === true) return false;
+  const status = String(story.status || '').toLowerCase();
+  if (status === 'draft' || status === 'unpublished' || status === 'private' || status === 'deleted') {
+    return false;
+  }
+  return true;
+}
+
+function withTimeout(promise, ms = 12000) {
   return Promise.race([
     promise,
     new Promise((resolve) => setTimeout(() => resolve(null), ms)),
@@ -124,8 +156,8 @@ async function fetchFromFirestore() {
 
   try {
     const [storiesSnap, catsSnap] = await Promise.all([
-      withTimeout(getDocs(collection(db, 'stories')), 8000),
-      withTimeout(getDocs(collection(db, 'categories')), 8000),
+      withTimeout(getDocs(collection(db, 'stories')), 12000),
+      withTimeout(getDocs(collection(db, 'categories')), 12000),
     ]);
 
     if (storiesSnap) {
@@ -163,40 +195,39 @@ async function fetchFromFirestore() {
   return { stories, categories };
 }
 
-function parseFallbackStoriesFromXml() {
-  const candidates = [
-    path.resolve(process.cwd(), 'public', 'sitemap-stories.xml'),
-    path.resolve(process.cwd(), 'public', 'sitemap.xml'),
-  ];
-  for (const xmlPath of candidates) {
-    try {
-      if (!fs.existsSync(xmlPath)) continue;
-      const xml = fs.readFileSync(xmlPath, 'utf8');
-      if (!xml.includes('/story/')) continue;
-      const urlBlocks = xml.match(/<url>[\s\S]*?<\/url>/g) || [];
-      const parsed = [];
-      for (const block of urlBlocks) {
-        const locMatch = block.match(/<loc>(.*?)<\/loc>/);
-        if (!locMatch || !locMatch[1].includes('/story/')) continue;
-        const slugPart = locMatch[1].split('/story/')[1];
-        if (!slugPart) continue;
-        const lastmodMatch = block.match(/<lastmod>(.*?)<\/lastmod>/);
-        const imgLocMatch = block.match(/<image:loc>(.*?)<\/image:loc>/);
-        const imgTitleMatch = block.match(/<image:title>(.*?)<\/image:title>/);
-        parsed.push({
-          id: decodeURIComponent(slugPart),
-          slug: decodeURIComponent(slugPart),
-          title: imgTitleMatch ? imgTitleMatch[1] : decodeURIComponent(slugPart),
-          coverImage: imgLocMatch ? imgLocMatch[1].replace(/&amp;/g, '&') : '',
-          updatedAt: lastmodMatch ? lastmodMatch[1] : undefined,
-        });
-      }
-      if (parsed.length > 0) return parsed;
-    } catch {
-      // ignore
+function parseFallbackStoriesFromCatalog() {
+  const apiDataDir = path.resolve(process.cwd(), 'public', 'api-data');
+  const catalogPath = path.join(apiDataDir, 'catalog.json');
+  try {
+    if (!fs.existsSync(catalogPath)) return { stories: [], categories: [] };
+    const raw = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    const byId = new Map();
+    for (const s of Array.isArray(raw.stories) ? raw.stories : []) {
+      if (s && (s.id || s.slug)) byId.set(String(s.id || s.slug), { ...s });
     }
+    const chunksDir = path.join(apiDataDir, 'chunks');
+    if (fs.existsSync(chunksDir)) {
+      for (const f of fs.readdirSync(chunksDir).filter((n) => n.endsWith('.json')).sort()) {
+        try {
+          const chunkRaw = JSON.parse(fs.readFileSync(path.join(chunksDir, f), 'utf8'));
+          for (const cs of Array.isArray(chunkRaw.stories) ? chunkRaw.stories : []) {
+            if (cs && (cs.id || cs.slug)) {
+              const k = String(cs.id || cs.slug);
+              byId.set(k, { ...(byId.get(k) || {}), ...cs });
+            }
+          }
+        } catch {
+          // ignore corrupted chunk
+        }
+      }
+    }
+    return {
+      stories: Array.from(byId.values()),
+      categories: Array.isArray(raw.categories) ? raw.categories : [],
+    };
+  } catch {
+    return { stories: [], categories: [] };
   }
-  return [];
 }
 
 async function loadStore() {
@@ -215,15 +246,26 @@ async function loadStore() {
   }
 
   const live = await fetchFromFirestore();
-  let combinedRawStories = [...live.stories, ...syncStories];
-  if (combinedRawStories.length === 0) {
-    combinedRawStories = parseFallbackStoriesFromXml();
+  // Prefer live Firestore as source of truth when reachable so deleted/unpublished stories are excluded
+  let combinedRawStories = [];
+  let combinedRawCats = [];
+
+  if (live.stories.length > 0) {
+    combinedRawStories = live.stories;
+    combinedRawCats = live.categories.length > 0 ? live.categories : syncCats;
+  } else if (syncStories.length > 0) {
+    combinedRawStories = syncStories;
+    combinedRawCats = syncCats;
+  } else {
+    const fallback = parseFallbackStoriesFromCatalog();
+    combinedRawStories = fallback.stories;
+    combinedRawCats = fallback.categories;
   }
 
   const seenSlugs = new Set();
   const stories = [];
   for (const s of combinedRawStories) {
-    if (!s || s.isDeleted || s.deleted || s.published === false) continue;
+    if (!isPublishableStory(s)) continue;
     const rawSlug = stripZW(s.slug || s.id);
     if (!rawSlug) continue;
     const key = encodeSlug(rawSlug).toLowerCase();
@@ -247,31 +289,104 @@ async function loadStore() {
   for (const def of DEFAULT_CATEGORIES) {
     catMap.set(def.slug.toLowerCase(), def);
   }
-  for (const c of [...syncCats, ...live.categories]) {
-    if (!c || c.isDeleted || c.deleted) continue;
+  for (const c of combinedRawCats) {
+    if (!c || c.isDeleted || c.deleted || c.private === true) continue;
     const slug = stripZW(c.slug || c.id);
     if (!slug || slug.toLowerCase() === 'all') continue;
     catMap.set(slug.toLowerCase(), { ...c, slug });
   }
 
-  return { stories, categories: Array.from(catMap.values()) };
+  return {
+    stories,
+    categories: Array.from(catMap.values()),
+    source: live.stories.length > 0 ? 'firestore-live' : 'local-fallback',
+  };
+}
+
+function buildUrlsetXml(urlBlocks) {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+    ...urlBlocks,
+    '</urlset>',
+    '',
+  ].join('\n');
+}
+
+function buildSitemapIndexXml(shardFiles, lastmodIso) {
+  const entries = shardFiles.map((fileName) =>
+    [
+      '  <sitemap>',
+      `    <loc>${escapeXml(`${SITE_URL}/${fileName}`)}</loc>`,
+      `    <lastmod>${escapeXml(lastmodIso)}</lastmod>`,
+      '  </sitemap>',
+    ].join('\n')
+  );
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...entries,
+    '</sitemapindex>',
+    '',
+  ].join('\n');
+}
+
+function writeSitemapFilesToDir(targetDir, allUrlBlocks, topLastmod) {
+  const legacySitemapFiles = [
+    'sitemap_index.xml',
+    'sitemap-main.xml',
+    'sitemap-stories.xml',
+    'sitemap2.xml',
+    'sitmap.xml',
+  ];
+
+  // Clean legacy files and stale numbered shards
+  for (const file of fs.readdirSync(targetDir)) {
+    if (legacySitemapFiles.includes(file) || /^sitemap-\d+\.xml$/.test(file)) {
+      fs.unlinkSync(path.join(targetDir, file));
+    }
+  }
+
+  if (allUrlBlocks.length > MAX_URLS_PER_SITEMAP) {
+    const shardFiles = [];
+    for (let i = 0; i < allUrlBlocks.length; i += MAX_URLS_PER_SITEMAP) {
+      const shardIdx = shardFiles.length + 1;
+      const shardName = `sitemap-${shardIdx}.xml`;
+      const shardXml = buildUrlsetXml(allUrlBlocks.slice(i, i + MAX_URLS_PER_SITEMAP));
+      fs.writeFileSync(path.join(targetDir, shardName), shardXml, 'utf8');
+      shardFiles.push(shardName);
+    }
+    const indexXml = buildSitemapIndexXml(shardFiles, topLastmod);
+    fs.writeFileSync(path.join(targetDir, 'sitemap.xml'), indexXml, 'utf8');
+    return { mode: 'sitemapindex', shardCount: shardFiles.length };
+  }
+
+  const unifiedXml = buildUrlsetXml(allUrlBlocks);
+  fs.writeFileSync(path.join(targetDir, 'sitemap.xml'), unifiedXml, 'utf8');
+  return { mode: 'urlset', shardCount: 1 };
 }
 
 async function generateSitemaps() {
-  const { stories, categories } = await loadStore();
+  const { stories, categories, source } = await loadStore();
 
   let countFromUpdatedAt = 0;
   let countFromCreatedAt = 0;
   let countMissingBoth = 0;
   let latestStoryMod = null;
 
-  const storyEntries = stories.map((story) => {
+  const seenLocs = new Set();
+  const storyEntries = [];
+
+  for (const story of stories) {
     const encoded = encodeSlug(story.slug);
     const loc = `${SITE_URL}/story/${encoded}`;
-    const { lastmod, source } = resolveStoryLastmod(story);
+    if (seenLocs.has(loc)) continue;
+    seenLocs.add(loc);
 
-    if (source === 'updatedAt') countFromUpdatedAt++;
-    else if (source === 'createdAt') countFromCreatedAt++;
+    const { lastmod, source: modSource } = resolveStoryLastmod(story);
+
+    if (modSource === 'updatedAt') countFromUpdatedAt++;
+    else if (modSource === 'createdAt') countFromCreatedAt++;
     else countMissingBoth++;
 
     if (lastmod && (!latestStoryMod || lastmod > latestStoryMod)) {
@@ -297,14 +412,15 @@ async function generateSitemaps() {
       lines.push('    </image:image>');
     }
     lines.push('  </url>');
-    return lines.join('\n');
-  });
+    storyEntries.push(lines.join('\n'));
+  }
 
   const topLastmod = latestStoryMod || new Date().toISOString();
+  const pageEntries = [];
 
-  const pageEntries = [
+  const staticAndCategoryItems = [
     ...STATIC_SITE_PAGES.map((p) => ({
-      loc: `${SITE_URL}${p.path}`,
+      loc: p.path === '/' ? `${SITE_URL}/` : `${SITE_URL}${p.path}`,
       lastmod: topLastmod,
       changefreq: p.changefreq,
       priority: p.priority,
@@ -315,53 +431,43 @@ async function generateSitemaps() {
       changefreq: 'daily',
       priority: '0.8',
     })),
-  ].map((u) =>
-    [
-      '  <url>',
-      `    <loc>${escapeXml(u.loc)}</loc>`,
-      `    <lastmod>${escapeXml(u.lastmod)}</lastmod>`,
-      `    <changefreq>${u.changefreq}</changefreq>`,
-      `    <priority>${u.priority}</priority>`,
-      '  </url>',
-    ].join('\n')
-  );
-
-  // Single unified sitemap.xml containing all pages, categories, and stories for Google Search Console
-  const unifiedSitemapXml = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
-    ...pageEntries,
-    ...storyEntries,
-    '</urlset>',
-    '',
-  ].join('\n');
-
-  const publicDir = path.resolve(process.cwd(), 'public');
-  if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-  }
-
-  const legacySitemapFiles = [
-    'sitemap_index.xml',
-    'sitemap-main.xml',
-    'sitemap-stories.xml',
-    'sitemap2.xml',
-    'sitmap.xml',
   ];
 
-  fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), unifiedSitemapXml, 'utf8');
-  for (const legacyFile of legacySitemapFiles) {
-    const legacyPath = path.join(publicDir, legacyFile);
-    if (fs.existsSync(legacyPath)) {
-      fs.unlinkSync(legacyPath);
-    }
+  for (const u of staticAndCategoryItems) {
+    if (seenLocs.has(u.loc)) continue;
+    seenLocs.add(u.loc);
+    pageEntries.push(
+      [
+        '  <url>',
+        `    <loc>${escapeXml(u.loc)}</loc>`,
+        `    <lastmod>${escapeXml(u.lastmod)}</lastmod>`,
+        `    <changefreq>${u.changefreq}</changefreq>`,
+        `    <priority>${u.priority}</priority>`,
+        '  </url>',
+      ].join('\n')
+    );
   }
+
+  const allUrlBlocks = [...pageEntries, ...storyEntries];
+
+  const publicDir = path.resolve(process.cwd(), 'public');
+  fs.mkdirSync(publicDir, { recursive: true });
+
+  const writeSummary = writeSitemapFilesToDir(publicDir, allUrlBlocks, topLastmod);
+  fs.writeFileSync(path.join(publicDir, 'robots.txt'), CANONICAL_ROBOTS_TXT, 'utf8');
 
   // Generate lightweight /api-data/catalog.json + /api-data/chunks/chunk-N.json
   const CHUNK_SIZE = 105;
   const apiDataDir = path.join(publicDir, 'api-data');
   const chunksDir = path.join(apiDataDir, 'chunks');
   fs.mkdirSync(chunksDir, { recursive: true });
+
+  // Clean stale chunk files before writing updated chunks
+  for (const file of fs.readdirSync(chunksDir)) {
+    if (/^chunk-\d+\.json$/.test(file)) {
+      fs.unlinkSync(path.join(chunksDir, file));
+    }
+  }
 
   const fullChunkStories = stories.map((s, idx) => ({
     ...s,
@@ -375,7 +481,12 @@ async function generateSitemaps() {
     chunkIndex: meta.chunkIndex,
   }));
 
-  const catalogJsonStr = JSON.stringify({ stories: lightweightCatalogStories, categories });
+  const catalogJsonStr = JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    origin: SITE_URL,
+    stories: lightweightCatalogStories,
+    categories,
+  });
   fs.writeFileSync(path.join(apiDataDir, 'catalog.json'), catalogJsonStr, 'utf8');
 
   const totalChunks = Math.ceil(fullChunkStories.length / CHUNK_SIZE);
@@ -390,17 +501,17 @@ async function generateSitemaps() {
 
   const distDir = path.resolve(process.cwd(), 'dist');
   if (fs.existsSync(distDir)) {
-    fs.writeFileSync(path.join(distDir, 'sitemap.xml'), unifiedSitemapXml, 'utf8');
-    for (const legacyFile of legacySitemapFiles) {
-      const legacyPath = path.join(distDir, legacyFile);
-      if (fs.existsSync(legacyPath)) {
-        fs.unlinkSync(legacyPath);
-      }
-    }
+    writeSitemapFilesToDir(distDir, allUrlBlocks, topLastmod);
+    fs.writeFileSync(path.join(distDir, 'robots.txt'), CANONICAL_ROBOTS_TXT, 'utf8');
 
     const distApiDataDir = path.join(distDir, 'api-data');
     const distChunksDir = path.join(distApiDataDir, 'chunks');
     fs.mkdirSync(distChunksDir, { recursive: true });
+    for (const file of fs.readdirSync(distChunksDir)) {
+      if (/^chunk-\d+\.json$/.test(file)) {
+        fs.unlinkSync(path.join(distChunksDir, file));
+      }
+    }
     fs.writeFileSync(path.join(distApiDataDir, 'catalog.json'), catalogJsonStr, 'utf8');
     for (let c = 0; c < totalChunks; c++) {
       const slice = fullChunkStories.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
@@ -412,14 +523,13 @@ async function generateSitemaps() {
     }
   }
 
-  const totalUrls = pageEntries.length + storyEntries.length;
   console.log(
-    `[Unified Sitemap Generator] Total URLs in sitemap.xml: ${totalUrls} (${pageEntries.length} pages/categories + ${stories.length} stories) | Chunks: ${totalChunks} | From updatedAt: ${countFromUpdatedAt} | Fallback createdAt: ${countFromCreatedAt} | Lacking both: ${countMissingBoth}`
+    `[Sitemap Generator] Origin: ${SITE_URL} | Source: ${source} | Mode: ${writeSummary.mode} | Total URLs: ${allUrlBlocks.length} (${pageEntries.length} pages/categories + ${storyEntries.length} stories) | Chunks: ${totalChunks} | updatedAt: ${countFromUpdatedAt} | createdAt: ${countFromCreatedAt} | none: ${countMissingBoth}`
   );
   process.exit(0);
 }
 
 generateSitemaps().catch((err) => {
-  console.error('[Unified Sitemap Generator Error]:', err);
+  console.error('[Sitemap Generator Error]:', err);
   process.exit(1);
 });

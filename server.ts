@@ -5,15 +5,21 @@ import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { resolveStoryTimestamps, hasSubstantiveStoryChanges } from './src/types/story.js';
 import { isBotUserAgent } from './src/utils/botDetection.js';
+import {
+  SITE_ORIGIN,
+  SITE_NAME,
+  DEFAULT_OG_IMAGE,
+  resolveCanonicalRedirect,
+} from './src/config/site.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const syncFilePath = path.resolve(process.cwd(), 'server-data', 'firestore-sync.json');
 
-const SITE_URL = 'https://www.walkathawa.site';
-const SITE_NAME = 'Walkathawa';
-const DEFAULT_OG_IMAGE = `${SITE_URL}/icon.png`;
+const SITE_URL = SITE_ORIGIN;
+const FIREBASE_API_KEY = 'AIzaSyDWIC_GSMIOliCrhHKPgZgNUAZKUZ96nh4';
+const DEFAULT_ADMIN_EMAIL = 'merlinfiverr0@gmail.com';
 
 interface SyncStore {
   stories: any[];
@@ -77,8 +83,8 @@ const STATIC_PAGES: Record<
   '/page/privacy-policy': {
     title: 'Privacy Policy',
     canonicalPath: '/page/privacy-policy',
-    description: 'Walkathawa (walkathawa.site) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
-    body: 'Walkathawa (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
+    description: 'Walkathawa (walkathawa.com) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
+    body: 'Walkathawa (walkathawa.com) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
   },
   '/page/terms-and-conditions': {
     title: 'Terms and Conditions',
@@ -95,8 +101,8 @@ const STATIC_PAGES: Record<
   '/page/disclaimer': {
     title: 'Disclaimer',
     canonicalPath: '/page/disclaimer',
-    description: 'Walkathawa (walkathawa.site) වගකීම් ප්‍රකාශය.',
-    body: 'Walkathawa (walkathawa.site) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
+    description: 'Walkathawa (walkathawa.com) වගකීම් ප්‍රකාශය.',
+    body: 'Walkathawa (walkathawa.com) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
   },
 };
 
@@ -529,7 +535,14 @@ function resolveRouteForSsr(
       '@context': 'https://schema.org',
       '@graph': [
         {
-          '@type': 'Article',
+          '@type': 'Organization',
+          '@id': `${SITE_URL}/#organization`,
+          name: SITE_NAME,
+          url: `${SITE_URL}/`,
+          logo: { '@type': 'ImageObject', url: DEFAULT_OG_IMAGE },
+        },
+        {
+          '@type': 'BlogPosting',
           '@id': `${canonicalUrl}#article`,
           mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
           headline: postTitle,
@@ -543,12 +556,7 @@ function resolveRouteForSsr(
           ...(datePublished ? { datePublished } : {}),
           ...(dateModified ? { dateModified } : {}),
           author: { '@type': 'Organization', name: SITE_NAME, url: `${SITE_URL}/` },
-          publisher: {
-            '@type': 'Organization',
-            '@id': `${SITE_URL}/#organization`,
-            name: SITE_NAME,
-            logo: { '@type': 'ImageObject', url: DEFAULT_OG_IMAGE },
-          },
+          publisher: { '@id': `${SITE_URL}/#organization` },
         },
         {
           '@type': 'BreadcrumbList',
@@ -851,12 +859,20 @@ function resolveRouteForSsr(
       '@context': 'https://schema.org',
       '@graph': [
         {
+          '@type': 'Organization',
+          '@id': `${SITE_URL}/#organization`,
+          name: SITE_NAME,
+          url: `${SITE_URL}/`,
+          logo: { '@type': 'ImageObject', url: DEFAULT_OG_IMAGE },
+        },
+        {
           '@type': 'WebSite',
           '@id': `${SITE_URL}/#website`,
           url: `${SITE_URL}/`,
           name: SITE_NAME,
           inLanguage: 'si-LK',
           description,
+          publisher: { '@id': `${SITE_URL}/#organization` },
           potentialAction: {
             '@type': 'SearchAction',
             target: {
@@ -939,9 +955,11 @@ function renderFullDocument(
     const preserved: string[] = [];
     const styleRegex = /<style[\s\S]*?<\/style>/gi;
     const linkStylesheetRegex = /<link[^>]+rel="stylesheet"[^>]*>/gi;
+    const linkPreloadRegex = /<link[^>]+rel="modulepreload"[^>]*>/gi;
     const scriptModuleRegex = /<script[^>]+type="module"[\s\S]*?<\/script>/gi;
     for (const m of existingHead.match(styleRegex) || []) preserved.push(m);
     for (const m of existingHead.match(linkStylesheetRegex) || []) preserved.push(m);
+    for (const m of existingHead.match(linkPreloadRegex) || []) preserved.push(m);
     for (const m of existingHead.match(scriptModuleRegex) || []) preserved.push(m);
     if (preserved.length > 0) {
       assetTags = '\n' + preserved.join('\n');
@@ -954,18 +972,10 @@ function renderFullDocument(
     .replace(/<script[^>]*brijmohan\.org\/14[^>]*><\/script>\s*/gi, '');
 
   const isAdmin = normalizedPath === '/admin' || normalizedPath.startsWith('/admin/');
-  const skipAds = isBot || isAdmin;
+  const skipAds = isBot || isAdmin || resolved.noIndex;
 
-  const headClosingScript = skipAds
-    ? ''
-    : '\n' +
-      [
-        '    <script src="/popunder-swap.js"></script>',
-        '    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>',
-      ].join('\n');
-  const bodyClosingScript = skipAds
-    ? ''
-    : '    <script data-cfasync="false" src="https://brijmohan.org/14/c05ac7bd55736617f6c7021ffa7f49da"></script>\n';
+  // popunder-swap.js handles crawler isolation and loads human ad scripts cleanly once
+  const headClosingScript = skipAds ? '' : '\n    <script src="/popunder-swap.js"></script>';
 
   const html = cleanedHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
@@ -973,8 +983,7 @@ function renderFullDocument(
       /<head>[\s\S]*?<\/head>/i,
       `<head>\n${resolved.headHtml}${assetTags}${headClosingScript}\n  </head>`
     )
-    .replace(/<div id="root"><\/div>/i, `<div id="root">${resolved.bodyHtml}</div>`)
-    .replace(/<\/body>/i, `${bodyClosingScript}  </body>`);
+    .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${resolved.bodyHtml}</div>`);
 
   return { html, status: resolved.status, noIndex: resolved.noIndex };
 }
@@ -1001,59 +1010,17 @@ async function startServer() {
     next();
   });
 
-  // Canonical host, protocol, slash, and legacy URL 301 redirects
+  // Canonical host, protocol, slash, and legacy URL single-hop 301 redirects
   app.use((req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
     if (req.path.startsWith('/api/')) return next();
 
-    const rawHost = String(req.headers['x-forwarded-host'] || req.headers.host || '')
-      .split(',')[0]
-      .trim()
-      .toLowerCase();
-    const rawProto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https')
-      .split(',')[0]
-      .trim()
-      .toLowerCase();
+    const rawHost = String(req.headers['x-forwarded-host'] || req.headers.host || '');
+    const rawProto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https');
+    const redirect = resolveCanonicalRedirect(rawHost, rawProto, req.originalUrl || req.url || '/');
 
-    const isProdDomain =
-      rawHost === 'walkathawa.site' || rawHost === 'www.walkathawa.site';
-    const needsDomainOrProtoRedirect =
-      rawHost === 'walkathawa.site' || (rawHost === 'www.walkathawa.site' && rawProto === 'http');
-
-    const [rawPathname, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
-    let targetPath = rawPathname.replace(/\/{2,}/g, '/');
-    if (targetPath.length > 1 && targetPath.endsWith('/')) {
-      targetPath = targetPath.slice(0, -1);
-    }
-
-    if (targetPath === '/posts') {
-      targetPath = '/';
-    } else if (targetPath.startsWith('/posts/')) {
-      targetPath = targetPath.replace(/^\/posts\//, '/story/');
-    } else if (targetPath.startsWith('/katha/')) {
-      targetPath = targetPath.replace(/^\/katha\//, '/story/');
-    } else if (targetPath === '/privacy') {
-      targetPath = '/page/privacy-policy';
-    } else if (targetPath === '/terms') {
-      targetPath = '/page/terms-and-conditions';
-    } else if (
-      targetPath === '/sitemap_index.xml' ||
-      targetPath === '/sitemap-main.xml' ||
-      targetPath === '/sitemap-stories.xml' ||
-      targetPath === '/sitemap2.xml' ||
-      targetPath === '/sitmap.xml'
-    ) {
-      targetPath = '/sitemap.xml';
-    }
-
-    const querySuffix = rawQuery ? `?${rawQuery}` : '';
-    const pathChanged = targetPath !== rawPathname;
-
-    if (needsDomainOrProtoRedirect || pathChanged) {
-      const destination = isProdDomain
-        ? `${SITE_URL}${targetPath}${querySuffix}`
-        : `${targetPath}${querySuffix}`;
-      return res.redirect(301, destination);
+    if (redirect) {
+      return res.redirect(redirect.status, redirect.location);
     }
 
     next();
@@ -1176,6 +1143,49 @@ async function startServer() {
     res.json({ status: 'ok', categories: store.categories });
   });
 
+  app.post('/api/trigger-rebuild', async (req, res) => {
+    const authHeader = String(req.headers.authorization || '');
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!idToken) {
+      return res.status(401).json({ status: 'error', message: 'Missing Authorization token' });
+    }
+
+    try {
+      const verifyResp = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(
+          process.env.FIREBASE_WEB_API_KEY || FIREBASE_API_KEY
+        )}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        }
+      );
+      if (!verifyResp.ok) {
+        return res.status(401).json({ status: 'error', message: 'Invalid Firebase token' });
+      }
+      const data: any = await verifyResp.json();
+      const email = String(data?.users?.[0]?.email || '').toLowerCase();
+      const allowedEmail = String(process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).toLowerCase();
+      if (email !== allowedEmail) {
+        return res.status(403).json({ status: 'error', message: 'Forbidden' });
+      }
+    } catch {
+      return res.status(401).json({ status: 'error', message: 'Token verification failed' });
+    }
+
+    triggerSitemapUpdate();
+
+    let deployTriggered = false;
+    const hookUrl = process.env.CF_DEPLOY_HOOK_URL;
+    if (hookUrl && hookUrl.startsWith('https://')) {
+      fetch(hookUrl, { method: 'POST' }).catch(() => {});
+      deployTriggered = true;
+    }
+
+    res.json({ status: 'ok', deployTriggered });
+  });
+
   app.post('/api/regenerate-sitemap', (_req, res) => {
     const scriptPath = path.resolve(process.cwd(), 'scripts', 'generate-sitemap.js');
     execFile('node', [scriptPath], { cwd: process.cwd() }, (err, stdout) => {
@@ -1220,7 +1230,9 @@ async function startServer() {
       return res.sendFile(file);
     }
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.send(`User-agent: *\nDisallow: /admin\nDisallow: /cgi-bin/\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+    res.send(
+      `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /cgi-bin/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`
+    );
   });
 
   if (!isProd) {
@@ -1257,7 +1269,8 @@ async function startServer() {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath, { maxAge: '7d', index: false }));
     app.get('*', (req, res) => {
-      const indexFile = path.join(distPath, 'index.html');
+      const spaFile = path.join(distPath, '_spa.html');
+      const indexFile = fs.existsSync(spaFile) ? spaFile : path.join(distPath, 'index.html');
       if (!fs.existsSync(indexFile)) {
         return res.status(404).send('Not found');
       }

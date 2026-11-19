@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 
-const distHtmlPath = path.resolve(process.cwd(), 'dist', 'index.html');
+const spaHtmlPath = path.resolve(process.cwd(), 'dist', '_spa.html');
+const distHtmlPath = fs.existsSync(spaHtmlPath)
+  ? spaHtmlPath
+  : path.resolve(process.cwd(), 'dist', 'index.html');
 
 if (!fs.existsSync(distHtmlPath)) {
   console.error('[Template Generator Error]: dist/index.html does not exist. Run vite build first.');

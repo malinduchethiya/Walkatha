@@ -87,6 +87,26 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
     }, 5000);
   };
 
+  // Trigger authenticated Cloudflare Worker cache purge & optional deploy hook (no secrets in browser)
+  const notifyPublishingSync = async (payload?: { slug?: string; category?: string }) => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+      const idToken = await currentUser.getIdToken();
+      if (!idToken) return;
+      await fetch('/api/trigger-rebuild', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(payload || {}),
+      }).catch(() => {});
+    } catch {
+      // Non-blocking: Firestore write already succeeded
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       loadAdminData();
@@ -229,6 +249,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
           prev.map((s) => (s.id === editingStory.id || s.slug === editingStory.slug ? updated : s))
         );
         showNotice(`"${updated.title}" කතාව සාර්ථකව යාවත්කාලීන කරන ලදී!`);
+        void notifyPublishingSync({ slug: updated.slug, category: updated.category });
         resetStoryForm();
       } else {
         const created = await StoryService.createStory({
@@ -243,6 +264,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
         });
         setStories((prev) => [created, ...prev]);
         showNotice(`"${created.title}" නව කතාව සාර්ථකව එක් කරන ලදී!`);
+        void notifyPublishingSync({ slug: created.slug, category: created.category });
         resetStoryForm();
       }
       if (onDataChanged) onDataChanged();
@@ -263,6 +285,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
       }
       setConfirmDeleteStoryId(null);
       showNotice(`"${story.title}" කතාව ඉවත් කරන ලදී.`);
+      void notifyPublishingSync({ slug: story.slug, category: story.category });
       if (onDataChanged) onDataChanged();
     } catch {
       showNotice('කතාව ඉවත් කිරීමේදී දෝෂයක් ඇති විය.', 'error');
@@ -287,11 +310,13 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
         description: catDescription,
       });
       setCategories(updatedCats);
+      const addedSlug = catSlug || catName;
       setCatName('');
       setCatSinhalaName('');
       setCatSlug('');
       setCatDescription('');
       showNotice('නව වර්ගීකරණය සාර්ථකව එක් කරන ලදී!');
+      void notifyPublishingSync({ category: addedSlug });
       if (onDataChanged) onDataChanged();
     } catch {
       showNotice('වර්ගීකරණය එක් කිරීමේදී දෝෂයක් ඇති විය.', 'error');
@@ -308,6 +333,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
       setCategories(updatedCats);
       setConfirmDeleteCatKey(null);
       showNotice(`"${cat.sinhalaName || cat.name}" වර්ගීකරණය ඉවත් කරන ලදී.`);
+      void notifyPublishingSync({ category: key });
       if (onDataChanged) onDataChanged();
     } catch {
       showNotice('වර්ගීකරණය ඉවත් කිරීමේදී දෝෂයක් ඇති විය.', 'error');
@@ -322,6 +348,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
       const res = await StoryService.syncAllToPrimaryFirestore((synced, total) => {
         setSyncStatus(`Synced ${synced}/${total} stories to Firestore...`);
       });
+      await notifyPublishingSync();
       await fetch('/api/regenerate-sitemap', { method: 'POST' }).catch(() => {});
       setSyncStatus(`සාර්ථකයි! කතා ${res.total} ක් සහ Sitemap යාවත්කාලීන කරන ලදී.`);
     } catch (err: any) {

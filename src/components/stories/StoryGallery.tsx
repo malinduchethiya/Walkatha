@@ -140,10 +140,11 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         </div>
       ) : (
         <div className="story-grid-3x5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
-          {displayedStories.map((story) => (
+          {displayedStories.map((story, idx) => (
             <StoryCard
               key={story.id}
               story={story}
+              priority={idx < 2}
               onSelect={onSelectStory}
               onSelectCategory={onSelectCategory}
             />

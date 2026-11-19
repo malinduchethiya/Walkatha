@@ -5,39 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Walkathawa (වල් කතාව) | Sinhala Stories Online</title>
     <meta name="description" content="Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala katha, romantic stories, fictional stories, and short stories updated regularly.">
-    <link rel="canonical" href="https://www.walkathawa.site/">
-    <link rel="icon" type="image/png" href="https://www.walkathawa.site/favicon.png">
-    <link rel="apple-touch-icon" href="https://www.walkathawa.site/apple-touch-icon.png">
+    <link rel="canonical" href="https://walkathawa.com/">
+    <link rel="icon" type="image/png" href="https://walkathawa.com/favicon.png">
+    <link rel="apple-touch-icon" href="https://walkathawa.com/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
     <meta property="og:site_name" content="Walkathawa">
     <meta property="og:title" content="Walkathawa (වල් කතාව) | Sinhala Stories Online">
     <meta property="og:description" content="Walkathawa (වල් කතාව) — Read Sinhala stories online. Discover new Sinhala katha, romantic stories, and short stories updated regularly.">
-    <meta property="og:image" content="https://www.walkathawa.site/icon.png">
-    <meta property="og:url" content="https://www.walkathawa.site/">
+    <meta property="og:image" content="https://walkathawa.com/icon.png">
+    <meta property="og:url" content="https://walkathawa.com/">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Walkathawa (වල් කතාව) | Sinhala Stories Online">
     <meta name="twitter:description" content="Walkathawa (වල් කතාව) — Read Sinhala stories online. Discover new Sinhala katha, romantic stories, and short stories updated regularly.">
-    <meta name="twitter:image" content="https://www.walkathawa.site/icon.png">
+    <meta name="twitter:image" content="https://walkathawa.com/icon.png">
     <script id="structured-data-jsonld" type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "Walkathawa",
-  "url": "https://www.walkathawa.site/",
-  "inLanguage": "si-LK",
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": {
-      "@type": "EntryPoint",
-      "urlTemplate": "https://www.walkathawa.site/search?s={search_term_string}",
-      "actionPlatform": [
-        "https://schema.org/DesktopWebPlatform",
-        "https://schema.org/MobileWebPlatform"
-      ]
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://walkathawa.com/#organization",
+      "name": "Walkathawa",
+      "url": "https://walkathawa.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://walkathawa.com/icon.png"
+      }
     },
-    "query-input": "required name=search_term_string"
-  }
+    {
+      "@type": "WebSite",
+      "@id": "https://walkathawa.com/#website",
+      "name": "Walkathawa",
+      "url": "https://walkathawa.com/",
+      "inLanguage": "si-LK",
+      "publisher": {
+        "@id": "https://walkathawa.com/#organization"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://walkathawa.com/search?s={search_term_string}",
+          "actionPlatform": [
+            "https://schema.org/DesktopWebPlatform",
+            "https://schema.org/MobileWebPlatform"
+          ]
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+  ]
 }
     </script>
     <script src="/popunder-swap.js"></script>

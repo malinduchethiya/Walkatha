@@ -3,6 +3,7 @@ import { DashboardStats, SiteSettings } from '../types/admin';
 import { authService } from './authService';
 import { normalizeFirestoreStory, StoryService } from './storyService';
 import { db } from '../lib/firebase';
+import { DEFAULT_OG_IMAGE } from '../config/site';
 import {
   collection,
   getDocs,
@@ -299,7 +300,7 @@ class AdminService {
       metaTitle: 'Walkathawa (වල් කතාව) | Sinhala Stories Online',
       metaDescription: 'Walkathawa (වල් කතාව) is a place to read Sinhala stories online.',
       keywords: 'Walkathawa, Sinhala stories, wal katha, සිංහල කතා',
-      ogImage: 'https://www.walkathawa.site/icon.png',
+      ogImage: DEFAULT_OG_IMAGE,
     };
   }
 

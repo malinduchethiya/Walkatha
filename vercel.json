@@ -80,6 +80,26 @@
       "permanent": true
     },
     {
+      "source": "/katha/:slug",
+      "destination": "/story/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/categories/:slug",
+      "destination": "/category/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/collections/:slug",
+      "destination": "/category/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/collections",
+      "destination": "/categories",
+      "permanent": true
+    },
+    {
       "source": "/privacy",
       "destination": "/page/privacy-policy",
       "permanent": true

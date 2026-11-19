@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Story, Category } from '../../types/story';
 import { getCategoryDisplayName } from '../../utils/categoryTaxonomy';
+import { SITE_ORIGIN } from '../../config/site';
 
 interface SitemapPageProps {
   stories: Story[];
@@ -46,7 +47,7 @@ export const SitemapPage: React.FC<SitemapPageProps> = ({
 
   const handleCopySitemapUrl = () => {
     try {
-      navigator.clipboard.writeText('https://www.walkathawa.site/sitemap.xml');
+      navigator.clipboard.writeText(`${SITE_ORIGIN}/sitemap.xml`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}

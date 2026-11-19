@@ -6,6 +6,7 @@ interface StoryCardProps {
   story: Story;
   onSelect: (slug: string) => void;
   onSelectCategory?: (category: string) => void;
+  priority?: boolean;
 }
 
 const FALLBACK_COVER = '/icon.png';
@@ -14,6 +15,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   story,
   onSelect,
   onSelectCategory,
+  priority = false,
 }) => {
   const storyUrl = `/story/${encodeURIComponent(story.slug)}`;
   const categorySlug = story.category || 'romantic';
@@ -60,7 +62,8 @@ export const StoryCard: React.FC<StoryCardProps> = ({
         <img
           src={imgSrc}
           alt={story.title}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
           decoding="async"
           onError={() => {
             if (imgSrc !== FALLBACK_COVER) {

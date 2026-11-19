@@ -249,6 +249,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             <img
               src={imgSrc}
               alt={story.title}
+              fetchPriority="high"
               decoding="async"
               onError={() => {
                 if (imgSrc !== FALLBACK_COVER) {

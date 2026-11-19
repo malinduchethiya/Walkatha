@@ -1,9 +1,14 @@
 import { Story, Category, resolveStoryTimestamps } from '../types/story';
 import { isSearchEngineCrawler } from '../utils/botDetection';
+import {
+  SITE_ORIGIN,
+  SITE_NAME,
+  DEFAULT_OG_IMAGE,
+  buildCanonicalUrl,
+} from '../config/site';
 
-export const SITE_URL = 'https://www.walkathawa.site';
-export const SITE_NAME = 'Walkathawa';
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/icon.png`;
+export const SITE_URL = SITE_ORIGIN;
+export { SITE_NAME, DEFAULT_OG_IMAGE };
 
 export const HOME_FAQ_ENTRIES: { question: string; answer: string }[] = [];
 
@@ -39,9 +44,13 @@ export function formatCleanDescription(rawDesc: string, fallbackTitle?: string):
 export class SeoService {
   private static setMetaTag(attrName: 'name' | 'property', attrValue: string, content: string) {
     if (typeof document === 'undefined') return;
-    let element = document.querySelector(
-      `meta[${attrName}="${attrValue}"]`
-    ) as HTMLMetaElement | null;
+    const matches = Array.from(
+      document.head.querySelectorAll(`meta[${attrName}="${attrValue}"]`)
+    ) as HTMLMetaElement[];
+    let element = matches[0] || null;
+    for (let i = 1; i < matches.length; i++) {
+      matches[i].parentNode?.removeChild(matches[i]);
+    }
     if (!element) {
       element = document.createElement('meta');
       element.setAttribute(attrName, attrValue);
@@ -52,9 +61,11 @@ export class SeoService {
 
   private static removeMetaTag(attrName: 'name' | 'property', attrValue: string) {
     if (typeof document === 'undefined') return;
-    const element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
-    if (element && element.parentNode) {
-      element.parentNode.removeChild(element);
+    const matches = Array.from(
+      document.head.querySelectorAll(`meta[${attrName}="${attrValue}"]`)
+    );
+    for (const element of matches) {
+      element.parentNode?.removeChild(element);
     }
   }
 
@@ -68,12 +79,18 @@ export class SeoService {
 
   private static setLinkRel(rel: string, href: string | null) {
     if (typeof document === 'undefined') return;
-    let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+    const matches = Array.from(
+      document.head.querySelectorAll(`link[rel="${rel}"]`)
+    ) as HTMLLinkElement[];
     if (!href) {
-      if (link && link.parentNode) {
-        link.parentNode.removeChild(link);
+      for (const m of matches) {
+        m.parentNode?.removeChild(m);
       }
       return;
+    }
+    let link = matches[0] || null;
+    for (let i = 1; i < matches.length; i++) {
+      matches[i].parentNode?.removeChild(matches[i]);
     }
     if (!link) {
       link = document.createElement('link');
@@ -83,19 +100,27 @@ export class SeoService {
     link.setAttribute('href', href);
   }
 
-  private static setCanonical(url: string) {
+  private static setCanonical(url: string | null) {
     this.setLinkRel('canonical', url);
   }
 
   private static setJsonLd(id: string, schemaData: Record<string, any>) {
     if (typeof document === 'undefined') return;
-    let script = document.getElementById(id) as HTMLScriptElement | null;
+    const existing = Array.from(
+      document.head.querySelectorAll('script[type="application/ld+json"]')
+    ) as HTMLScriptElement[];
+    let script = (document.getElementById(id) as HTMLScriptElement | null) || existing[0] || null;
+    for (const el of existing) {
+      if (el !== script) {
+        el.parentNode?.removeChild(el);
+      }
+    }
     if (!script) {
       script = document.createElement('script');
-      script.id = id;
       script.type = 'application/ld+json';
       document.head.appendChild(script);
     }
+    script.id = id;
     script.textContent = JSON.stringify(schemaData);
   }
 
@@ -136,36 +161,22 @@ export class SeoService {
         : 'Walkathawa (වල් කතාව) — අලුත්ම සිංහල කතා, ආදර කතා සහ කෙටි කතා එකතුව නොමිලේ කියවන්න.'
     );
 
-    const basePath = isCategory
-      ? `${SITE_URL}/category/${encodeURIComponent(category!.slug || category!.id)}`
-      : `${SITE_URL}/`;
-    const canonicalUrl =
-      page > 1
-        ? isCategory
-          ? `${basePath}?page=${page}`
-          : `${SITE_URL}/?page=${page}`
-        : basePath;
+    const routePath = isCategory
+      ? `/category/${encodeURIComponent(category!.slug || category!.id)}`
+      : '/';
+    const basePath = buildCanonicalUrl(routePath, 1);
+    const canonicalUrl = buildCanonicalUrl(routePath, page);
 
-    const prevUrl =
-      page > 1
-        ? page === 2
-          ? basePath
-          : isCategory
-          ? `${basePath}?page=${page - 1}`
-          : `${SITE_URL}/?page=${page - 1}`
-        : null;
-    const nextUrl =
-      page < totalPages
-        ? isCategory
-          ? `${basePath}?page=${page + 1}`
-          : `${SITE_URL}/?page=${page + 1}`
-        : null;
+    const prevUrl = page > 1 ? buildCanonicalUrl(routePath, page - 1) : null;
+    const nextUrl = page < totalPages ? buildCanonicalUrl(routePath, page + 1) : null;
 
     if (typeof document !== 'undefined') {
       document.title = title;
     }
 
     this.removeMetaTag('name', 'keywords');
+    this.removeMetaTag('property', 'article:published_time');
+    this.removeMetaTag('property', 'article:modified_time');
     this.setRobots(null);
     this.setMetaTag('name', 'description', description);
     this.setMetaTag('property', 'og:type', 'website');
@@ -187,40 +198,62 @@ export class SeoService {
       '@type': 'ListItem',
       position: (page - 1) * 20 + idx + 1,
       name: story.title,
-      url: `${SITE_URL}/story/${encodeURIComponent(story.slug)}`,
+      url: `${SITE_ORIGIN}/story/${encodeURIComponent(story.slug)}`,
     }));
+
+    const graphNodes: Record<string, any>[] = [
+      {
+        '@type': 'Organization',
+        '@id': `${SITE_ORIGIN}/#organization`,
+        name: SITE_NAME,
+        url: `${SITE_ORIGIN}/`,
+        logo: {
+          '@type': 'ImageObject',
+          url: DEFAULT_OG_IMAGE,
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${SITE_ORIGIN}/#website`,
+        url: `${SITE_ORIGIN}/`,
+        name: SITE_NAME,
+        inLanguage: 'si-LK',
+        description,
+        publisher: { '@id': `${SITE_ORIGIN}/#organization` },
+      },
+      {
+        '@type': 'CollectionPage',
+        '@id': `${canonicalUrl}#collection`,
+        url: canonicalUrl,
+        name: title,
+        description,
+        inLanguage: 'si-LK',
+        isPartOf: { '@id': `${SITE_ORIGIN}/#website` },
+      },
+    ];
+
+    if (isCategory) {
+      graphNodes.push({
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'මුල් පිටුව', item: `${SITE_ORIGIN}/` },
+          { '@type': 'ListItem', position: 2, name: categoryLabel, item: basePath },
+        ],
+      });
+    }
+
+    if (itemListElements.length > 0) {
+      graphNodes.push({
+        '@type': 'ItemList',
+        '@id': `${canonicalUrl}#itemlist`,
+        numberOfItems: itemListElements.length,
+        itemListElement: itemListElements,
+      });
+    }
 
     this.setJsonLd('structured-data-jsonld', {
       '@context': 'https://schema.org',
-      '@graph': [
-        {
-          '@type': 'WebSite',
-          '@id': `${SITE_URL}/#website`,
-          url: `${SITE_URL}/`,
-          name: SITE_NAME,
-          inLanguage: 'si-LK',
-          description,
-        },
-        {
-          '@type': 'CollectionPage',
-          '@id': `${canonicalUrl}#collection`,
-          url: canonicalUrl,
-          name: title,
-          description,
-          inLanguage: 'si-LK',
-          isPartOf: { '@id': `${SITE_URL}/#website` },
-        },
-        ...(itemListElements.length > 0
-          ? [
-              {
-                '@type': 'ItemList',
-                '@id': `${canonicalUrl}#itemlist`,
-                numberOfItems: itemListElements.length,
-                itemListElement: itemListElements,
-              },
-            ]
-          : []),
-      ],
+      '@graph': graphNodes,
     });
     this.ensureHeadClosingScript(true);
   }
@@ -232,7 +265,7 @@ export class SeoService {
       story.shortDescription || story.description || bodyText.slice(0, 145),
       story.title
     );
-    const canonicalUrl = `${SITE_URL}/story/${encodeURIComponent(story.slug)}`;
+    const canonicalUrl = buildCanonicalUrl(`/story/${encodeURIComponent(story.slug)}`);
     const imageUrl =
       story.coverImage && story.coverImage.startsWith('http')
         ? story.coverImage
@@ -257,9 +290,13 @@ export class SeoService {
     this.setMetaTag('property', 'og:image', imageUrl);
     if (datePublished) {
       this.setMetaTag('property', 'article:published_time', datePublished);
+    } else {
+      this.removeMetaTag('property', 'article:published_time');
     }
     if (dateModified) {
       this.setMetaTag('property', 'article:modified_time', dateModified);
+    } else {
+      this.removeMetaTag('property', 'article:modified_time');
     }
 
     this.setMetaTag('name', 'twitter:card', 'summary_large_image');
@@ -272,7 +309,7 @@ export class SeoService {
     this.setLinkRel('next', null);
 
     const articleNode: Record<string, any> = {
-      '@type': 'Article',
+      '@type': 'BlogPosting',
       '@id': `${canonicalUrl}#article`,
       mainEntityOfPage: {
         '@type': 'WebPage',
@@ -291,11 +328,11 @@ export class SeoService {
       author: {
         '@type': 'Organization',
         name: SITE_NAME,
-        url: `${SITE_URL}/`,
+        url: `${SITE_ORIGIN}/`,
       },
       publisher: {
         '@type': 'Organization',
-        '@id': `${SITE_URL}/#organization`,
+        '@id': `${SITE_ORIGIN}/#organization`,
         name: SITE_NAME,
         logo: {
           '@type': 'ImageObject',
@@ -307,6 +344,16 @@ export class SeoService {
     this.setJsonLd('structured-data-jsonld', {
       '@context': 'https://schema.org',
       '@graph': [
+        {
+          '@type': 'Organization',
+          '@id': `${SITE_ORIGIN}/#organization`,
+          name: SITE_NAME,
+          url: `${SITE_ORIGIN}/`,
+          logo: {
+            '@type': 'ImageObject',
+            url: DEFAULT_OG_IMAGE,
+          },
+        },
         articleNode,
         {
           '@type': 'BreadcrumbList',
@@ -315,13 +362,13 @@ export class SeoService {
               '@type': 'ListItem',
               position: 1,
               name: 'මුල් පිටුව',
-              item: `${SITE_URL}/`,
+              item: `${SITE_ORIGIN}/`,
             },
             {
               '@type': 'ListItem',
               position: 2,
               name: story.categoryName || story.category || 'සිංහල කතා',
-              item: `${SITE_URL}/category/${encodeURIComponent(story.category || 'romantic')}`,
+              item: `${SITE_ORIGIN}/category/${encodeURIComponent(story.category || 'romantic')}`,
             },
             {
               '@type': 'ListItem',
@@ -373,7 +420,7 @@ export class SeoService {
   }
 
   static updateNotFoundSeo() {
-    this.updateNoIndexSeo('404 — පිටුව හමු නොවීය', '/404');
+    this.updateNoIndexSeo('404 — පිටුව හමු නොවීය');
   }
 
   static updateNoIndexSeo(pageTitle: string, canonicalPath?: string) {
@@ -384,8 +431,9 @@ export class SeoService {
     this.setLinkRel('prev', null);
     this.setLinkRel('next', null);
     if (canonicalPath && canonicalPath !== '/404') {
-      const canonicalUrl = `${SITE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
-      this.setCanonical(canonicalUrl);
+      this.setCanonical(buildCanonicalUrl(canonicalPath));
+    } else {
+      this.setCanonical(null);
     }
     this.ensureHeadClosingScript(true);
   }
@@ -395,9 +443,11 @@ export class SeoService {
     const description =
       customDescription ||
       `${pageTitle} — Walkathawa (වල් කතාව) සිංහල කතා වෙබ් අඩවිය.`;
-    const canonicalUrl = `${SITE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
+    const canonicalUrl = buildCanonicalUrl(canonicalPath);
     if (typeof document !== 'undefined') document.title = title;
     this.removeMetaTag('name', 'keywords');
+    this.removeMetaTag('property', 'article:published_time');
+    this.removeMetaTag('property', 'article:modified_time');
     this.setRobots(null);
     this.setMetaTag('name', 'description', description);
     this.setMetaTag('property', 'og:type', 'website');
@@ -413,6 +463,28 @@ export class SeoService {
     this.setCanonical(canonicalUrl);
     this.setLinkRel('prev', null);
     this.setLinkRel('next', null);
+
+    this.setJsonLd('structured-data-jsonld', {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          '@id': `${canonicalUrl}#webpage`,
+          url: canonicalUrl,
+          name: title,
+          description,
+          inLanguage: 'si-LK',
+          isPartOf: { '@id': `${SITE_ORIGIN}/#website` },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'මුල් පිටුව', item: `${SITE_ORIGIN}/` },
+            { '@type': 'ListItem', position: 2, name: pageTitle, item: canonicalUrl },
+          ],
+        },
+      ],
+    });
     this.ensureHeadClosingScript(true);
   }
 

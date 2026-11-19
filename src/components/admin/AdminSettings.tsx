@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { SiteSettings } from '../../types/admin';
+import { SITE_ORIGIN } from '../../config/site';
 
 export const AdminSettings: React.FC = () => {
   const [settings, setSettings] = useState<SiteSettings>({
@@ -295,7 +296,7 @@ export const AdminSettings: React.FC = () => {
                       W
                     </div>
                     <div className="text-[11px] text-slate-400 truncate">
-                      https://www.walkathawa.site
+                      {SITE_ORIGIN}
                     </div>
                   </div>
                   <h4 className="text-sm font-semibold text-indigo-400 hover:underline cursor-pointer line-clamp-1">

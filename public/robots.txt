@@ -1,4 +1,6 @@
 User-agent: *
+Allow: /
 Disallow: /admin
 Disallow: /cgi-bin/
-Sitemap: https://www.walkathawa.site/sitemap.xml
+
+Sitemap: https://walkathawa.com/sitemap.xml

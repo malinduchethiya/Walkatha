@@ -3,6 +3,7 @@ import {
   normalizeCategorySlug,
   getCategoryDisplayName,
 } from './categoryTaxonomy';
+import { DEFAULT_OG_IMAGE } from '../config/site';
 
 export interface SeriesEpisode {
   episodeNumber: number;
@@ -264,7 +265,7 @@ export function groupStoriesIntoSeries(stories: Story[]): Series[] {
         description: story.shortDescription || story.description || '',
         category: normCat,
         categoryName: getCategoryDisplayName(normCat),
-        coverImage: story.coverImage || 'https://www.walkathawa.site/icon.png',
+        coverImage: story.coverImage || DEFAULT_OG_IMAGE,
         episodes: [],
         totalEpisodes: 0,
         isMultiEpisode: false,
