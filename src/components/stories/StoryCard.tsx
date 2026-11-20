@@ -1,106 +1,89 @@
-import React, { useState, useEffect } from 'react';
-import { Story } from '../../types/story';
+import React, { useState } from 'react';
+import type { Story, Category } from '../../types/story';
+import { formatSinhalaTimeAgo } from '../../utils/formatters';
+import { getStoryExcerpt, getCategoryLabel } from '../../utils/storyFormatting';
 
 interface StoryCardProps {
   story: Story;
-  onSelect: (slug: string) => void;
-  onSelectCategory?: (category: string) => void;
-  priority?: boolean;
+  categories: Category[];
+  onSelectStory: (slug: string) => void;
 }
-
-const FALLBACK_COVER = '/icon.png';
 
 export const StoryCard: React.FC<StoryCardProps> = ({
   story,
-  onSelect,
-  onSelectCategory,
-  priority = false,
+  categories,
+  onSelectStory,
 }) => {
-  const storyUrl = `/story/${encodeURIComponent(story.slug)}`;
-  const categorySlug = story.category || 'romantic';
-  const categoryLabel = story.categoryName || story.category || 'සිංහල කතා';
-  const resolvedCover =
-    story.coverImage && story.coverImage.trim() ? story.coverImage.trim() : FALLBACK_COVER;
-  const [imgSrc, setImgSrc] = useState<string>(resolvedCover);
+  const [imageFailed, setImageFailed] = useState(false);
 
-  useEffect(() => {
-    setImgSrc(resolvedCover);
-  }, [resolvedCover]);
+  const storySlug = story.slug || story.id;
+  const href = `/story/${encodeURIComponent(storySlug)}`;
+  const categoryLabel = getCategoryLabel(story, categories);
+  const timeLabel = formatSinhalaTimeAgo(story.uploadDate || story.createdAt);
+  const readMins = story.readingTime || 5;
+  const excerpt = getStoryExcerpt(story, 125);
+  const hasValidCover = Boolean(story.coverImage && story.coverImage.trim() && !imageFailed);
 
-  const excerpt =
-    story.shortDescription ||
-    story.description ||
-    (story.fullContent ? `${story.fullContent.slice(0, 120)}...` : '');
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
-    onSelect(story.slug);
+    onSelectStory(storySlug);
   };
 
   return (
-    <article
-      data-intended-url={storyUrl}
-      style={{ border: 'none', boxShadow: 'none' }}
-      className="group min-w-0 w-full bg-white dark:bg-[#111a33] rounded-xl overflow-hidden flex flex-col border-0 shadow-none outline-none ring-0 hover:bg-slate-50 dark:hover:bg-[#15203d] transition-colors"
-    >
+    <article className="group flex flex-col">
       <a
-        href={storyUrl}
-        onClick={handleCardClick}
-        className="block w-full aspect-[16/9] bg-slate-200 dark:bg-[#0d152b] overflow-hidden shrink-0"
+        href={href}
+        onClick={handleClick}
+        className="flex flex-col h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 rounded-md"
       >
-        <img
-          src={imgSrc}
-          alt={story.title}
-          loading={priority ? 'eager' : 'lazy'}
-          fetchPriority={priority ? 'high' : 'auto'}
-          decoding="async"
-          onError={() => {
-            if (imgSrc !== FALLBACK_COVER) {
-              setImgSrc(FALLBACK_COVER);
-            }
-          }}
-          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-        />
-      </a>
+        <div className="aspect-video w-full overflow-hidden rounded-md bg-[#16161a] border border-zinc-800/80 mb-3">
+          {hasValidCover ? (
+            <img
+              src={story.coverImage}
+              alt={story.title}
+              loading="lazy"
+              decoding="async"
+              onError={() => setImageFailed(true)}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+          ) : (
+            <div className="w-full h-full flex items-end p-4 bg-[#16161a]">
+              <span className="text-xs font-medium text-zinc-500 line-clamp-1">
+                {categoryLabel}
+              </span>
+            </div>
+          )}
+        </div>
 
-      <div className="p-3 sm:p-4 flex flex-col flex-1 justify-between gap-2">
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-1.5 text-[10px] sm:text-[11px]">
-            <a
-              href={`/category/${encodeURIComponent(categorySlug)}`}
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  if (onSelectCategory) onSelectCategory(categorySlug);
-                }
-              }}
-              className="font-semibold text-blue-700 dark:text-blue-400 hover:underline truncate"
-            >
-              {categoryLabel}
-            </a>
+        <div className="flex flex-col flex-1 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[12px] text-zinc-400 truncate">
+            <span className="text-amber-500/90 font-medium truncate">{categoryLabel}</span>
+            {timeLabel && (
+              <>
+                <span aria-hidden="true" className="text-zinc-600">
+                  ·
+                </span>
+                <span className="shrink-0">{timeLabel}</span>
+              </>
+            )}
+            <span aria-hidden="true" className="text-zinc-600">
+              ·
+            </span>
+            <span className="shrink-0 tabular-nums">මිනි. {readMins}</span>
           </div>
 
-          <h2 className="text-[13px] sm:text-[15px] font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400 leading-snug line-clamp-2">
-            <a href={storyUrl} onClick={handleCardClick} className="hover:underline">
-              {story.title}
-            </a>
+          <h2 className="text-[15px] font-semibold leading-snug text-zinc-100 group-hover:text-amber-400 transition-colors line-clamp-2">
+            {story.title}
           </h2>
 
           {excerpt && (
-            <p className="line-clamp-2 sm:line-clamp-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p className="text-[13px] leading-relaxed text-zinc-400 line-clamp-2">
               {excerpt}
             </p>
           )}
         </div>
-
-        <div className="pt-1 flex items-center justify-between text-[11px] font-semibold text-blue-700 dark:text-blue-400">
-          <a href={storyUrl} onClick={handleCardClick} className="hover:underline">
-            කතාව කියවන්න →
-          </a>
-        </div>
-      </div>
+      </a>
     </article>
   );
 };
-

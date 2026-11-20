@@ -4,11 +4,11 @@ import { Footer } from './components/layout/Footer';
 import { StoryGallery } from './components/stories/StoryGallery';
 import { StoryReader } from './components/stories/StoryReader';
 import type { StaticPageSlug } from './components/common/StaticPage';
-import { Story, Category } from './types/story';
+import type { Story, Category } from './types/story';
 import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
 import { testConnection } from './firebase';
-import { BannerAd, SIDE_BANNER_CONFIG } from './components/common/BannerAd';
+import { resolveRouteState, type ViewMode } from './utils/storyFormatting';
 
 const CategoriesPage = lazy(() =>
   import('./components/categories/CategoriesPage').then((m) => ({ default: m.CategoriesPage }))
@@ -26,165 +26,19 @@ const AdminRoot = lazy(() =>
   import('./components/admin/AdminRoot').then((m) => ({ default: m.AdminRoot }))
 );
 
-type ViewMode =
-  | 'home'
-  | 'category'
-  | 'popular'
-  | 'archives'
-  | 'profile'
-  | 'search'
-  | 'reader'
-  | 'amp-reader'
-  | 'categories'
-  | 'sitemap'
-  | 'static'
-  | 'not-found'
-  | 'admin';
-
-interface ParsedRouteState {
-  viewMode: ViewMode;
-  staticSlug: StaticPageSlug;
-  selectedStorySlug: string | null;
-  selectedCategory: string;
-  selectedAuthor: string;
-  searchQuery: string;
-  sortBy: 'latest' | 'popular' | 'oldest';
-  currentPage: number;
-}
-
-function resolveRouteFromLocation(): ParsedRouteState {
-  const fallback: ParsedRouteState = {
-    viewMode: 'home',
-    staticSlug: 'privacy-policy',
-    selectedStorySlug: null,
-    selectedCategory: 'all',
-    selectedAuthor: 'Walkathawa',
-    searchQuery: '',
-    sortBy: 'latest',
-    currentPage: 1,
-  };
-
-  if (typeof window === 'undefined') return fallback;
-
-  let path = '/';
-  try {
-    path = decodeURIComponent(window.location.pathname).replace(/\/+$/, '') || '/';
-  } catch {
-    path = window.location.pathname.replace(/\/+$/, '') || '/';
+function getLocationRoute() {
+  if (typeof window === 'undefined') {
+    return resolveRouteState('/', '');
   }
-  const searchParams = new URLSearchParams(window.location.search);
-  const pageParam = parseInt(searchParams.get('page') || '1', 10);
-  const validPage = !isNaN(pageParam) && pageParam > 0 ? pageParam : 1;
-  const qParam = searchParams.get('s') || searchParams.get('q') || '';
-
-  if (path === '/admin' || path.startsWith('/admin/')) {
-    return { ...fallback, viewMode: 'admin', searchQuery: qParam };
+  const resolved = resolveRouteState(window.location.pathname, window.location.search);
+  if (resolved.canonicalReplacePath) {
+    window.history.replaceState({}, '', resolved.canonicalReplacePath);
   }
-  if (path === '/' || path === '') {
-    return { ...fallback, viewMode: 'home', currentPage: validPage, searchQuery: qParam };
-  }
-  if (path === '/popular') {
-    return {
-      ...fallback,
-      viewMode: 'popular',
-      sortBy: 'popular',
-      currentPage: validPage,
-      searchQuery: qParam,
-    };
-  }
-  if (path === '/archives' || path === '/archiveposts') {
-    return { ...fallback, viewMode: 'archives', currentPage: validPage, searchQuery: qParam };
-  }
-  if (path === '/search') {
-    return { ...fallback, viewMode: 'search', currentPage: validPage, searchQuery: qParam };
-  }
-  if (
-    path.startsWith('/profile/') ||
-    path.startsWith('/followers/') ||
-    path.startsWith('/following/')
-  ) {
-    const author = path.replace(/^\/(profile|followers|following)\//, '').trim() || 'Walkathawa';
-    return {
-      ...fallback,
-      viewMode: 'profile',
-      selectedAuthor: author,
-      currentPage: validPage,
-      searchQuery: qParam,
-    };
-  }
-  if (path === '/categories' || path === '/collections') {
-    return { ...fallback, viewMode: 'categories', searchQuery: qParam };
-  }
-  if (path === '/sitemap') {
-    return { ...fallback, viewMode: 'sitemap', searchQuery: qParam };
-  }
-  if (path.startsWith('/page/')) {
-    const pSlug = (path.replace('/page/', '').trim() || 'privacy-policy') as StaticPageSlug;
-    return { ...fallback, viewMode: 'static', staticSlug: pSlug, searchQuery: qParam };
-  }
-  if (
-    path === '/about' ||
-    path === '/privacy' ||
-    path === '/terms' ||
-    path === '/contact' ||
-    path === '/login' ||
-    path === '/register' ||
-    path === '/forgot-password'
-  ) {
-    return {
-      ...fallback,
-      viewMode: 'static',
-      staticSlug: path.replace('/', '') as StaticPageSlug,
-      searchQuery: qParam,
-    };
-  }
-  if (
-    path.startsWith('/category/') ||
-    path.startsWith('/categories/') ||
-    path.startsWith('/collections/')
-  ) {
-    const catSlug = path.replace(/^\/(category|categories|collections)\//, '').trim();
-    if (catSlug) {
-      if (!path.startsWith('/category/')) {
-        window.history.replaceState({}, '', `/category/${encodeURIComponent(catSlug)}`);
-      }
-      return {
-        ...fallback,
-        viewMode: 'category',
-        selectedCategory: catSlug,
-        currentPage: validPage,
-        searchQuery: qParam,
-      };
-    }
-  }
-  if (path.startsWith('/posts/') || path.startsWith('/story/')) {
-    const isAmp = path.endsWith('/amp');
-    const slug = path
-      .replace(/^\/(posts|story)\//, '')
-      .replace(/\/amp$/, '')
-      .trim();
-    if (slug) {
-      if (path.startsWith('/posts/')) {
-        window.history.replaceState(
-          {},
-          '',
-          `/story/${encodeURIComponent(slug)}${isAmp ? '/amp' : ''}`
-        );
-      }
-      return {
-        ...fallback,
-        viewMode: isAmp ? 'amp-reader' : 'reader',
-        selectedStorySlug: slug,
-        searchQuery: qParam,
-      };
-    }
-  }
-
-  return { ...fallback, viewMode: 'not-found', searchQuery: qParam };
+  return resolved;
 }
 
 export function App() {
-  const initialRoute = resolveRouteFromLocation();
+  const initialRoute = getLocationRoute();
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => initialRoute.viewMode);
   const [staticSlug, setStaticSlug] = useState<StaticPageSlug>(() => initialRoute.staticSlug);
@@ -212,23 +66,15 @@ export function App() {
   }, []);
 
   const parseRoute = useCallback(() => {
-    const resolved = resolveRouteFromLocation();
+    const resolved = getLocationRoute();
     setViewMode(resolved.viewMode);
     setStaticSlug(resolved.staticSlug);
     setSelectedStorySlug(resolved.selectedStorySlug);
     setSelectedCategory(resolved.selectedCategory);
     setSelectedAuthor(resolved.selectedAuthor);
-    if (resolved.searchQuery) {
-      setSearchQuery(resolved.searchQuery);
-    }
+    setSearchQuery(resolved.searchQuery);
     setSortBy(resolved.sortBy);
     setCurrentPage(resolved.currentPage);
-
-    if (resolved.viewMode === 'admin') {
-      SeoService.updateNoIndexSeo('Admin', '/admin');
-    } else if (resolved.viewMode === 'not-found') {
-      SeoService.updateNotFoundSeo();
-    }
   }, []);
 
   useEffect(() => {
@@ -322,10 +168,6 @@ export function App() {
     ]
   );
 
-  const fetchStoriesList = useCallback(() => {
-    void loadGalleryStories();
-  }, [loadGalleryStories]);
-
   useEffect(() => {
     let cancelled = false;
     void loadGalleryStories(() => cancelled);
@@ -345,7 +187,6 @@ export function App() {
   };
 
   const handleSelectCategory = (catSlug: string) => {
-    setSearchQuery('');
     if (!catSlug || catSlug === 'all') {
       navigateTo('/');
     } else {
@@ -354,7 +195,6 @@ export function App() {
   };
 
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
     let baseUrl = '/';
     if (viewMode === 'category' && selectedCategory && selectedCategory !== 'all') {
       baseUrl = `/category/${encodeURIComponent(selectedCategory)}`;
@@ -364,20 +204,21 @@ export function App() {
       baseUrl = '/archives';
     } else if (viewMode === 'profile') {
       baseUrl = `/profile/${encodeURIComponent(selectedAuthor)}`;
+    } else if (viewMode === 'search' && searchQuery) {
+      const qs = new URLSearchParams({ s: searchQuery });
+      if (newPage > 1) qs.set('page', String(newPage));
+      navigateTo(`/search?${qs.toString()}`);
+      return;
     }
     const targetUrl = newPage > 1 ? `${baseUrl}?page=${newPage}` : baseUrl;
-    window.history.pushState({}, '', targetUrl);
+    navigateTo(targetUrl);
   };
 
-  const handleSearchChange = (q: string) => {
-    setSearchQuery(q);
-    setCurrentPage(1);
-    if (q.trim()) {
-      setViewMode('search');
-      window.history.pushState({}, '', `/search?s=${encodeURIComponent(q)}`);
+  const handleSearchSubmit = (query: string) => {
+    if (query) {
+      navigateTo(`/search?s=${encodeURIComponent(query)}`);
     } else {
-      setViewMode('home');
-      window.history.pushState({}, '', '/');
+      navigateTo('/');
     }
   };
 
@@ -388,18 +229,18 @@ export function App() {
     } catch {
       // ignore
     }
-    fetchStoriesList();
-  }, [fetchStoriesList]);
+    void loadGalleryStories();
+  }, [loadGalleryStories]);
 
   if (viewMode === 'admin') {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-[#090e1d]" />}>
+      <Suspense fallback={<div className="min-h-screen bg-[#0e0e10]" />}>
         <AdminRoot
           onBackToPublic={() => {
-            refreshAllFromFirestore();
+            void refreshAllFromFirestore();
             navigateTo('/');
           }}
-          onViewStoryPublic={(slug) => handleSelectStory(slug)}
+          onViewStoryPublic={handleSelectStory}
           onDataChanged={refreshAllFromFirestore}
         />
       </Suspense>
@@ -407,130 +248,95 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-[#090e1d] text-slate-100">
+    <div className="min-h-screen flex flex-col w-full bg-[#0e0e10] text-zinc-100">
       <Header
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={handleSelectCategory}
+        activeView={viewMode}
         searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        theme="dark"
-        onToggleTheme={() => {}}
-        onGoHome={() => {
-          setSearchQuery('');
-          navigateTo('/');
-        }}
-        onOpenCategoriesPage={() => navigateTo('/categories')}
+        onSearchSubmit={handleSearchSubmit}
+        onNavigate={navigateTo}
       />
 
-      <div className="flex-1 w-full px-2 sm:px-3 py-4 flex items-start justify-center gap-3">
-        <aside
-          aria-label="Left side banners"
-          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px]"
-        >
-          {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
-            <BannerAd
-              key={`left-side-${idx}`}
-              slotId={`left-side-${idx}`}
-              {...SIDE_BANNER_CONFIG}
-            />
-          ))}
-        </aside>
+      <main className="flex-1 w-full">
+        {isGalleryView && (
+          <StoryGallery
+            stories={stories}
+            totalStories={totalStories}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            selectedAuthor={selectedAuthor}
+            onSelectCategory={handleSelectCategory}
+            onSelectStory={handleSelectStory}
+            searchQuery={searchQuery}
+            onClearSearch={() => navigateTo('/')}
+            sortBy={sortBy}
+            onSortChange={(newSort) => {
+              setSortBy(newSort);
+              setCurrentPage(1);
+            }}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            isLoading={isLoading}
+            pageKind={viewMode}
+          />
+        )}
 
-        <main className="flex-1 min-w-0">
-          {isGalleryView && (
-            <StoryGallery
-              stories={stories}
-              totalStories={totalStories}
+        {(viewMode === 'reader' || viewMode === 'amp-reader') && selectedStorySlug && (
+          <StoryReader
+            slug={selectedStorySlug}
+            categories={categories}
+            isAmp={viewMode === 'amp-reader'}
+            onBack={() => navigateTo('/')}
+            onSelectStory={handleSelectStory}
+            onSelectCategory={handleSelectCategory}
+            onSelectAuthor={(author) => navigateTo(`/profile/${encodeURIComponent(author)}`)}
+          />
+        )}
+
+        {viewMode === 'categories' && (
+          <Suspense fallback={<div className="py-12" />}>
+            <CategoriesPage
               categories={categories}
-              selectedCategory={selectedCategory}
               onSelectCategory={handleSelectCategory}
-              onSelectStory={handleSelectStory}
-              searchQuery={searchQuery}
-              onSearchChange={handleSearchChange}
-              sortBy={sortBy}
-              onSortChange={(newSort) => {
-                setSortBy(newSort);
-                setCurrentPage(1);
-              }}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              isLoading={isLoading}
-              pageKind={viewMode}
-            />
-          )}
-
-          {(viewMode === 'reader' || viewMode === 'amp-reader') && selectedStorySlug && (
-            <StoryReader
-              slug={selectedStorySlug}
-              isAmp={viewMode === 'amp-reader'}
               onBack={() => navigateTo('/')}
+            />
+          </Suspense>
+        )}
+
+        {viewMode === 'sitemap' && (
+          <Suspense fallback={<div className="py-12" />}>
+            <HtmlSitemapPage
+              categories={categories}
               onSelectStory={handleSelectStory}
               onSelectCategory={handleSelectCategory}
-              onSelectAuthor={(author) => navigateTo(`/profile/${encodeURIComponent(author)}`)}
+              onBack={() => navigateTo('/')}
             />
-          )}
+          </Suspense>
+        )}
 
-          {viewMode === 'categories' && (
-            <Suspense fallback={<div className="py-8" />}>
-              <CategoriesPage
-                categories={categories}
-                onSelectCategory={handleSelectCategory}
-                onBack={() => navigateTo('/')}
-              />
-            </Suspense>
-          )}
+        {viewMode === 'static' && (
+          <Suspense fallback={<div className="py-12" />}>
+            <StaticPage page={staticSlug} onBack={() => navigateTo('/')} />
+          </Suspense>
+        )}
 
-          {viewMode === 'sitemap' && (
-            <Suspense fallback={<div className="py-8" />}>
-              <HtmlSitemapPage
-                categories={categories}
-                onSelectStory={handleSelectStory}
-                onSelectCategory={handleSelectCategory}
-                onBack={() => navigateTo('/')}
-              />
-            </Suspense>
-          )}
-
-          {viewMode === 'static' && (
-            <Suspense fallback={<div className="py-8" />}>
-              <StaticPage page={staticSlug} onBack={() => navigateTo('/')} />
-            </Suspense>
-          )}
-
-          {viewMode === 'not-found' && (
-            <Suspense fallback={<div className="py-8" />}>
-              <NotFoundPage
-                onGoHome={() => navigateTo('/')}
-                onBrowseCategories={() => navigateTo('/categories')}
-              />
-            </Suspense>
-          )}
-        </main>
-
-        <aside
-          aria-label="Right side banners"
-          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px]"
-        >
-          {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
-            <BannerAd
-              key={`right-side-${idx}`}
-              slotId={`right-side-${idx}`}
-              {...SIDE_BANNER_CONFIG}
+        {viewMode === 'not-found' && (
+          <Suspense fallback={<div className="py-12" />}>
+            <NotFoundPage
+              onGoHome={() => navigateTo('/')}
+              onBrowseCategories={() => navigateTo('/categories')}
             />
-          ))}
-        </aside>
-      </div>
+          </Suspense>
+        )}
+      </main>
 
       <Footer
         categories={categories}
         onSelectCategory={handleSelectCategory}
-        onNavigatePath={(path) => navigateTo(path)}
+        onNavigatePath={navigateTo}
       />
     </div>
   );
 }
 
 export default App;
-

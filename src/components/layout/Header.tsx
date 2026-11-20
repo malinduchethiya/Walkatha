@@ -1,99 +1,188 @@
-import React from 'react';
-import { Search, Sun, Moon, X } from 'lucide-react';
-import { Category } from '../../types/story';
+import React, { useState, useEffect } from 'react';
+import { Search, Menu, X } from 'lucide-react';
+import type { ViewMode } from '../../utils/storyFormatting';
 
 interface HeaderProps {
-  categories: Category[];
-  selectedCategory: string;
-  onSelectCategory: (slug: string) => void;
+  activeView: ViewMode;
   searchQuery: string;
-  onSearchChange: (q: string) => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
-  onGoHome: () => void;
-  onOpenCategoriesPage: () => void;
+  onSearchSubmit: (query: string) => void;
+  onNavigate: (path: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  searchQuery,
-  onSearchChange,
-  theme,
-  onToggleTheme,
-  onGoHome,
-  onOpenCategoriesPage,
-}) => {
-  return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-[#0d152b]/95 backdrop-blur border-b border-slate-200 dark:border-[#1e2d52] transition-colors">
-      <div className="w-full px-2 sm:px-3">
-        <div className="flex items-center justify-between h-14 gap-3">
-          {/* Brand link */}
-          <a
-            href="/"
-            onClick={(e) => {
-              if (!e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                onGoHome();
-              }
-            }}
-            className="flex items-baseline gap-2 shrink-0"
-          >
-            <span className="text-lg font-bold tracking-tight text-[#0f172a] dark:text-white">
-              Walkathawa
-            </span>
-            <span className="text-xs font-medium text-blue-700 dark:text-blue-400 hidden sm:inline">
-              වල් කතාව
-            </span>
-          </a>
+const NAV_ITEMS: { label: string; path: string; matchViews: ViewMode[] }[] = [
+  { label: 'නවතම', path: '/', matchViews: ['home'] },
+  { label: 'වර්ගීකරණ', path: '/categories', matchViews: ['categories', 'category'] },
+  { label: 'ජනප්‍රිය', path: '/popular', matchViews: ['popular'] },
+  { label: 'ලේඛනාගාරය', path: '/archives', matchViews: ['archives'] },
+];
 
-          {/* Search input */}
-          <div className="flex-1 max-w-md relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="සිංහල කතා සොයන්න..."
-              aria-label="සිංහල කතා සොයන්න"
-              className="w-full pl-9 pr-8 py-1.5 text-sm rounded-lg bg-slate-100 dark:bg-[#131f3e] text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 border border-slate-200 dark:border-[#243763] focus:outline-none focus:border-blue-600 dark:focus:border-blue-400"
+export const Header: React.FC<HeaderProps> = ({
+  activeView,
+  searchQuery,
+  onSearchSubmit,
+  onNavigate,
+}) => {
+  const [draftQuery, setDraftQuery] = useState(searchQuery);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setDraftQuery(searchQuery);
+  }, [searchQuery]);
+
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    onNavigate(path);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    onSearchSubmit(draftQuery.trim());
+  };
+
+  const handleClearSearch = () => {
+    setDraftQuery('');
+    onSearchSubmit('');
+  };
+
+  return (
+    <header className="sticky top-0 z-40 bg-[#0e0e10]/95 backdrop-blur-sm border-b border-zinc-800/80">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        {/* Zone 1: Wordmark */}
+        <a
+          href="/"
+          onClick={(e) => handleLinkClick(e, '/')}
+          className="flex items-baseline gap-2.5 shrink-0 group focus:outline-none"
+        >
+          <span className="text-[19px] font-bold tracking-tight text-zinc-50 group-hover:text-amber-400 transition-colors">
+            Walkathawa
+          </span>
+          <span className="hidden sm:inline text-xs text-zinc-500 font-medium">
+            වල් කතාව
+          </span>
+        </a>
+
+        {/* Zone 2: Primary Single-Line Navigation */}
+        <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-7">
+          {NAV_ITEMS.map((item) => {
+            const isActive = item.matchViews.includes(activeView);
+            return (
+              <a
+                key={item.path}
+                href={item.path}
+                onClick={(e) => handleLinkClick(e, item.path)}
+                aria-current={isActive ? 'page' : undefined}
+                className={`text-sm font-medium whitespace-nowrap transition-colors py-1 border-b-2 ${
+                  isActive
+                    ? 'text-zinc-50 border-amber-500'
+                    : 'text-zinc-400 border-transparent hover:text-zinc-100'
+                }`}
+              >
+                {item.label}
+              </a>
+            );
+          })}
+        </nav>
+
+        {/* Zone 3: Search & Mobile Menu Toggle */}
+        <div className="flex items-center gap-2 shrink-0">
+          <form
+            role="search"
+            onSubmit={handleSubmit}
+            className="hidden sm:flex items-center relative"
+          >
+            <label htmlFor="header-story-search" className="sr-only">
+              කතා සොයන්න
+            </label>
+            <Search
+              className="w-4 h-4 text-zinc-500 absolute left-3 pointer-events-none"
+              aria-hidden="true"
             />
-            {searchQuery && (
+            <input
+              id="header-story-search"
+              type="search"
+              value={draftQuery}
+              onChange={(e) => setDraftQuery(e.target.value)}
+              placeholder="සොයන්න..."
+              className="w-48 lg:w-60 h-9 pl-9 pr-8 text-sm bg-[#16161a] text-zinc-100 placeholder:text-zinc-500 border border-zinc-800 rounded-md focus:outline-none focus:border-zinc-500 transition-colors"
+            />
+            {draftQuery && (
               <button
                 type="button"
-                onClick={() => onSearchChange('')}
+                onClick={handleClearSearch}
                 aria-label="Clear search"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-2.5 text-zinc-500 hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </form>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-md border border-zinc-800 text-zinc-300 hover:text-zinc-50 hover:border-zinc-700 transition-colors cursor-pointer"
+          >
+            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-zinc-800/80 bg-[#0e0e10] px-4 py-4 space-y-4">
+          <form role="search" onSubmit={handleSubmit} className="relative sm:hidden">
+            <label htmlFor="mobile-story-search" className="sr-only">
+              කතා සොයන්න
+            </label>
+            <Search
+              className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              aria-hidden="true"
+            />
+            <input
+              id="mobile-story-search"
+              type="search"
+              value={draftQuery}
+              onChange={(e) => setDraftQuery(e.target.value)}
+              placeholder="කතාවක් සොයන්න..."
+              className="w-full h-10 pl-9 pr-9 text-sm bg-[#16161a] text-zinc-100 placeholder:text-zinc-500 border border-zinc-800 rounded-md focus:outline-none focus:border-zinc-500"
+            />
+            {draftQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
-          </div>
+          </form>
 
-          {/* Minimal Actions: Categories link + Navy/Light Theme Toggle */}
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href="/categories"
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  onOpenCategoriesPage();
-                }
-              }}
-              className="text-xs font-medium px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#162347] transition-colors"
-            >
-              වර්ගීකරණ
-            </a>
-
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Navy Theme'}
-              className="p-2 rounded-lg border border-slate-200 dark:border-[#243763] bg-slate-100 dark:bg-[#131f3e] text-slate-700 dark:text-blue-300 hover:bg-slate-200 dark:hover:bg-[#1a2b52] transition-colors cursor-pointer"
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-          </div>
+          <nav aria-label="Mobile navigation" className="flex flex-col divide-y divide-zinc-800/60">
+            {NAV_ITEMS.map((item) => {
+              const isActive = item.matchViews.includes(activeView);
+              return (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  onClick={(e) => handleLinkClick(e, item.path)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`py-2.5 text-sm font-medium ${
+                    isActive ? 'text-amber-400' : 'text-zinc-300 hover:text-zinc-50'
+                  }`}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
+          </nav>
         </div>
-      </div>
+      )}
     </header>
   );
 };

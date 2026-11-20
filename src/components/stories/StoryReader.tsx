@@ -1,314 +1,334 @@
 import React, { useState, useEffect } from 'react';
-import { Story } from '../../types/story';
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { Story, Category } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
-import { BannerAd, HOME_MIDDLE_BANNER_CONFIG } from '../common/BannerAd';
+import { formatSinhalaDate } from '../../utils/formatters';
+import {
+  splitStoryParagraphs,
+  getStoryAuthorName,
+  getCategoryLabel,
+} from '../../utils/storyFormatting';
 
 interface StoryReaderProps {
   slug: string;
+  categories: Category[];
+  isAmp?: boolean;
   onBack: () => void;
   onSelectStory: (slug: string) => void;
-  onSelectCategory: (category: string) => void;
-  onSelectAuthor?: (authorName: string) => void;
-  isAmp?: boolean;
+  onSelectCategory: (catSlug: string) => void;
+  onSelectAuthor: (author: string) => void;
 }
 
-const FALLBACK_COVER = '/icon.png';
-
-export function splitStoryParagraphs(rawContent: string): string[] {
-  const initial = (rawContent || '')
-    .split(/\n\s*\n|\r\n\s*\r\n|\n/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-
-  if (initial.length > 1) {
-    return initial;
-  }
-
-  const sentences = (rawContent || '')
-    .replace(/([.!?।])\s+/g, '$1\n')
-    .split('\n')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-
-  return sentences.length > 0 ? sentences : ['සිංහල කතාව'];
-}
+const FONT_SIZES = ['text-[16px]', 'text-[17.5px]', 'text-[19px]', 'text-[21px]'] as const;
 
 export const StoryReader: React.FC<StoryReaderProps> = ({
   slug,
+  categories,
   onBack,
   onSelectStory,
   onSelectCategory,
   onSelectAuthor,
-  isAmp = false,
 }) => {
   const [story, setStory] = useState<Story | null>(null);
-  const [imgSrc, setImgSrc] = useState<string>(FALLBACK_COVER);
+  const [relatedStories, setRelatedStories] = useState<Story[]>([]);
   const [prevStory, setPrevStory] = useState<Story | null>(null);
   const [nextStory, setNextStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [notFound, setNotFound] = useState<boolean>(false);
+  const [coverFailed, setCoverFailed] = useState<boolean>(false);
+  const [fontScaleIdx, setFontScaleIdx] = useState<number>(1);
 
   useEffect(() => {
-    let active = true;
+    let cancelled = false;
+    setIsLoading(true);
+    setNotFound(false);
+    setCoverFailed(false);
 
-    const loadStory = async () => {
-      setIsLoading(true);
+    async function load() {
       try {
         const fetched = await StoryService.getStoryBySlug(slug);
-        if (!active) return;
+        if (cancelled) return;
 
-        if (fetched) {
-          setStory(fetched);
-          setImgSrc(
-            fetched.coverImage && fetched.coverImage.trim()
-              ? fetched.coverImage
-              : FALLBACK_COVER
-          );
-          SeoService.updateStorySeo(fetched);
-
-          const allStories = await StoryService.fetchAllLiveStories();
-          if (!active) return;
-
-          const idx = allStories.findIndex(
-            (s) => s.id === fetched.id || s.slug === fetched.slug
-          );
-          const prev = idx > 0 ? allStories[idx - 1] : allStories[allStories.length - 1] || null;
-          const next =
-            idx >= 0 && idx < allStories.length - 1 ? allStories[idx + 1] : allStories[0] || null;
-
-          setPrevStory(prev);
-          setNextStory(next);
-        } else {
+        if (!fetched) {
           setStory(null);
+          setNotFound(true);
           SeoService.updateNotFoundSeo();
+          return;
+        }
+
+        setStory(fetched);
+        SeoService.updateStorySeo(fetched);
+
+        const [allStories, related] = await Promise.all([
+          StoryService.fetchAllLiveStories(),
+          StoryService.getRelatedStories(fetched, 6),
+        ]);
+        if (cancelled) return;
+
+        setRelatedStories(related);
+        const idx = allStories.findIndex(
+          (s) => s.id === fetched.id || s.slug === fetched.slug
+        );
+        if (idx >= 0) {
+          setPrevStory(idx > 0 ? allStories[idx - 1] : null);
+          setNextStory(idx < allStories.length - 1 ? allStories[idx + 1] : null);
+        } else {
+          setPrevStory(null);
+          setNextStory(null);
         }
       } catch {
-        if (active) setStory(null);
+        if (!cancelled) {
+          setNotFound(true);
+          SeoService.updateNotFoundSeo();
+        }
       } finally {
-        if (active) setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
-    };
+    }
 
-    loadStory();
+    void load();
     return () => {
-      active = false;
+      cancelled = true;
     };
   }, [slug]);
 
+  const handleLink = (e: React.MouseEvent<HTMLAnchorElement>, fn: () => void) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    fn();
+  };
+
   if (isLoading) {
     return (
-      <div className="w-full py-6 space-y-4">
-        <div className="h-8 w-2/3 rounded bg-[#111a33] animate-pulse" />
-        <div className="h-96 rounded-lg bg-[#111a33] border border-[#1e2d52] animate-pulse" />
+      <div className="max-w-[700px] mx-auto px-4 sm:px-6 py-10 space-y-6" aria-busy="true">
+        <div className="h-3 w-36 bg-zinc-900 rounded animate-pulse" />
+        <div className="h-8 w-5/6 bg-zinc-900 rounded animate-pulse" />
+        <div className="aspect-video w-full bg-zinc-900 rounded-md animate-pulse" />
+        <div className="space-y-3 pt-2">
+          <div className="h-4 w-full bg-zinc-900 rounded animate-pulse" />
+          <div className="h-4 w-11/12 bg-zinc-900 rounded animate-pulse" />
+          <div className="h-4 w-4/5 bg-zinc-900 rounded animate-pulse" />
+        </div>
       </div>
     );
   }
 
-  if (!story) {
+  if (notFound || !story) {
     return (
-      <div className="w-full py-12 text-center bg-[#111a33] border border-[#1e2d52] rounded-lg p-6">
-        <h1 className="text-lg font-bold text-white mb-2">Story Not Found</h1>
-        <p className="text-xs text-slate-300 mb-4">
-          ඔබ සෙවූ කතාව දැනට ලබාගත නොහැක. වෙනත් සිංහල වැල කතාවක් තෝරාගන්න.
+      <div className="max-w-[700px] mx-auto px-4 sm:px-6 py-16 text-center space-y-4">
+        <h1 className="text-2xl font-bold text-zinc-100">කතාව හමු නොවීය</h1>
+        <p className="text-sm text-zinc-400">
+          ඔබ සෙවූ කතාව ඉවත් කර ඇති හෝ ලිපිනය වැරදි විය හැක.
         </p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-4 py-2 rounded-md bg-[#1e3a8a] text-white text-xs font-semibold cursor-pointer"
-        >
-          මුල් පිටුවට යන්න
-        </button>
+        <div className="pt-2">
+          <a
+            href="/"
+            onClick={(e) => handleLink(e, onBack)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-md bg-zinc-100 text-zinc-950 hover:bg-white transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+            මුල් පිටුවට යන්න
+          </a>
+        </div>
       </div>
     );
   }
 
-  const rawContent = story.fullContent || story.content || story.shortDescription || '';
-  const paragraphs = splitStoryParagraphs(rawContent);
-
-  const primaryCatSlug = story.category || 'amma-putha';
-  const primaryCatLabel = story.categoryName || story.category || 'අම්ම පුතා';
-  const secondaryCatSlug = story.tags && story.tags[0] ? story.tags[0] : null;
-  const authorName: string =
-    typeof story.author === 'string'
-      ? story.author || 'Walkathawa'
-      : story.author?.name || 'Walkathawa';
-  const encodedAuthor = encodeURIComponent(authorName);
-
-  if (isAmp) {
-    return (
-      <div className="w-full py-4">
-        <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg p-6 space-y-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">{story.title}</h1>
-          <div className="space-y-4 text-base leading-relaxed text-slate-200">
-            {paragraphs.map((para, idx) => (
-              <p key={idx} data-reading-content>
-                {para}
-              </p>
-            ))}
-          </div>
-        </article>
-      </div>
-    );
-  }
+  const categorySlug = story.category || story.categoryId || 'romantic';
+  const categoryLabel = getCategoryLabel(story, categories);
+  const authorName = getStoryAuthorName(story);
+  const formattedDate = formatSinhalaDate(story.uploadDate || story.createdAt);
+  const readMins = story.readingTime || 5;
+  const paragraphs = splitStoryParagraphs(
+    story.fullContent || story.content || story.shortDescription || story.description || ''
+  );
+  const showCover = Boolean(story.coverImage && story.coverImage.trim() && !coverFailed);
 
   return (
-    <div className="w-full">
-      <div className="space-y-6">
-        <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg overflow-hidden">
-          <div className="block w-full aspect-[16/9] max-h-96 bg-[#0d152b] overflow-hidden border-b border-[#1e2d52]">
-            <img
-              src={imgSrc}
-              alt={story.title}
-              fetchPriority="high"
-              decoding="async"
-              onError={() => {
-                if (imgSrc !== FALLBACK_COVER) {
-                  setImgSrc(FALLBACK_COVER);
-                }
-              }}
-              className="w-full h-full object-cover"
-            />
+    <article className="max-w-[700px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      {/* Breadcrumb */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-zinc-400 mb-6">
+        <a
+          href="/"
+          onClick={(e) => handleLink(e, onBack)}
+          className="hover:text-zinc-100 transition-colors"
+        >
+          මුල් පිටුව
+        </a>
+        <span aria-hidden="true" className="text-zinc-600">
+          /
+        </span>
+        <a
+          href={`/category/${encodeURIComponent(categorySlug)}`}
+          onClick={(e) => handleLink(e, () => onSelectCategory(categorySlug))}
+          className="text-amber-500/90 hover:text-amber-400 transition-colors"
+        >
+          {categoryLabel}
+        </a>
+      </nav>
+
+      {/* Story Header */}
+      <header className="space-y-4 pb-6 border-b border-zinc-800/80">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-50 leading-snug">
+          {story.title}
+        </h1>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`/profile/${encodeURIComponent(authorName)}`}
+              onClick={(e) => handleLink(e, () => onSelectAuthor(authorName))}
+              className="text-zinc-300 hover:text-zinc-50 font-medium transition-colors"
+            >
+              {authorName}
+            </a>
+            {formattedDate && (
+              <>
+                <span aria-hidden="true" className="text-zinc-600">
+                  ·
+                </span>
+                <time dateTime={story.uploadDate || story.createdAt}>{formattedDate}</time>
+              </>
+            )}
+            <span aria-hidden="true" className="text-zinc-600">
+              ·
+            </span>
+            <span className="tabular-nums">මිනිත්තු {readMins} ක කියවීමක්</span>
           </div>
 
-          <div className="p-5 sm:p-8">
-            <header className="pb-5 mb-6 border-b border-[#1e2d52] space-y-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <a
-                  href={`/category/${encodeURIComponent(primaryCatSlug)}`}
-                  onClick={(e) => {
-                    if (!e.ctrlKey && !e.metaKey) {
-                      e.preventDefault();
-                      onSelectCategory(primaryCatSlug);
-                    }
-                  }}
-                  className="px-2.5 py-1 rounded bg-[#162347] text-blue-300 text-xs font-semibold hover:underline"
-                >
-                  {primaryCatLabel}
-                </a>
-                {secondaryCatSlug && secondaryCatSlug !== primaryCatLabel && (
-                  <a
-                    href={`/category/${encodeURIComponent(secondaryCatSlug)}`}
-                    onClick={(e) => {
-                      if (!e.ctrlKey && !e.metaKey) {
-                        e.preventDefault();
-                        onSelectCategory(secondaryCatSlug);
-                      }
-                    }}
-                    className="px-2.5 py-1 rounded bg-[#162347] text-blue-300 text-xs font-semibold hover:underline"
-                  >
-                    {secondaryCatSlug}
-                  </a>
-                )}
-              </div>
-
-              <h1 className="text-xl sm:text-3xl font-bold text-white leading-snug">
-                {story.title}
-              </h1>
-
-              <div className="flex items-center gap-3 text-xs text-slate-400 pt-1">
-                <span>By</span>
-                <a
-                  href={`/profile/${encodedAuthor}`}
-                  onClick={(e) => {
-                    if (!e.ctrlKey && !e.metaKey && onSelectAuthor) {
-                      e.preventDefault();
-                      onSelectAuthor(authorName);
-                    }
-                  }}
-                  className="text-blue-400 hover:underline font-medium"
-                >
-                  {authorName}
-                </a>
-                {story.uploadDate && (
-                  <>
-                    <span>•</span>
-                    <time dateTime={story.uploadDate}>
-                      {new Date(story.uploadDate).toLocaleDateString('si-LK', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </time>
-                  </>
-                )}
-              </div>
-            </header>
-
-            <div className="flex justify-center mb-6 overflow-hidden">
-              <BannerAd slotId="story-top" {...HOME_MIDDLE_BANNER_CONFIG} />
-            </div>
-
-            <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-200 select-text">
-              {paragraphs.map((para, i) => {
-                const midIdx = Math.floor((paragraphs.length - 1) / 2);
-                return (
-                  <React.Fragment key={i}>
-                    <p
-                      data-reading-content
-                      className="leading-[1.95] tracking-normal break-words"
-                    >
-                      {para}
-                    </p>
-                    {paragraphs.length >= 2 && i === midIdx && (
-                      <div className="flex justify-center py-2 overflow-hidden">
-                        <BannerAd slotId="story-middle" {...HOME_MIDDLE_BANNER_CONFIG} />
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-
-            <blockquote className="mt-6 p-4 rounded-lg bg-[#0d152b] border-l-4 border-blue-500 text-xs sm:text-sm text-slate-300 space-y-1">
-              <p>
-                අලුත්ම සිංහල වැල කතා දිනපතා එසැණින් කියවීමට අපගේ Telegram නාලිකාව සමඟ එක්වන්න:{' '}
-                <a
-                  href="https://t.me/walkathawa"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 underline font-semibold"
-                >
-                  https://t.me/walkathawa
-                </a>
-              </p>
-            </blockquote>
-
-            <div className="flex justify-center mt-6 overflow-hidden">
-              <BannerAd slotId="story-bottom" {...HOME_MIDDLE_BANNER_CONFIG} />
-            </div>
-
-            <footer className="mt-6 pt-6 border-t border-[#1e2d52] space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <a
-                  href={prevStory ? `/story/${encodeURIComponent(prevStory.slug)}` : '/'}
-                  onClick={(e) => {
-                    if (!e.ctrlKey && !e.metaKey && prevStory) {
-                      e.preventDefault();
-                      onSelectStory(prevStory.slug);
-                    }
-                  }}
-                  className="px-3 py-2.5 rounded-lg bg-[#162347] hover:bg-[#1e2f5e] text-center text-xs sm:text-sm font-semibold text-white transition-colors"
-                >
-                  Previous
-                </a>
-                <a
-                  href={nextStory ? `/story/${encodeURIComponent(nextStory.slug)}` : '/'}
-                  onClick={(e) => {
-                    if (!e.ctrlKey && !e.metaKey && nextStory) {
-                      e.preventDefault();
-                      onSelectStory(nextStory.slug);
-                    }
-                  }}
-                  className="px-3 py-2.5 rounded-lg bg-[#162347] hover:bg-[#1e2f5e] text-center text-xs sm:text-sm font-semibold text-white transition-colors"
-                >
-                  Next
-                </a>
-              </div>
-            </footer>
+          {/* Minimal Reading Text Size Controls */}
+          <div className="flex items-center gap-1" role="group" aria-label="Text size">
+            <button
+              type="button"
+              onClick={() => setFontScaleIdx((i) => Math.max(0, i - 1))}
+              disabled={fontScaleIdx === 0}
+              aria-label="Decrease text size"
+              className="px-2 py-1 rounded border border-zinc-800 text-zinc-300 hover:text-zinc-50 hover:border-zinc-700 disabled:opacity-35 cursor-pointer"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontScaleIdx((i) => Math.min(FONT_SIZES.length - 1, i + 1))}
+              disabled={fontScaleIdx === FONT_SIZES.length - 1}
+              aria-label="Increase text size"
+              className="px-2 py-1 rounded border border-zinc-800 text-zinc-300 hover:text-zinc-50 hover:border-zinc-700 disabled:opacity-35 cursor-pointer"
+            >
+              A+
+            </button>
           </div>
-        </article>
+        </div>
+      </header>
+
+      {/* Cover Image */}
+      {showCover && (
+        <figure className="my-7 overflow-hidden rounded-md border border-zinc-800/80 bg-[#16161a]">
+          <img
+            src={story.coverImage}
+            alt={story.title}
+            onError={() => setCoverFailed(true)}
+            className="w-full aspect-video object-cover"
+          />
+        </figure>
+      )}
+
+      {/* Story Prose */}
+      <div className={`story-prose ${FONT_SIZES[fontScaleIdx]} text-zinc-200 space-y-6 my-8`}>
+        {paragraphs.length > 0 ? (
+          paragraphs.map((para, index) => (
+            <p key={index} data-reading-content="">
+              {para}
+            </p>
+          ))
+        ) : (
+          <p className="text-zinc-400">මෙම කතාවේ අන්තර්ගතය ලබා ගැනීමට නොහැකි විය.</p>
+        )}
       </div>
-    </div>
+
+      {/* Subtle Hairline Telegram Notice (No thick left border) */}
+      <div className="my-10 py-5 border-t border-b border-zinc-800/80 text-sm text-zinc-400 leading-relaxed">
+        අලුත්ම සිංහල කතා දිනපතා එසැණින් කියවීමට අපගේ Telegram නාලිකාව සමඟ එක්වන්න:{' '}
+        <a
+          href="https://t.me/walkathawa"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-amber-400 hover:underline font-medium"
+        >
+          t.me/walkathawa
+        </a>
+      </div>
+
+      {/* Previous / Next Story Navigation */}
+      {(prevStory || nextStory) && (
+        <nav
+          aria-label="Adjacent stories"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2"
+        >
+          <div>
+            {prevStory && (
+              <a
+                href={`/story/${encodeURIComponent(prevStory.slug || prevStory.id)}`}
+                onClick={(e) => handleLink(e, () => onSelectStory(prevStory.slug || prevStory.id))}
+                className="block p-4 rounded-md border border-zinc-800/80 hover:border-zinc-700 bg-[#16161a]/60 transition-colors"
+              >
+                <span className="inline-flex items-center gap-1 text-xs text-zinc-500 mb-1">
+                  <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                  පෙර කතාව
+                </span>
+                <p className="text-sm font-medium text-zinc-200 line-clamp-1">
+                  {prevStory.title}
+                </p>
+              </a>
+            )}
+          </div>
+          <div>
+            {nextStory && (
+              <a
+                href={`/story/${encodeURIComponent(nextStory.slug || nextStory.id)}`}
+                onClick={(e) => handleLink(e, () => onSelectStory(nextStory.slug || nextStory.id))}
+                className="block p-4 rounded-md border border-zinc-800/80 hover:border-zinc-700 bg-[#16161a]/60 transition-colors sm:text-right"
+              >
+                <span className="inline-flex items-center gap-1 text-xs text-zinc-500 mb-1 sm:justify-end">
+                  මීළඟ කතාව
+                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                </span>
+                <p className="text-sm font-medium text-zinc-200 line-clamp-1">
+                  {nextStory.title}
+                </p>
+              </a>
+            )}
+          </div>
+        </nav>
+      )}
+
+      {/* Related Stories — Compact Editorial List */}
+      {relatedStories.length > 0 && (
+        <section className="mt-12 pt-8 border-t border-zinc-800/80">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-4">තවත් කියවන්න</h2>
+          <ul className="divide-y divide-zinc-800/70">
+            {relatedStories.map((rel) => {
+              const relSlug = rel.slug || rel.id;
+              return (
+                <li key={rel.id || relSlug}>
+                  <a
+                    href={`/story/${encodeURIComponent(relSlug)}`}
+                    onClick={(e) => handleLink(e, () => onSelectStory(relSlug))}
+                    className="py-3 flex items-baseline justify-between gap-4 group"
+                  >
+                    <span className="text-sm text-zinc-200 group-hover:text-amber-400 transition-colors line-clamp-1">
+                      {rel.title}
+                    </span>
+                    <span className="text-xs text-zinc-500 shrink-0 tabular-nums">
+                      මිනි. {rel.readingTime || 5}
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+    </article>
   );
 };
-

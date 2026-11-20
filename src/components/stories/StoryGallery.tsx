@@ -1,235 +1,238 @@
 import React from 'react';
-import { Story, Category } from '../../types/story';
+import type { Story, Category } from '../../types/story';
 import { StoryCard } from './StoryCard';
-import { BannerAd, HOME_MIDDLE_BANNER_CONFIG } from '../common/BannerAd';
+import { Pagination } from '../common/Pagination';
+import { cleanCategoryBadgeName } from '../../utils/formatters';
+import type { ViewMode } from '../../utils/storyFormatting';
 
 interface StoryGalleryProps {
   stories: Story[];
   totalStories: number;
   categories: Category[];
   selectedCategory: string;
-  onSelectCategory: (slug: string) => void;
+  selectedAuthor?: string;
+  onSelectCategory: (catSlug: string) => void;
   onSelectStory: (slug: string) => void;
   searchQuery: string;
-  onSearchChange: (q: string) => void;
+  onClearSearch: () => void;
   sortBy: 'latest' | 'popular' | 'oldest';
   onSortChange: (sort: 'latest' | 'popular' | 'oldest') => void;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   isLoading: boolean;
-  pageKind?: 'home' | 'category' | 'popular' | 'archives' | 'profile' | 'search';
-  headingText?: string;
+  pageKind: ViewMode;
 }
 
 export const StoryGallery: React.FC<StoryGalleryProps> = ({
   stories,
   totalStories,
+  categories,
   selectedCategory,
+  selectedAuthor = 'Walkathawa',
   onSelectCategory,
   onSelectStory,
-  onSearchChange,
+  searchQuery,
+  onClearSearch,
   sortBy,
   onSortChange,
   currentPage,
   totalPages,
   onPageChange,
   isLoading,
-  pageKind = 'home',
-  headingText,
+  pageKind,
 }) => {
-  const isStrictHome =
-    pageKind === 'home' && (!selectedCategory || selectedCategory === 'all');
+  const activeCatObj =
+    selectedCategory && selectedCategory !== 'all'
+      ? categories.find(
+          (c) =>
+            (c.slug || '').toLowerCase() === selectedCategory.toLowerCase() ||
+            (c.id || '').toLowerCase() === selectedCategory.toLowerCase()
+        )
+      : null;
 
-  const getVisiblePages = (): (number | 'ellipsis-start' | 'ellipsis-end')[] => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    const items: (number | 'ellipsis-start' | 'ellipsis-end')[] = [1];
-    const start = Math.max(2, currentPage - 2);
-    const end = Math.min(totalPages - 1, currentPage + 2);
+  let heading = 'නවතම කතා';
+  let subheading: string | undefined;
+  let paginationBase = '/';
 
-    if (start > 2) {
-      items.push('ellipsis-start');
-    }
-    for (let i = start; i <= end; i++) {
-      items.push(i);
-    }
-    if (end < totalPages - 1) {
-      items.push('ellipsis-end');
-    }
-    items.push(totalPages);
-    return items;
+  if (pageKind === 'category') {
+    heading = activeCatObj
+      ? cleanCategoryBadgeName(activeCatObj.sinhalaName || activeCatObj.name)
+      : selectedCategory;
+    subheading = activeCatObj?.description;
+    paginationBase = `/category/${encodeURIComponent(selectedCategory)}`;
+  } else if (pageKind === 'popular') {
+    heading = 'ජනප්‍රිය කතා';
+    paginationBase = '/popular';
+  } else if (pageKind === 'archives') {
+    heading = 'ලේඛනාගාරය';
+    paginationBase = '/archives';
+  } else if (pageKind === 'profile') {
+    heading = selectedAuthor;
+    paginationBase = `/profile/${encodeURIComponent(selectedAuthor)}`;
+  } else if (pageKind === 'search') {
+    heading = searchQuery ? `“${searchQuery}” සෙවුම් ප්‍රතිඵල` : 'සෙවුම් ප්‍රතිඵල';
+    paginationBase = '/search';
+  }
+
+  const handleCatLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    onSelectCategory(slug);
   };
 
-  const visiblePages = getVisiblePages();
-
-  const getPageUrl = (page: number) => {
-    if (pageKind === 'popular') return page > 1 ? `/popular?page=${page}` : '/popular';
-    if (pageKind === 'archives') return page > 1 ? `/archives?page=${page}` : '/archives';
-    const base =
-      selectedCategory && selectedCategory !== 'all'
-        ? `/category/${encodeURIComponent(selectedCategory)}`
-        : '/';
-    return page > 1 ? `${base}?page=${page}` : base;
-  };
-
-  const h1Label =
-    headingText ||
-    (isStrictHome
-      ? 'Walkathawa (වල් කතාව) | Sinhala Stories Online'
-      : `Walkathawa — ${selectedCategory}`);
-
-  // 4 columns x 5 rows = 20 stories per page
-  const displayedStories = stories.slice(0, 20);
+  const showCategoryStrip =
+    (pageKind === 'home' || pageKind === 'category') && categories.length > 0;
 
   return (
-    <div className="space-y-4 w-full">
-      <h1 className="sr-only">{h1Label}</h1>
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      {/* Page Title & Controls Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-zinc-800/80">
+        <div className="space-y-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-50">
+            {heading}
+          </h1>
+          {subheading ? (
+            <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">{subheading}</p>
+          ) : null}
+        </div>
 
-      {/* Sorting option & Story Count below header */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-3">
-          {totalStories > 0 && (
-            <span className="text-xs text-slate-400">
-              සම්පූර්ණ කතා {totalStories} (පිටුව {currentPage}/{totalPages})
+        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto shrink-0 text-xs text-zinc-400">
+          {!isLoading && (
+            <span className="tabular-nums">
+              කතා {totalStories.toLocaleString()}
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="sort-select" className="text-xs font-medium text-slate-400">
-            පෙළගැස්ම:
-          </label>
-          <select
-            id="sort-select"
-            value={sortBy}
-            onChange={(e) => onSortChange(e.target.value as 'latest' | 'popular' | 'oldest')}
-            className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#243763] bg-[#111a33] text-slate-200 focus:outline-none cursor-pointer"
-          >
-            <option value="latest">අලුත්ම කතා (Latest)</option>
-            <option value="popular">ජනප්‍රියම (Popular)</option>
-            <option value="oldest">පැරණිම (Oldest)</option>
-          </select>
+
+          {pageKind !== 'popular' && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="story-sort-select" className="sr-only">
+                Sort stories
+              </label>
+              <select
+                id="story-sort-select"
+                value={sortBy}
+                onChange={(e) =>
+                  onSortChange(e.target.value as 'latest' | 'popular' | 'oldest')
+                }
+                className="h-8 px-2.5 text-xs bg-[#16161a] text-zinc-200 border border-zinc-800 rounded-md focus:outline-none focus:border-zinc-500 cursor-pointer"
+              >
+                <option value="latest">නවතම</option>
+                <option value="popular">ජනප්‍රිය</option>
+                <option value="oldest">පැරණි</option>
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Stories Grid: 1 column on mobile, 2 on sm, 4 on lg */}
-      {isLoading ? (
-        <div className="story-grid-3x5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
-          {Array.from({ length: 20 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="min-w-0 w-full h-64 sm:h-72 rounded-xl bg-[#111a33] p-3 animate-pulse"
-            />
-          ))}
-        </div>
-      ) : displayedStories.length === 0 ? (
-        <div className="bg-[#111a33] rounded-xl p-8 text-center">
-          <p className="text-sm text-slate-300 mb-3">
-            ඔබ සෙවූ කතාව හමු නොවීය. සියලුම සිංහල කතා පිරික්සන්න.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              onSearchChange('');
-              onSelectCategory('all');
-            }}
-            className="px-4 py-2 text-xs font-semibold rounded-md bg-[#1e3a8a] text-white hover:bg-blue-800 cursor-pointer"
+      {/* Minimal Unboxed Category Filter Strip */}
+      {showCategoryStrip && (
+        <nav
+          aria-label="Category filter"
+          className="no-scrollbar flex items-center gap-5 overflow-x-auto py-3.5 border-b border-zinc-800/60 text-xs"
+        >
+          <a
+            href="/"
+            onClick={(e) => handleCatLinkClick(e, 'all')}
+            aria-current={selectedCategory === 'all' ? 'page' : undefined}
+            className={`whitespace-nowrap pb-0.5 transition-colors ${
+              selectedCategory === 'all'
+                ? 'text-amber-400 font-semibold'
+                : 'text-zinc-400 hover:text-zinc-100'
+            }`}
           >
-            සියලුම කතා පෙන්වන්න
-          </button>
-        </div>
-      ) : (
-        <div className="story-grid-3x5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
-          {displayedStories.map((story, idx) => (
-            <React.Fragment key={story.id}>
-              <StoryCard
-                story={story}
-                priority={idx < 2}
-                onSelect={onSelectStory}
-                onSelectCategory={onSelectCategory}
-              />
-              {(idx === 3 || idx === 7 || idx === 11) && pageKind !== 'search' && (
-                <div className="col-span-full flex justify-center py-1">
-                  <BannerAd
-                    slotId={`${isStrictHome ? 'home' : 'feed'}-middle-${idx === 3 ? 1 : idx === 7 ? 2 : 3}`}
-                    {...HOME_MIDDLE_BANNER_CONFIG}
-                  />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
+            සියල්ල
+          </a>
+          {categories.map((cat) => {
+            const slug = cat.slug || cat.id;
+            const isSelected = selectedCategory.toLowerCase() === slug.toLowerCase();
+            return (
+              <a
+                key={slug}
+                href={`/category/${encodeURIComponent(slug)}`}
+                onClick={(e) => handleCatLinkClick(e, slug)}
+                aria-current={isSelected ? 'page' : undefined}
+                className={`whitespace-nowrap pb-0.5 transition-colors ${
+                  isSelected
+                    ? 'text-amber-400 font-semibold'
+                    : 'text-zinc-400 hover:text-zinc-100'
+                }`}
+              >
+                {cleanCategoryBadgeName(cat.sinhalaName || cat.name)}
+              </a>
+            );
+          })}
+        </nav>
       )}
 
-      {/* Paginator Row */}
-      <nav
-        aria-label="පිටු අංකනය"
-        className="flex items-center justify-center gap-2 pt-4 flex-wrap"
-      >
-        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-          {totalPages > 1 && currentPage > 1 && (
-            <a
-              href={getPageUrl(currentPage - 1)}
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  onPageChange(currentPage - 1);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-              className="px-3 py-1.5 rounded-md text-xs font-medium border border-[#1e2d52] bg-[#111a33] text-slate-200 hover:bg-[#162347]"
-            >
-              ← කලින්
-            </a>
-          )}
-
-          {totalPages > 1 &&
-            visiblePages.map((item) =>
-              typeof item === 'string' ? (
-                <span key={item} className="px-2 py-1.5 text-xs text-slate-400 select-none">
-                  ...
-                </span>
-              ) : (
-                <a
-                  key={item}
-                  href={getPageUrl(item)}
-                  onClick={(e) => {
-                    if (!e.ctrlKey && !e.metaKey) {
-                      e.preventDefault();
-                      onPageChange(item);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
-                    item === currentPage
-                      ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]'
-                      : 'bg-[#111a33] border-[#1e2d52] text-slate-200 hover:bg-[#162347]'
-                  }`}
+      {/* Stories Grid */}
+      <div className="pt-7">
+        {isLoading ? (
+          <div
+            aria-busy="true"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-9"
+          >
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-video w-full rounded-md bg-zinc-900 animate-pulse" />
+                <div className="h-3 w-1/2 rounded bg-zinc-900 animate-pulse" />
+                <div className="h-4 w-5/6 rounded bg-zinc-900 animate-pulse" />
+                <div className="h-3 w-full rounded bg-zinc-900 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : stories.length === 0 ? (
+          <div className="py-16 text-center space-y-4 border border-zinc-800/80 rounded-md bg-[#16161a]/50">
+            <p className="text-sm text-zinc-300">
+              {searchQuery
+                ? `“${searchQuery}” සඳහා කතා කිසිවක් හමු නොවීය.`
+                : 'මෙම කොටසේ දැනට කතා කිසිවක් නොමැත.'}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={onClearSearch}
+                  className="px-4 py-2 text-xs font-medium rounded-md bg-zinc-100 text-zinc-950 hover:bg-white transition-colors cursor-pointer"
                 >
-                  {item}
-                </a>
-              )
-            )}
-
-          {totalPages > 1 && currentPage < totalPages && (
-            <a
-              href={getPageUrl(currentPage + 1)}
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  onPageChange(currentPage + 1);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-              className="px-3 py-1.5 rounded-md text-xs font-medium border border-[#1e2d52] bg-[#111a33] text-slate-200 hover:bg-[#162347]"
+                  සෙවුම ඉවත් කරන්න
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onSelectCategory('all')}
+                className="px-4 py-2 text-xs font-medium rounded-md border border-zinc-700 text-zinc-200 hover:border-zinc-500 transition-colors cursor-pointer"
+              >
+                සියලුම කතා බලන්න
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div
+              data-testid="story-grid"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-9"
             >
-              ඊළඟ →
-            </a>
-          )}
-        </div>
-      </nav>
-    </div>
+              {stories.map((story) => (
+                <StoryCard
+                  key={story.id || story.slug}
+                  story={story}
+                  categories={categories}
+                  onSelectStory={onSelectStory}
+                />
+              ))}
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              basePath={paginationBase}
+              onPageChange={onPageChange}
+            />
+          </>
+        )}
+      </div>
+    </section>
   );
 };
-

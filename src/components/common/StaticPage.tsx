@@ -94,24 +94,30 @@ export const StaticPage: React.FC<StaticPageProps> = ({ page, onBack }) => {
     }
   }, [info.title, info.canonicalPath, info.noIndex]);
 
-  return (
-    <div className="max-w-3xl mx-auto py-8 space-y-4">
-      <button
-        type="button"
-        onClick={onBack}
-        className="text-xs font-medium text-blue-400 hover:underline cursor-pointer"
-      >
-        ← මුල් පිටුවට (Home)
-      </button>
+  const handleBack = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    onBack();
+  };
 
-      <article className="bg-[#111a33] border border-[#1e2d52] rounded-lg p-6 space-y-4">
-        <h1 className="text-xl font-bold text-white border-b border-[#1e2d52] pb-3">
+  return (
+    <article className="max-w-[700px] mx-auto px-4 sm:px-6 py-10 space-y-6">
+      <a
+        href="/"
+        onClick={handleBack}
+        className="inline-block text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+      >
+        ← මුල් පිටුව
+      </a>
+
+      <div className="space-y-5">
+        <h1 className="text-2xl font-bold text-zinc-50 pb-4 border-b border-zinc-800/80">
           {info.title}
         </h1>
-        <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+        <div className="story-prose text-[15px] text-zinc-300 whitespace-pre-line">
           {info.body}
         </div>
-      </article>
-    </div>
+      </div>
+    </article>
   );
 };

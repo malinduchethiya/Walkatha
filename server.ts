@@ -4,7 +4,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { resolveStoryTimestamps, hasSubstantiveStoryChanges } from './src/types/story.js';
-import { isBotUserAgent } from './src/utils/botDetection.js';
 import {
   SITE_ORIGIN,
   SITE_NAME,
@@ -944,8 +943,7 @@ const POPUNDER_SCRIPT_TAG =
 function renderFullDocument(
   rawHtml: string,
   reqPath: string,
-  queryString: string,
-  isBot = false
+  queryString: string
 ): { html: string; status: number; noIndex: boolean } {
   const normalizedPath = reqPath.replace(/\/+$/, '') || '/';
   const queryParams = new URLSearchParams(queryString);
@@ -970,7 +968,7 @@ function renderFullDocument(
   }
 
   const isAdmin = normalizedPath === '/admin' || normalizedPath.startsWith('/admin/');
-  const popunderTag = isBot || isAdmin || resolved.noIndex ? '' : POPUNDER_SCRIPT_TAG;
+  const popunderTag = isAdmin ? '' : POPUNDER_SCRIPT_TAG;
 
   const html = rawHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
@@ -1246,8 +1244,7 @@ async function startServer() {
         template = await vite.transformIndexHtml(req.originalUrl, template);
         const [rawPath, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
         const reqPath = decodeURIComponent(rawPath || '/');
-        const isBot = isBotUserAgent(String(req.headers['user-agent'] || ''));
-        const rendered = renderFullDocument(template, reqPath, rawQuery, isBot);
+        const rendered = renderFullDocument(template, reqPath, rawQuery);
         res.setHeader('Vary', 'User-Agent');
         if (rendered.noIndex) {
           res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -1274,8 +1271,7 @@ async function startServer() {
         const rawHtml = fs.readFileSync(indexFile, 'utf8');
         const [rawPath, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
         const reqPath = decodeURIComponent(rawPath || '/');
-        const isBot = isBotUserAgent(String(req.headers['user-agent'] || ''));
-        const rendered = renderFullDocument(rawHtml, reqPath, rawQuery, isBot);
+        const rendered = renderFullDocument(rawHtml, reqPath, rawQuery);
         res.setHeader('Vary', 'User-Agent');
         if (rendered.noIndex) {
           res.setHeader('X-Robots-Tag', 'noindex, nofollow');

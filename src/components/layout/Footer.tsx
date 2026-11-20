@@ -1,5 +1,6 @@
 import React from 'react';
-import { Category } from '../../types/story';
+import type { Category } from '../../types/story';
+import { cleanCategoryBadgeName } from '../../utils/formatters';
 
 interface FooterProps {
   categories: Category[];
@@ -7,128 +8,86 @@ interface FooterProps {
   onNavigatePath: (path: string) => void;
 }
 
+const INFO_LINKS = [
+  { label: 'About', path: '/about' },
+  { label: 'Contact', path: '/contact' },
+  { label: 'Send Story', path: '/page/send-your-story' },
+  { label: 'Privacy', path: '/page/privacy-policy' },
+  { label: 'Terms', path: '/page/terms-and-conditions' },
+  { label: 'Disclaimer', path: '/page/disclaimer' },
+  { label: 'Sitemap', path: '/sitemap' },
+];
+
 export const Footer: React.FC<FooterProps> = ({
   categories,
   onSelectCategory,
   onNavigatePath,
 }) => {
-  const handleLink = (e: React.MouseEvent, targetPath: string) => {
-    if (!e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      onNavigatePath(targetPath);
-    }
+  const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    onNavigatePath(path);
+  };
+
+  const handleCat = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    onSelectCategory(slug);
   };
 
   return (
-    <footer className="w-full bg-[#0b1224] border-t border-[#1c2b4f] mt-8 transition-colors">
-      <div className="w-full px-2 sm:px-3 py-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-400">
-          <div>
-            <div className="text-sm font-bold text-white mb-2">
-              Walkathawa (වල් කතාව)
-            </div>
-            <p className="leading-relaxed">
-              Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala
-              katha, romantic stories, fictional stories, and short stories updated regularly.
+    <footer className="border-t border-zinc-800/80 bg-[#0e0e10] mt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div className="space-y-1.5 max-w-sm">
+            <a
+              href="/"
+              onClick={(e) => handleNav(e, '/')}
+              className="text-base font-bold text-zinc-100 hover:text-amber-400 transition-colors"
+            >
+              Walkathawa
+            </a>
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              ශ්‍රී ලාංකික පාඨකයන් සඳහා වෙන්වූ සිංහල කතා එකතුව. 18+ ප්‍රබන්ධ සාහිත්‍යය.
             </p>
           </div>
 
-          <div>
-            <div className="text-sm font-bold text-white mb-2">
-              වර්ගීකරණ (Categories)
-            </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-              {categories.map((cat) => {
+          {categories.length > 0 && (
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-400">
+              {categories.slice(0, 6).map((cat) => {
                 const slug = cat.slug || cat.id;
                 return (
                   <a
-                    key={cat.id}
+                    key={slug}
                     href={`/category/${encodeURIComponent(slug)}`}
-                    onClick={(e) => {
-                      if (!e.ctrlKey && !e.metaKey) {
-                        e.preventDefault();
-                        onSelectCategory(slug);
-                      }
-                    }}
-                    className="hover:underline text-blue-400 font-medium"
+                    onClick={(e) => handleCat(e, slug)}
+                    className="hover:text-zinc-100 transition-colors"
                   >
-                    {cat.sinhalaName || cat.name}
+                    {cleanCategoryBadgeName(cat.sinhalaName || cat.name)}
                   </a>
                 );
               })}
-              <a
-                href="/popular"
-                onClick={(e) => handleLink(e, '/popular')}
-                className="hover:underline text-blue-400 font-medium"
-              >
-                Popular
-              </a>
-              <a
-                href="/archives"
-                onClick={(e) => handleLink(e, '/archives')}
-                className="hover:underline text-blue-400 font-medium"
-              >
-                Archives
-              </a>
-              <a
-                href="/categories"
-                onClick={(e) => handleLink(e, '/categories')}
-                className="hover:underline text-blue-400 font-medium"
-              >
-                Categories
-              </a>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* §9: Footer link list on every page: Privacy Policy, Terms and Conditions, Send Your Story, Disclaimer */}
-        <div className="pt-4 border-t border-[#1c2b4f] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <span>© {new Date().getFullYear()} Walkathawa.</span>
-            <a
-              href="/page/privacy-policy"
-              onClick={(e) => handleLink(e, '/page/privacy-policy')}
-              className="hover:underline text-slate-300"
-            >
-              Privacy Policy
-            </a>
-            <a
-              href="/page/terms-and-conditions"
-              onClick={(e) => handleLink(e, '/page/terms-and-conditions')}
-              className="hover:underline text-slate-300"
-            >
-              Terms and Conditions
-            </a>
-            <a
-              href="/page/send-your-story"
-              onClick={(e) => handleLink(e, '/page/send-your-story')}
-              className="hover:underline text-slate-300"
-            >
-              Send Your Story
-            </a>
-            <a
-              href="/page/disclaimer"
-              onClick={(e) => handleLink(e, '/page/disclaimer')}
-              className="hover:underline text-slate-300"
-            >
-              Disclaimer
-            </a>
-            <a
-              href="/admin"
-              rel="nofollow"
-              onClick={(e) => handleLink(e, '/admin')}
-              className="hover:underline text-slate-400"
-            >
-              Admin
-            </a>
-          </div>
-          <span className="text-slate-400 font-medium">
-            Walkathawa (වල් කතාව)
-          </span>
+        <div className="pt-6 border-t border-zinc-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-zinc-500">
+          <nav aria-label="Footer navigation" className="flex flex-wrap gap-x-5 gap-y-2">
+            {INFO_LINKS.map((link) => (
+              <a
+                key={link.path}
+                href={link.path}
+                onClick={(e) => handleNav(e, link.path)}
+                className="hover:text-zinc-200 transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          <p className="shrink-0">© {new Date().getFullYear()} Walkathawa</p>
         </div>
       </div>
     </footer>
   );
 };
-
-

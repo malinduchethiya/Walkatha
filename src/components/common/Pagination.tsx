@@ -4,120 +4,108 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
+  basePath?: string;
   onPageChange: (page: number) => void;
-  className?: string;
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
+  basePath = '/',
   onPageChange,
-  className = '',
 }) => {
   if (totalPages <= 1) return null;
 
-  const pages: (number | string)[] = [];
-  for (let i = 1; i <= totalPages; i++) {
-    if (
-      i === 1 ||
-      i === totalPages ||
-      (i >= currentPage - 1 && i <= currentPage + 1)
-    ) {
-      pages.push(i);
-    } else if (pages[pages.length - 1] !== '...') {
-      pages.push('...');
+  const buildPageHref = (page: number): string => {
+    const cleanBase = basePath === '/' ? '/' : basePath.replace(/\/+$/, '');
+    return page <= 1 ? cleanBase : `${cleanBase}?page=${page}`;
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, page: number) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    onPageChange(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getVisiblePages = (): (number | 'ellipsis')[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-  }
+    const pages: (number | 'ellipsis')[] = [1];
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+
+    if (start > 2) pages.push('ellipsis');
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push('ellipsis');
+    pages.push(totalPages);
+    return pages;
+  };
+
+  const visiblePages = getVisiblePages();
 
   return (
     <nav
-      id="pagination-nav"
-      aria-label="Stories pagination"
-      className={`flex items-center justify-center gap-1.5 py-6 ${className}`}
+      aria-label="Pagination"
+      className="pt-8 mt-10 border-t border-zinc-800/80 flex items-center justify-between gap-4"
     >
       {currentPage > 1 ? (
         <a
-          href={`/?page=${currentPage - 1}`}
-          id="pagination-prev-btn"
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              onPageChange(currentPage - 1);
-            }
-          }}
-          className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
-          aria-label="Previous page"
+          href={buildPageHref(currentPage - 1)}
+          rel="prev"
+          onClick={(e) => handleClick(e, currentPage - 1)}
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-300 hover:text-zinc-50 transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+          <span>පෙර</span>
         </a>
       ) : (
-        <span
-          className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed text-sm"
-          aria-hidden="true"
-        >
-          <ChevronLeft className="w-4 h-4" />
+        <span className="inline-flex items-center gap-1.5 text-sm text-zinc-600 select-none">
+          <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+          <span>පෙර</span>
         </span>
       )}
 
-      {pages.map((p, idx) => {
-        if (p === '...') {
-          return (
-            <span
-              key={`ellipsis-${idx}`}
-              className="w-9 h-9 flex items-center justify-center text-slate-400 text-sm"
-            >
-              ...
+      <div className="flex items-center gap-1">
+        {visiblePages.map((entry, idx) =>
+          entry === 'ellipsis' ? (
+            <span key={`e-${idx}`} className="px-2 text-xs text-zinc-600 select-none">
+              …
             </span>
-          );
-        }
-
-        const pageNum = Number(p);
-        const isActive = pageNum === currentPage;
-
-        return (
-          <a
-            key={`page-${pageNum}`}
-            href={`/?page=${pageNum}`}
-            id={`pagination-page-${pageNum}`}
-            onClick={(e) => {
-              if (!e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                onPageChange(pageNum);
-              }
-            }}
-            aria-current={isActive ? 'page' : undefined}
-            className={`flex items-center justify-center w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
-              isActive
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}
-          >
-            {pageNum}
-          </a>
-        );
-      })}
+          ) : (
+            <a
+              key={entry}
+              href={buildPageHref(entry)}
+              onClick={(e) => handleClick(e, entry)}
+              aria-current={entry === currentPage ? 'page' : undefined}
+              className={`min-w-[34px] h-8 px-2 inline-flex items-center justify-center rounded text-xs font-medium tabular-nums transition-colors ${
+                entry === currentPage
+                  ? 'bg-zinc-100 text-zinc-950 font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'
+              }`}
+            >
+              {entry}
+            </a>
+          )
+        )}
+      </div>
 
       {currentPage < totalPages ? (
         <a
-          href={`/?page=${currentPage + 1}`}
-          id="pagination-next-btn"
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              onPageChange(currentPage + 1);
-            }
-          }}
-          className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
-          aria-label="Next page"
+          href={buildPageHref(currentPage + 1)}
+          rel="next"
+          onClick={(e) => handleClick(e, currentPage + 1)}
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-300 hover:text-zinc-50 transition-colors"
         >
-          <ChevronRight className="w-4 h-4" />
+          <span>මීළඟ</span>
+          <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </a>
       ) : (
-        <span
-          className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed text-sm"
-          aria-hidden="true"
-        >
-          <ChevronRight className="w-4 h-4" />
+        <span className="inline-flex items-center gap-1.5 text-sm text-zinc-600 select-none">
+          <span>මීළඟ</span>
+          <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </span>
       )}
     </nav>

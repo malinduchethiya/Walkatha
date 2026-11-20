@@ -199,12 +199,11 @@ const POPUNDER_SCRIPT_TAG =
 
 function renderDocument(templateParts, headOpts, bodyHtml) {
   const headHtml = buildHead(headOpts);
-  const popunderTag = headOpts.noIndex ? '' : POPUNDER_SCRIPT_TAG;
   return templateParts.baseHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${headHtml}${templateParts.assetTags}${popunderTag}\n  </head>`
+      `<head>\n${headHtml}${templateParts.assetTags}${POPUNDER_SCRIPT_TAG}\n  </head>`
     )
     .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${bodyHtml}</div>`);
 }

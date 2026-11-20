@@ -359,9 +359,9 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
   // Render Login Screen if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-[#090e1d] text-slate-900 dark:text-slate-100 p-4">
-        <div className="w-full max-w-md bg-white dark:bg-[#111a33] border border-slate-200 dark:border-[#1e2d52] rounded-xl p-6 space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1e2d52] pb-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-[#0e0e10] text-slate-900 dark:text-slate-100 p-4">
+        <div className="w-full max-w-md bg-white dark:bg-[#16161a] border border-slate-200 dark:border-zinc-800 rounded-xl p-6 space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-4">
             <div>
               <h1 className="text-lg font-bold text-slate-900 dark:text-white">
                 Walkathawa Admin Login
@@ -373,7 +373,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
             <button
               type="button"
               onClick={onBackToPublic}
-              className="text-xs px-2.5 py-1.5 rounded border border-slate-200 dark:border-[#243763] hover:bg-slate-100 dark:hover:bg-[#162347] cursor-pointer"
+              className="text-xs px-2.5 py-1.5 rounded border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-[#162347] cursor-pointer"
             >
               ← වෙබ් අඩවියට
             </button>
@@ -396,7 +396,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 placeholder="merlinfiverr0@gmail.com"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
 
@@ -410,7 +410,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                 value={loginPass}
                 onChange={(e) => setLoginPass(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
 
@@ -452,10 +452,10 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#090e1d] text-slate-900 dark:text-slate-100 p-4 sm:p-6">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0e0e10] text-slate-900 dark:text-slate-100 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-5">
         {/* Top Admin Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#111a33] p-4 rounded-lg border border-slate-200 dark:border-[#1e2d52]">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#16161a] p-4 rounded-lg border border-slate-200 dark:border-zinc-800">
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
               Walkathawa Admin Panel
@@ -479,7 +479,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
             <button
               type="button"
               onClick={onBackToPublic}
-              className="px-3 py-1.5 rounded-md border border-slate-200 dark:border-[#243763] text-xs font-medium cursor-pointer"
+              className="px-3 py-1.5 rounded-md border border-slate-200 dark:border-zinc-700 text-xs font-medium cursor-pointer"
             >
               ← වෙබ් අඩවියට
             </button>
@@ -514,14 +514,14 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
         )}
 
         {/* Navigation Tabs: Stories vs Categories */}
-        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-[#1e2d52] pb-3">
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-zinc-800 pb-3">
           <button
             type="button"
             onClick={() => setActiveTab('stories')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               activeTab === 'stories'
                 ? 'bg-[#1e3a8a] text-white'
-                : 'bg-white dark:bg-[#111a33] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1e2d52]'
+                : 'bg-white dark:bg-[#16161a] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-zinc-800'
             }`}
           >
             කතා කළමනාකරණය (Stories: {stories.length})
@@ -532,7 +532,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               activeTab === 'categories'
                 ? 'bg-[#1e3a8a] text-white'
-                : 'bg-white dark:bg-[#111a33] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1e2d52]'
+                : 'bg-white dark:bg-[#16161a] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-zinc-800'
             }`}
           >
             වර්ගීකරණ කළමනාකරණය (Categories: {categories.length})
@@ -543,8 +543,8 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
         {activeTab === 'stories' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Story Add / Edit Form (5 cols) */}
-            <div className="lg:col-span-5 bg-white dark:bg-[#111a33] p-4 rounded-lg border border-slate-200 dark:border-[#1e2d52] space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1e2d52] pb-2.5">
+            <div className="lg:col-span-5 bg-white dark:bg-[#16161a] p-4 rounded-lg border border-slate-200 dark:border-zinc-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5">
                 <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   {editingStory
                     ? `කතාව සංස්කරණය කරන්න (Edit Story)`
@@ -570,7 +570,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={storyTitle}
                     onChange={(e) => setStoryTitle(e.target.value)}
                     placeholder="උදා: අම්මා වල් කතා 2026 - 1 කොටස"
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
 
@@ -580,7 +580,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     <select
                       value={storyCategory}
                       onChange={(e) => setStoryCategory(e.target.value)}
-                      className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                      className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                     >
                       {categories.map((cat) => (
                         <option key={cat.slug || cat.id} value={cat.slug || cat.id}>
@@ -597,7 +597,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                       value={storySlug}
                       onChange={(e) => setStorySlug(e.target.value)}
                       placeholder="auto-generated-from-title"
-                      className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                      className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                     />
                   </div>
                 </div>
@@ -609,10 +609,10 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={storyCoverImage}
                     onChange={(e) => setStoryCoverImage(e.target.value)}
                     placeholder="https://example.com/image.webp"
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                   {storyCoverImage && (
-                    <div className="mt-2 h-28 w-full rounded overflow-hidden border border-slate-200 dark:border-[#243763] bg-slate-900">
+                    <div className="mt-2 h-28 w-full rounded overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-900">
                       <img
                         src={storyCoverImage}
                         alt="Preview"
@@ -634,7 +634,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={storyShortDesc}
                     onChange={(e) => setStoryShortDesc(e.target.value)}
                     placeholder="හිස්ව තැබුවහොත් කතාවේ මුල් කොටසින් ස්වයංක්‍රීයව සැකසේ..."
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
 
@@ -644,7 +644,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     type="text"
                     value={storyTags}
                     onChange={(e) => setStoryTags(e.target.value)}
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
 
@@ -656,7 +656,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={storyContent}
                     onChange={(e) => setStoryContent(e.target.value)}
                     placeholder="සම්පූර්ණ සිංහල කතාව මෙහි ලියන්න..."
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b] leading-relaxed"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114] leading-relaxed"
                   />
                 </div>
 
@@ -686,7 +686,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     <button
                       type="button"
                       onClick={resetStoryForm}
-                      className="px-3 py-2.5 rounded border border-slate-200 dark:border-[#243763] text-slate-600 dark:text-slate-300 cursor-pointer"
+                      className="px-3 py-2.5 rounded border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-slate-300 cursor-pointer"
                     >
                       අවලංගු
                     </button>
@@ -696,7 +696,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
             </div>
 
             {/* Existing Stories List with Search, Category Filter, Edit & Delete (7 cols) */}
-            <div className="lg:col-span-7 bg-white dark:bg-[#111a33] p-4 rounded-lg border border-slate-200 dark:border-[#1e2d52] space-y-4">
+            <div className="lg:col-span-7 bg-white dark:bg-[#16161a] p-4 rounded-lg border border-slate-200 dark:border-zinc-800 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-bold">
                   දැනට පවතින කතා ලැයිස්තුව ({filteredStories.length})
@@ -709,7 +709,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                       setFilterCategory(e.target.value);
                       setAdminPage(1);
                     }}
-                    className="px-2.5 py-1.5 text-xs rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="px-2.5 py-1.5 text-xs rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   >
                     <option value="all">සියලුම වර්ගීකරණ (All Categories)</option>
                     {categories.map((cat) => (
@@ -727,7 +727,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                       setAdminPage(1);
                     }}
                     placeholder="කතාවක් සොයන්න..."
-                    className="px-3 py-1.5 text-xs rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="px-3 py-1.5 text-xs rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
               </div>
@@ -752,7 +752,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-12 h-10 rounded overflow-hidden bg-slate-200 dark:bg-[#0d152b] shrink-0">
+                          <div className="w-12 h-10 rounded overflow-hidden bg-slate-200 dark:bg-[#111114] shrink-0">
                             {story.coverImage ? (
                               <img
                                 src={story.coverImage}
@@ -786,7 +786,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setConfirmDeleteStoryId(null)}
-                                className="px-2 py-1 rounded border border-slate-200 dark:border-[#243763] cursor-pointer"
+                                className="px-2 py-1 rounded border border-slate-200 dark:border-zinc-700 cursor-pointer"
                               >
                                 අවලංගු
                               </button>
@@ -811,7 +811,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onViewStoryPublic(story.slug)}
-                                className="px-2.5 py-1 rounded border border-slate-200 dark:border-[#243763] hover:bg-slate-100 dark:hover:bg-[#162347] cursor-pointer"
+                                className="px-2.5 py-1 rounded border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-[#162347] cursor-pointer"
                               >
                                 කියවන්න
                               </button>
@@ -826,7 +826,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
 
               {/* Admin Stories Pagination */}
               {totalAdminPages > 1 && (
-                <div className="pt-3 border-t border-slate-200 dark:border-[#1e2d52] flex items-center justify-between text-xs">
+                <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 flex items-center justify-between text-xs">
                   <span className="text-slate-500 dark:text-slate-400">
                     පිටුව {safeAdminPage} / {totalAdminPages} (මුළු කතා {filteredStories.length})
                   </span>
@@ -835,7 +835,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                       type="button"
                       disabled={safeAdminPage <= 1}
                       onClick={() => setAdminPage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1 rounded border border-slate-200 dark:border-[#243763] disabled:opacity-40 cursor-pointer"
+                      className="px-3 py-1 rounded border border-slate-200 dark:border-zinc-700 disabled:opacity-40 cursor-pointer"
                     >
                       ← පෙර
                     </button>
@@ -843,7 +843,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                       type="button"
                       disabled={safeAdminPage >= totalAdminPages}
                       onClick={() => setAdminPage((p) => Math.min(totalAdminPages, p + 1))}
-                      className="px-3 py-1 rounded border border-slate-200 dark:border-[#243763] disabled:opacity-40 cursor-pointer"
+                      className="px-3 py-1 rounded border border-slate-200 dark:border-zinc-700 disabled:opacity-40 cursor-pointer"
                     >
                       මීළඟ →
                     </button>
@@ -858,8 +858,8 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
         {activeTab === 'categories' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Add Category Form (5 cols) */}
-            <div className="lg:col-span-5 bg-white dark:bg-[#111a33] p-4 rounded-lg border border-slate-200 dark:border-[#1e2d52] space-y-4">
-              <h2 className="text-sm font-bold border-b border-slate-200 dark:border-[#1e2d52] pb-2.5">
+            <div className="lg:col-span-5 bg-white dark:bg-[#16161a] p-4 rounded-lg border border-slate-200 dark:border-zinc-800 space-y-4">
+              <h2 className="text-sm font-bold border-b border-slate-200 dark:border-zinc-800 pb-2.5">
                 නව වර්ගීකරණයක් එක් කරන්න (Add Category)
               </h2>
 
@@ -874,7 +874,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={catName}
                     onChange={(e) => setCatName(e.target.value)}
                     placeholder="උදා: අම්මා කතා (Amma Stories)"
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
 
@@ -887,7 +887,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={catSinhalaName}
                     onChange={(e) => setCatSinhalaName(e.target.value)}
                     placeholder="උදා: අම්මා කතා"
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
 
@@ -898,7 +898,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={catSlug}
                     onChange={(e) => setCatSlug(e.target.value)}
                     placeholder="උදා: amma-katha"
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
 
@@ -909,7 +909,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                     value={catDescription}
                     onChange={(e) => setCatDescription(e.target.value)}
                     placeholder="වර්ගීකරණය සඳහා කෙටි විස්තරයක්..."
-                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-[#243763] bg-slate-50 dark:bg-[#0d152b]"
+                    className="w-full px-3 py-2 rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-[#111114]"
                   />
                 </div>
 
@@ -924,8 +924,8 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
             </div>
 
             {/* Existing Categories List with Delete (7 cols) */}
-            <div className="lg:col-span-7 bg-white dark:bg-[#111a33] p-4 rounded-lg border border-slate-200 dark:border-[#1e2d52] space-y-4">
-              <h2 className="text-sm font-bold border-b border-slate-200 dark:border-[#1e2d52] pb-2.5">
+            <div className="lg:col-span-7 bg-white dark:bg-[#16161a] p-4 rounded-lg border border-slate-200 dark:border-zinc-800 space-y-4">
+              <h2 className="text-sm font-bold border-b border-slate-200 dark:border-zinc-800 pb-2.5">
                 දැනට පවතින වර්ගීකරණ ({categories.length})
               </h2>
 
@@ -969,7 +969,7 @@ export const AdminRoot: React.FC<AdminRootProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setConfirmDeleteCatKey(null)}
-                                className="px-2 py-1 rounded border border-slate-200 dark:border-[#243763] cursor-pointer"
+                                className="px-2 py-1 rounded border border-slate-200 dark:border-zinc-700 cursor-pointer"
                               >
                                 අවලංගු
                               </button>

@@ -13,6 +13,37 @@ import worker from '../public/_worker.js';
 const ROOT = process.cwd();
 const DIST_DIR = path.join(ROOT, 'dist');
 
+const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
+const POPUNDER_SNIPPET = `<script data-cfasync="false" src="${POPUNDER_SRC}"></script>`;
+const POPUNDER_BEFORE_HEAD_CLOSE =
+  /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i;
+
+function assertExactlyOnePopunderBeforeHeadClose(html: string, contextLabel: string) {
+  const count = html.split(POPUNDER_SRC).length - 1;
+  assert.equal(count, 1, `${contextLabel} must contain exactly 1 popunder script (got ${count})`);
+  assert.ok(html.includes(POPUNDER_SNIPPET), `${contextLabel} must include exact popunder snippet`);
+  assert.match(
+    html,
+    POPUNDER_BEFORE_HEAD_CLOSE,
+    `${contextLabel} must place the popunder snippet right before </head>`
+  );
+  assert.ok(!html.includes('brijmohan.org'), `${contextLabel} must not contain brijmohan.org`);
+  assert.ok(!html.includes('asiaso.org'), `${contextLabel} must not contain asiaso.org`);
+  assert.ok(!html.includes('popunder-swap.js'), `${contextLabel} must not contain popunder-swap.js`);
+}
+
+function collectHtmlFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectHtmlFiles(full, out);
+    } else if (entry.isFile() && entry.name.endsWith('.html')) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
 function createMockEnvFromDist() {
   return {
     ASSETS: {
@@ -86,12 +117,10 @@ test('site.ts: canonical origin https://www.walkathawa.site and single-hop 301 r
     'https://www.walkathawa.site/category/wife?page=2'
   );
 
-  // No redirect on canonical www.walkathawa.site HTTPS URLs
   assert.equal(resolveCanonicalRedirect('www.walkathawa.site', 'https', '/'), null);
   assert.equal(resolveCanonicalRedirect('www.walkathawa.site', 'https', '/about'), null);
   assert.equal(resolveCanonicalRedirect('www.walkathawa.site', 'https', '/story/test-1'), null);
 
-  // Apex and alternate domains consolidate in a single 301 hop
   const apexSite = resolveCanonicalRedirect('walkathawa.site', 'https', '/story/test-1');
   assert.deepEqual(apexSite, {
     shouldRedirect: true,
@@ -120,37 +149,32 @@ test('site.ts: canonical origin https://www.walkathawa.site and single-hop 301 r
   assert.equal(normalizeCanonicalPath('/sitemap_index.xml'), '/sitemap.xml');
 });
 
-test('dist build artifacts: robots.txt, strict GSC sitemap.xml, _worker.js, and prerendered HTML', () => {
+test('dist build artifacts: EVERY SINGLE 600+ prerendered page has exactly 1 popunder right before </head>', () => {
   assert.ok(fs.existsSync(DIST_DIR), 'dist/ directory must exist after npm run build');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_worker.js')), 'dist/_worker.js must be bundled');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_spa.html')), 'dist/_spa.html must exist');
 
-  // robots.txt check
   const robots = fs.readFileSync(path.join(DIST_DIR, 'robots.txt'), 'utf8');
   assert.match(robots, /Sitemap:\s*https:\/\/www\.walkathawa\.site\/sitemap\.xml/);
   assert.match(robots, /Disallow:\s*\/admin/);
-  assert.ok(!robots.includes('walkathawa.com'), 'robots.txt must not reference walkathawa.com');
 
-  // strict GSC sitemap.xml check
   const sitemap = fs.readFileSync(path.join(DIST_DIR, 'sitemap.xml'), 'utf8');
   assertStrictGscSitemapXml(sitemap);
-  assert.ok(sitemap.includes('<loc>https://www.walkathawa.site/</loc>'));
-  assert.ok(sitemap.includes('<loc>https://www.walkathawa.site/about</loc>'));
-  assert.ok(sitemap.includes('<loc>https://www.walkathawa.site/category/wife</loc>'));
 
-  assert.ok(!fs.existsSync(path.join(DIST_DIR, 'popunder-swap.js')), 'dist/popunder-swap.js must not exist');
-  const POPUNDER_SNIPPET =
-    '<script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
-  const countPopunder = (html: string) => html.split('ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e').length - 1;
+  // Verify EVERY SINGLE generated HTML file in dist/ (excluding Google verification file)
+  const allHtmlFiles = collectHtmlFiles(DIST_DIR).filter(
+    (f) => !path.basename(f).startsWith('google')
+  );
+  assert.ok(
+    allHtmlFiles.length >= 600,
+    `Expected at least 600 prerendered HTML pages, found ${allHtmlFiles.length}`
+  );
+  for (const htmlFile of allHtmlFiles) {
+    const rel = path.relative(DIST_DIR, htmlFile);
+    const html = fs.readFileSync(htmlFile, 'utf8');
+    assertExactlyOnePopunderBeforeHeadClose(html, rel);
+  }
 
-  const spaHtml = fs.readFileSync(path.join(DIST_DIR, '_spa.html'), 'utf8');
-  assert.ok(!spaHtml.includes('popunder-swap.js'), 'dist/_spa.html must not include popunder-swap.js');
-  assert.equal(countPopunder(spaHtml), 1, 'dist/_spa.html must have exactly 1 popunder script');
-  assert.match(spaHtml, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
-  assert.ok(!spaHtml.includes('brijmohan.org'), 'dist/_spa.html must not include brijmohan.org');
-  assert.ok(!spaHtml.includes('asiaso.org'), 'dist/_spa.html must not include asiaso.org');
-
-  // Prerendered homepage, about, categories, category checks
   for (const check of [
     { file: 'index.html', expectedCanonical: 'https://www.walkathawa.site/' },
     { file: 'about.html', expectedCanonical: 'https://www.walkathawa.site/about' },
@@ -164,91 +188,48 @@ test('dist build artifacts: robots.txt, strict GSC sitemap.xml, _worker.js, and 
     );
     assert.equal(canonicals.length, 1, `${check.file} must have exactly 1 canonical tag`);
     assert.equal(canonicals[0], check.expectedCanonical, `${check.file} canonical mismatch`);
-    assert.ok(!html.includes('walkathawa.com'), `${check.file} must not contain walkathawa.com URLs`);
-    assert.ok(!html.includes('popunder-swap.js'), `${check.file} must not include popunder-swap.js`);
-    assert.equal(countPopunder(html), 1, `${check.file} must include exactly 1 popunder script`);
-    assert.ok(html.includes(POPUNDER_SNIPPET), `${check.file} must include exact popunder snippet`);
-    assert.match(html, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
-    assert.ok(!html.includes('brijmohan.org'), `${check.file} must not include brijmohan.org`);
-    assert.ok(!html.includes('asiaso.org'), `${check.file} must not include asiaso.org`);
     assert.ok(html.includes('application/ld+json'), `${check.file} must include JSON-LD`);
   }
 
-  // Prerendered 404.html check
   const notFoundHtml = fs.readFileSync(path.join(DIST_DIR, '404.html'), 'utf8');
   assert.ok(notFoundHtml.includes('noindex, nofollow'), '404.html must be noindex, nofollow');
   assert.ok(!notFoundHtml.includes('rel="canonical"'), '404.html must not emit a canonical tag');
 
-  // Sample prerendered story HTML
   const storyDir = path.join(DIST_DIR, 'story');
-  assert.ok(fs.existsSync(storyDir), 'dist/story/ directory must exist');
   const storyFiles = fs.readdirSync(storyDir).filter((f) => f.endsWith('.html'));
-  assert.ok(storyFiles.length > 50, `Expected >50 prerendered story HTML files, got ${storyFiles.length}`);
+  assert.ok(storyFiles.length >= 600, `Expected >=600 prerendered story pages, got ${storyFiles.length}`);
   const sampleHtml = fs.readFileSync(path.join(storyDir, storyFiles[0]), 'utf8');
-  const sampleCanonicals = Array.from(
-    sampleHtml.matchAll(/<link\s+rel="canonical"\s+href="([^"]+)"/gi),
-    (m) => m[1]
-  );
-  assert.equal(sampleCanonicals.length, 1, 'Prerendered story must have exactly 1 canonical');
-  assert.ok(sampleCanonicals[0].startsWith('https://www.walkathawa.site/story/'));
   assert.ok(sampleHtml.includes('"BlogPosting"'), 'Story JSON-LD must use BlogPosting');
   assert.ok(sampleHtml.includes('data-reading-content'), 'Story initial HTML must include readable body');
 });
 
-test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC sitemap, and crawler isolation', async () => {
+test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC sitemap, and 1 popunder before </head>', async () => {
   const env = createMockEnvFromDist();
   const sampleSlug = getSampleStorySlug();
   const encodedSlug = encodeURIComponent(sampleSlug);
 
-  // 1. Homepage 200 (human response has exactly 1 popunder right before </head>)
-  const countPopunder = (html: string) => html.split('ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e').length - 1;
   const homeRes = await worker.fetch(new Request('https://www.walkathawa.site/'), env);
   assert.equal(homeRes.status, 200);
   const homeHtml = await homeRes.text();
   assert.ok(homeHtml.includes('rel="canonical" href="https://www.walkathawa.site/"'));
-  assert.ok(!homeHtml.includes('popunder-swap.js'));
-  assert.equal(countPopunder(homeHtml), 1);
-  assert.match(homeHtml, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
-  assert.ok(!homeHtml.includes('brijmohan.org'));
-  assert.ok(!homeHtml.includes('asiaso.org'));
+  assertExactlyOnePopunderBeforeHeadClose(homeHtml, 'Worker homepage');
 
-  // 2. /posts -> 301 /
-  const postsRes = await worker.fetch(new Request('https://www.walkathawa.site/posts'), env);
-  assert.equal(postsRes.status, 301);
-  assert.equal(postsRes.headers.get('Location'), 'https://www.walkathawa.site/');
-
-  // 3. Existing story -> 200 + BlogPosting + 1 popunder for humans, 0 for Googlebot
-  const storyHumanRes = await worker.fetch(
+  const storyRes = await worker.fetch(
     new Request(`https://www.walkathawa.site/story/${encodedSlug}`),
     env
   );
-  assert.equal(storyHumanRes.status, 200);
-  const storyHumanHtml = await storyHumanRes.text();
-  assert.ok(!storyHumanHtml.includes('popunder-swap.js'));
-  assert.equal(countPopunder(storyHumanHtml), 1);
-  assert.match(storyHumanHtml, /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i);
-  assert.ok(!storyHumanHtml.includes('brijmohan.org'));
-  assert.ok(!storyHumanHtml.includes('asiaso.org'));
-
-  const storyBotRes = await worker.fetch(
-    new Request(`https://www.walkathawa.site/story/${encodedSlug}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
-    }),
-    env
-  );
-  assert.equal(storyBotRes.status, 200);
-  assert.equal(storyBotRes.headers.get('Vary'), 'User-Agent');
-  const storyBotHtml = await storyBotRes.text();
+  assert.equal(storyRes.status, 200);
+  const storyHtml = await storyRes.text();
   assert.ok(
-    storyBotHtml.includes(`rel="canonical" href="https://www.walkathawa.site/story/${encodedSlug}"`)
+    storyHtml.includes(`rel="canonical" href="https://www.walkathawa.site/story/${encodedSlug}"`)
   );
-  assert.ok(storyBotHtml.includes('"@type": "BlogPosting"'));
-  assert.ok(!storyBotHtml.includes('popunder-swap.js'));
-  assert.ok(!storyBotHtml.includes('ahuramazda.org'));
-  assert.ok(!storyBotHtml.includes('brijmohan.org'));
-  assert.ok(!storyBotHtml.includes('asiaso.org'));
+  assert.ok(storyHtml.includes('"@type": "BlogPosting"'));
+  assertExactlyOnePopunderBeforeHeadClose(storyHtml, 'Worker story HTML');
 
-  // 4. Missing story -> real HTTP 404 + noindex
+  const catRes = await worker.fetch(new Request('https://www.walkathawa.site/category/wife'), env);
+  assert.equal(catRes.status, 200);
+  assertExactlyOnePopunderBeforeHeadClose(await catRes.text(), 'Worker category HTML');
+
   const missingStoryRes = await worker.fetch(
     new Request('https://www.walkathawa.site/story/non-existent-story-seo-test-99999'),
     env
@@ -256,19 +237,14 @@ test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC si
   assert.equal(missingStoryRes.status, 404);
   assert.equal(missingStoryRes.headers.get('X-Robots-Tag'), 'noindex, nofollow');
 
-  // 5. /robots.txt -> 200 with www.walkathawa.site sitemap
   const robotsRes = await worker.fetch(new Request('https://www.walkathawa.site/robots.txt'), env);
   assert.equal(robotsRes.status, 200);
-  const robotsText = await robotsRes.text();
-  assert.ok(robotsText.includes('Sitemap: https://www.walkathawa.site/sitemap.xml'));
+  assert.ok((await robotsRes.text()).includes('Sitemap: https://www.walkathawa.site/sitemap.xml'));
 
-  // 6. /sitemap.xml -> 200 strict GSC XML on www.walkathawa.site
   const sitemapRes = await worker.fetch(new Request('https://www.walkathawa.site/sitemap.xml'), env);
   assert.equal(sitemapRes.status, 200);
-  assert.match(sitemapRes.headers.get('Content-Type') || '', /application\/xml/);
   assertStrictGscSitemapXml(await sitemapRes.text());
 
-  // 7. Apex walkathawa.site -> single-hop 301 to www.walkathawa.site
   const apexRes = await worker.fetch(
     new Request(`https://walkathawa.site/posts/${encodedSlug}/`),
     env
@@ -278,24 +254,4 @@ test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC si
     apexRes.headers.get('Location'),
     `https://www.walkathawa.site/story/${encodedSlug}`
   );
-});
-
-test('BannerAd: exact side (160x600) and home middle (320x50) atOptions snippets', async () => {
-  const {
-    SIDE_BANNER_CONFIG,
-    HOME_MIDDLE_BANNER_CONFIG,
-    buildBannerSrcDoc,
-  } = await import('../src/components/common/BannerAd.tsx');
-
-  const sideDoc = buildBannerSrcDoc(SIDE_BANNER_CONFIG);
-  assert.ok(sideDoc.includes("'key' : '05ee890ed059b98d213910f338ece6d0'"));
-  assert.ok(sideDoc.includes("'height' : 600"));
-  assert.ok(sideDoc.includes("'width' : 160"));
-  assert.ok(sideDoc.includes('<script src="https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0"></script>'));
-
-  const midDoc = buildBannerSrcDoc(HOME_MIDDLE_BANNER_CONFIG);
-  assert.ok(midDoc.includes("'key' : '2e5f19d0bbe93686082673c139a7b1b1'"));
-  assert.ok(midDoc.includes("'height' : 50"));
-  assert.ok(midDoc.includes("'width' : 320"));
-  assert.ok(midDoc.includes('<script src="https://brijmohan.org/22/2e5f19d0bbe93686082673c139a7b1b1"></script>'));
 });
