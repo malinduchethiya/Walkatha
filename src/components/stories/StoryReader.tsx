@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Story } from '../../types/story';
 import { StoryService } from '../../services/storyService';
 import { SeoService } from '../../services/seoService';
+import { BannerAd, HOME_MIDDLE_BANNER_CONFIG } from '../common/BannerAd';
 
 interface StoryReaderProps {
   slug: string;
@@ -233,16 +234,29 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               </div>
             </header>
 
+            <div className="flex justify-center mb-6 overflow-hidden">
+              <BannerAd slotId="story-top" {...HOME_MIDDLE_BANNER_CONFIG} />
+            </div>
+
             <div className="space-y-4 text-base sm:text-lg leading-relaxed text-slate-200 select-text">
-              {paragraphs.map((para, i) => (
-                <p
-                  key={i}
-                  data-reading-content
-                  className="leading-[1.95] tracking-normal break-words"
-                >
-                  {para}
-                </p>
-              ))}
+              {paragraphs.map((para, i) => {
+                const midIdx = Math.floor((paragraphs.length - 1) / 2);
+                return (
+                  <React.Fragment key={i}>
+                    <p
+                      data-reading-content
+                      className="leading-[1.95] tracking-normal break-words"
+                    >
+                      {para}
+                    </p>
+                    {paragraphs.length >= 2 && i === midIdx && (
+                      <div className="flex justify-center py-2 overflow-hidden">
+                        <BannerAd slotId="story-middle" {...HOME_MIDDLE_BANNER_CONFIG} />
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
 
             <blockquote className="mt-6 p-4 rounded-lg bg-[#0d152b] border-l-4 border-blue-500 text-xs sm:text-sm text-slate-300 space-y-1">
@@ -259,7 +273,11 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               </p>
             </blockquote>
 
-            <footer className="mt-8 pt-6 border-t border-[#1e2d52] space-y-3">
+            <div className="flex justify-center mt-6 overflow-hidden">
+              <BannerAd slotId="story-bottom" {...HOME_MIDDLE_BANNER_CONFIG} />
+            </div>
+
+            <footer className="mt-6 pt-6 border-t border-[#1e2d52] space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <a
                   href={prevStory ? `/story/${encodeURIComponent(prevStory.slug)}` : '/'}

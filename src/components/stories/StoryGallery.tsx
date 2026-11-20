@@ -149,10 +149,10 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                 onSelect={onSelectStory}
                 onSelectCategory={onSelectCategory}
               />
-              {isStrictHome && (idx === 3 || idx === 7 || idx === 11) && (
+              {(idx === 3 || idx === 7 || idx === 11) && pageKind !== 'search' && (
                 <div className="col-span-full flex justify-center py-1">
                   <BannerAd
-                    slotId={`home-middle-${idx === 3 ? 1 : idx === 7 ? 2 : 3}`}
+                    slotId={`${isStrictHome ? 'home' : 'feed'}-middle-${idx === 3 ? 1 : idx === 7 ? 2 : 3}`}
                     {...HOME_MIDDLE_BANNER_CONFIG}
                   />
                 </div>
