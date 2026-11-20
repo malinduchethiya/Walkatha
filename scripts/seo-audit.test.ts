@@ -255,3 +255,44 @@ test('Cloudflare Worker (public/_worker.js): routes, statuses, redirects, GSC si
     `https://www.walkathawa.site/story/${encodedSlug}`
   );
 });
+
+test('BannerAd: side 8x 160x600, mobile story 3x 320x50, and footer native banner configs', async () => {
+  const {
+    SIDE_BANNER_CONFIG,
+    SIDE_BANNER_SLOTS,
+    MOBILE_STORY_BANNER_CONFIG,
+    MOBILE_STORY_BANNER_SLOTS,
+    FOOTER_NATIVE_BANNER_CONFIG,
+    buildBannerSrcDoc,
+  } = await import('../src/components/common/BannerAd.tsx');
+
+  assert.equal(SIDE_BANNER_SLOTS.length, 8, 'Must render exactly 8 vertical banners per side');
+  const sideDoc = buildBannerSrcDoc(SIDE_BANNER_CONFIG);
+  assert.ok(sideDoc.includes('<meta name="color-scheme" content="dark" />'));
+  assert.ok(sideDoc.includes("'key' : '05ee890ed059b98d213910f338ece6d0'"));
+  assert.ok(sideDoc.includes("'format' : 'iframe'"));
+  assert.ok(sideDoc.includes("'height' : 600"));
+  assert.ok(sideDoc.includes("'width' : 160"));
+  assert.ok(
+    sideDoc.includes('<script src="https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0"></script>')
+  );
+
+  assert.equal(MOBILE_STORY_BANNER_SLOTS.length, 3, 'Must render exactly 3 vertical mobile story banners');
+  const mobileDoc = buildBannerSrcDoc(MOBILE_STORY_BANNER_CONFIG);
+  assert.ok(mobileDoc.includes("'key' : '2e5f19d0bbe93686082673c139a7b1b1'"));
+  assert.ok(mobileDoc.includes("'format' : 'iframe'"));
+  assert.ok(mobileDoc.includes("'height' : 50"));
+  assert.ok(mobileDoc.includes("'width' : 320"));
+  assert.ok(
+    mobileDoc.includes('<script src="https://brijmohan.org/22/2e5f19d0bbe93686082673c139a7b1b1"></script>')
+  );
+
+  assert.equal(
+    FOOTER_NATIVE_BANNER_CONFIG.containerId,
+    'container-e308aeebc92b2395c18ed45beda64648'
+  );
+  assert.equal(
+    FOOTER_NATIVE_BANNER_CONFIG.scriptSrc,
+    'https://brijmohan.org/21/e308aeebc92b2395c18ed45beda64648'
+  );
+});

@@ -171,7 +171,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         {isLoading ? (
           <div
             aria-busy="true"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-9"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-9"
           >
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="space-y-3">
@@ -212,7 +212,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
           <>
             <div
               data-testid="story-grid"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-9"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-9"
             >
               {stories.map((story) => (
                 <StoryCard

@@ -9,6 +9,7 @@ import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
 import { testConnection } from './firebase';
 import { resolveRouteState, type ViewMode } from './utils/storyFormatting';
+import { BannerAd, SIDE_BANNER_CONFIG, SIDE_BANNER_SLOTS } from './components/common/BannerAd';
 
 const CategoriesPage = lazy(() =>
   import('./components/categories/CategoriesPage').then((m) => ({ default: m.CategoriesPage }))
@@ -256,79 +257,109 @@ export function App() {
         onNavigate={navigateTo}
       />
 
-      <main className="flex-1 w-full">
-        {isGalleryView && (
-          <StoryGallery
-            stories={stories}
-            totalStories={totalStories}
-            categories={categories}
-            selectedCategory={selectedCategory}
-            selectedAuthor={selectedAuthor}
-            onSelectCategory={handleSelectCategory}
-            onSelectStory={handleSelectStory}
-            searchQuery={searchQuery}
-            onClearSearch={() => navigateTo('/')}
-            sortBy={sortBy}
-            onSortChange={(newSort) => {
-              setSortBy(newSort);
-              setCurrentPage(1);
-            }}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            isLoading={isLoading}
-            pageKind={viewMode}
-          />
-        )}
-
-        {(viewMode === 'reader' || viewMode === 'amp-reader') && selectedStorySlug && (
-          <StoryReader
-            slug={selectedStorySlug}
-            categories={categories}
-            isAmp={viewMode === 'amp-reader'}
-            onBack={() => navigateTo('/')}
-            onSelectStory={handleSelectStory}
-            onSelectCategory={handleSelectCategory}
-            onSelectAuthor={(author) => navigateTo(`/profile/${encodeURIComponent(author)}`)}
-          />
-        )}
-
-        {viewMode === 'categories' && (
-          <Suspense fallback={<div className="py-12" />}>
-            <CategoriesPage
-              categories={categories}
-              onSelectCategory={handleSelectCategory}
-              onBack={() => navigateTo('/')}
+      <div className="flex-1 w-full flex items-start justify-center gap-4 px-2 sm:px-4">
+        <aside
+          aria-label="Left side banners"
+          data-testid="left-banner-rail"
+          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px] pt-8 pb-8"
+        >
+          {SIDE_BANNER_SLOTS.map((idx) => (
+            <BannerAd
+              key={`left-side-${idx}`}
+              slotId={`left-side-${idx}`}
+              {...SIDE_BANNER_CONFIG}
             />
-          </Suspense>
-        )}
+          ))}
+        </aside>
 
-        {viewMode === 'sitemap' && (
-          <Suspense fallback={<div className="py-12" />}>
-            <HtmlSitemapPage
+        <main className="flex-1 min-w-0">
+          {isGalleryView && (
+            <StoryGallery
+              stories={stories}
+              totalStories={totalStories}
               categories={categories}
+              selectedCategory={selectedCategory}
+              selectedAuthor={selectedAuthor}
+              onSelectCategory={handleSelectCategory}
+              onSelectStory={handleSelectStory}
+              searchQuery={searchQuery}
+              onClearSearch={() => navigateTo('/')}
+              sortBy={sortBy}
+              onSortChange={(newSort) => {
+                setSortBy(newSort);
+                setCurrentPage(1);
+              }}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              isLoading={isLoading}
+              pageKind={viewMode}
+            />
+          )}
+
+          {(viewMode === 'reader' || viewMode === 'amp-reader') && selectedStorySlug && (
+            <StoryReader
+              slug={selectedStorySlug}
+              categories={categories}
+              isAmp={viewMode === 'amp-reader'}
+              onBack={() => navigateTo('/')}
               onSelectStory={handleSelectStory}
               onSelectCategory={handleSelectCategory}
-              onBack={() => navigateTo('/')}
+              onSelectAuthor={(author) => navigateTo(`/profile/${encodeURIComponent(author)}`)}
             />
-          </Suspense>
-        )}
+          )}
 
-        {viewMode === 'static' && (
-          <Suspense fallback={<div className="py-12" />}>
-            <StaticPage page={staticSlug} onBack={() => navigateTo('/')} />
-          </Suspense>
-        )}
+          {viewMode === 'categories' && (
+            <Suspense fallback={<div className="py-12" />}>
+              <CategoriesPage
+                categories={categories}
+                onSelectCategory={handleSelectCategory}
+                onBack={() => navigateTo('/')}
+              />
+            </Suspense>
+          )}
 
-        {viewMode === 'not-found' && (
-          <Suspense fallback={<div className="py-12" />}>
-            <NotFoundPage
-              onGoHome={() => navigateTo('/')}
-              onBrowseCategories={() => navigateTo('/categories')}
+          {viewMode === 'sitemap' && (
+            <Suspense fallback={<div className="py-12" />}>
+              <HtmlSitemapPage
+                categories={categories}
+                onSelectStory={handleSelectStory}
+                onSelectCategory={handleSelectCategory}
+                onBack={() => navigateTo('/')}
+              />
+            </Suspense>
+          )}
+
+          {viewMode === 'static' && (
+            <Suspense fallback={<div className="py-12" />}>
+              <StaticPage page={staticSlug} onBack={() => navigateTo('/')} />
+            </Suspense>
+          )}
+
+          {viewMode === 'not-found' && (
+            <Suspense fallback={<div className="py-12" />}>
+              <NotFoundPage
+                onGoHome={() => navigateTo('/')}
+                onBrowseCategories={() => navigateTo('/categories')}
+              />
+            </Suspense>
+          )}
+        </main>
+
+        <aside
+          aria-label="Right side banners"
+          data-testid="right-banner-rail"
+          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px] pt-8 pb-8"
+        >
+          {SIDE_BANNER_SLOTS.map((idx) => (
+            <BannerAd
+              key={`right-side-${idx}`}
+              slotId={`right-side-${idx}`}
+              {...SIDE_BANNER_CONFIG}
             />
-          </Suspense>
-        )}
-      </main>
+          ))}
+        </aside>
+      </div>
 
       <Footer
         categories={categories}

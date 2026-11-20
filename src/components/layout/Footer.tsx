@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Category } from '../../types/story';
 import { cleanCategoryBadgeName } from '../../utils/formatters';
+import { NativeBannerAd, FOOTER_NATIVE_BANNER_CONFIG } from '../common/BannerAd';
 
 interface FooterProps {
   categories: Category[];
@@ -38,6 +39,8 @@ export const Footer: React.FC<FooterProps> = ({
   return (
     <footer className="border-t border-zinc-800/80 bg-[#0e0e10] mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+        <NativeBannerAd {...FOOTER_NATIVE_BANNER_CONFIG} />
+
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
           <div className="space-y-1.5 max-w-sm">
             <a
