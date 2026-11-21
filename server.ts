@@ -365,12 +365,15 @@ function buildStandardHead(opts: {
   jsonLd?: Record<string, any> | null;
 }): string {
   const ogImg = opts.ogImage || DEFAULT_OG_IMAGE;
+  const robotsValue = opts.noIndex
+    ? 'noindex, nofollow'
+    : 'index, follow, max-image-preview:large';
   const lines = [
     '    <meta charset="UTF-8">',
     '    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">',
     `    <title>${escapeHtmlText(opts.title)}</title>`,
     `    <meta name="description" content="${escapeHtmlAttr(opts.description)}">`,
-    ...(opts.noIndex ? ['    <meta name="robots" content="noindex, nofollow">'] : []),
+    `    <meta name="robots" content="${robotsValue}">`,
     ...(opts.canonicalUrl
       ? [`    <link rel="canonical" href="${escapeHtmlAttr(opts.canonicalUrl)}">`]
       : []),
@@ -442,6 +445,22 @@ function buildCardsShellHtml(
 </div>`;
 }
 
+function safeJsonForScript(obj: unknown): string {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function buildSsrPageUrl(baseRoute: string, pageNum: number): string {
+  if (pageNum <= 1) return baseRoute === '/' ? `${SITE_URL}/` : `${SITE_URL}${baseRoute}`;
+  return baseRoute === '/'
+    ? `${SITE_URL}/page/${pageNum}`
+    : `${SITE_URL}${baseRoute}/page/${pageNum}`;
+}
+
 function resolveRouteForSsr(
   reqPath: string,
   queryParams: URLSearchParams
@@ -450,6 +469,7 @@ function resolveRouteForSsr(
   noIndex: boolean;
   headHtml: string;
   bodyHtml: string;
+  initialScriptTag?: string;
 } {
   const normalizedPath = reqPath.replace(/\/+$/, '') || '/';
   const pageParam = parseInt(queryParams.get('page') || '1', 10);
@@ -578,6 +598,48 @@ function resolveRouteForSsr(
       .map((p) => `<p data-reading-content>${escapeHtmlText(p)}</p>`)
       .join('\n');
 
+    const storyIdx = activeStories.findIndex((s) => s.id === story.id || s.slug === story.slug);
+    const prevStory = storyIdx > 0 ? activeStories[storyIdx - 1] : null;
+    const nextStory =
+      storyIdx >= 0 && storyIdx < activeStories.length - 1 ? activeStories[storyIdx + 1] : null;
+    const relatedStories = activeStories
+      .filter((s) => s.id !== story.id && stripZW(s.category).toLowerCase() === catSlug.toLowerCase())
+      .slice(0, 6);
+
+    const adjLinks: string[] = [];
+    if (prevStory) {
+      adjLinks.push(
+        `<a rel="prev" href="/story/${encodeURIComponent(stripZW(prevStory.slug || prevStory.id))}">${escapeHtmlText(
+          stripZW(prevStory.title)
+        )}</a>`
+      );
+    }
+    if (nextStory) {
+      adjLinks.push(
+        `<a rel="next" href="/story/${encodeURIComponent(stripZW(nextStory.slug || nextStory.id))}">${escapeHtmlText(
+          stripZW(nextStory.title)
+        )}</a>`
+      );
+    }
+    const relatedHtml =
+      relatedStories.length > 0
+        ? `<section><h2>තවත් කියවන්න</h2><ul>${relatedStories
+            .map(
+              (rel) =>
+                `<li><a href="/story/${encodeURIComponent(stripZW(rel.slug || rel.id))}">${escapeHtmlText(
+                  stripZW(rel.title)
+                )}</a></li>`
+            )
+            .join('\n')}</ul></section>`
+        : '';
+
+    const initialScriptTag = `\n    <script id="__INITIAL_STORY__" type="application/json">${safeJsonForScript({
+      story: { ...story, fullContent: bodyText, content: bodyText },
+      prevStory,
+      nextStory,
+      relatedStories,
+    })}</script>`;
+
     return {
       status: 200,
       noIndex: false,
@@ -594,28 +656,31 @@ function resolveRouteForSsr(
       bodyHtml: `<div class="ssr-article">
   <article>
     <header>
-      <a href="/category/${encodeURIComponent(catSlug)}">${escapeHtmlText(catLabel)}</a>
+      <a href="/">මුල් පිටුව</a> / <a href="/category/${encodeURIComponent(catSlug)}">${escapeHtmlText(catLabel)}</a>
       <h1>${escapeHtmlText(postTitle)}</h1>
       <a href="/profile/${encodeURIComponent(authorName)}">${escapeHtmlText(authorName)}</a>
     </header>
     <div class="article-body">
       ${paragraphsHtml}
     </div>
-    <blockquote>
-      අලුත්ම සිංහල කතා දිනපතා එසැණින් කියවීමට අපගේ Telegram නාලිකාව සමඟ එක්වන්න: <a href="https://t.me/walkathawa">https://t.me/walkathawa</a>
-    </blockquote>
+    ${adjLinks.length > 0 ? `<nav aria-label="Adjacent stories">${adjLinks.join(' ')}</nav>` : ''}
+    ${relatedHtml}
     <footer>
-      <a href="/">Previous</a>
-      <a href="/">Next</a>
+      <a href="/categories">Categories</a>
+      <a href="/sitemap">Sitemap</a>
     </footer>
   </article>
 </div>`,
+      initialScriptTag,
     };
   }
 
-  // 3. Category Page: /category/:slug
+  // 3. Category Page: /category/:slug and /category/:slug/page/:num
   if (normalizedPath.startsWith('/category/')) {
-    const rawCatSlug = normalizedPath.replace(/^\/category\//, '').trim();
+    const catRest = normalizedPath.replace(/^\/category\//, '').trim();
+    const catPageMatch = catRest.match(/^(.+?)\/page\/(\d+)$/);
+    const rawCatSlug = (catPageMatch ? catPageMatch[1] : catRest).trim();
+    const catPage = catPageMatch ? Math.max(1, parseInt(catPageMatch[2], 10) || 1) : page;
     const { category, stories: catStories, isValid } = findCategoryAndStories(rawCatSlug);
     if (!isValid || !category) {
       return {
@@ -632,17 +697,18 @@ function resolveRouteForSsr(
     }
 
     const totalPages = Math.max(1, Math.ceil(catStories.length / 20));
-    const slice = catStories.slice((page - 1) * 20, page * 20);
+    const slice = catStories.slice((catPage - 1) * 20, catPage * 20);
     const catLabel = stripZW(category.sinhalaName || category.name || rawCatSlug);
-    const title = page > 1 ? `${catLabel} — පිටුව ${page} | Walkathawa` : `${catLabel} | Walkathawa`;
+    const title = catPage > 1 ? `${catLabel} — පිටුව ${catPage} | Walkathawa` : `${catLabel} | Walkathawa`;
     const description = stripZW(
       category.description ||
         `${catLabel} — සිංහල කතා එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`
     ).slice(0, 158);
-    const baseCatUrl = `${SITE_URL}/category/${encodeURIComponent(category.slug || rawCatSlug)}`;
-    const canonicalUrl = page > 1 ? `${baseCatUrl}?page=${page}` : baseCatUrl;
-    const prevUrl = page > 1 ? (page === 2 ? baseCatUrl : `${baseCatUrl}?page=${page - 1}`) : null;
-    const nextUrl = page < totalPages ? `${baseCatUrl}?page=${page + 1}` : null;
+    const catBaseRoute = `/category/${encodeURIComponent(category.slug || rawCatSlug)}`;
+    const baseCatUrl = `${SITE_URL}${catBaseRoute}`;
+    const canonicalUrl = buildSsrPageUrl(catBaseRoute, catPage);
+    const prevUrl = catPage > 1 ? buildSsrPageUrl(catBaseRoute, catPage - 1) : null;
+    const nextUrl = catPage < totalPages ? buildSsrPageUrl(catBaseRoute, catPage + 1) : null;
 
     const jsonLd = {
       '@context': 'https://schema.org',
@@ -669,7 +735,7 @@ function resolveRouteForSsr(
                 numberOfItems: slice.length,
                 itemListElement: slice.map((s, idx) => ({
                   '@type': 'ListItem',
-                  position: (page - 1) * 20 + idx + 1,
+                  position: (catPage - 1) * 20 + idx + 1,
                   name: stripZW(s.title),
                   url: `${SITE_URL}/story/${encodeURIComponent(stripZW(s.slug || s.id))}`,
                 })),
@@ -690,7 +756,7 @@ function resolveRouteForSsr(
         nextUrl,
         jsonLd,
       }),
-      bodyHtml: buildCardsShellHtml(`${catLabel} | Walkathawa`, slice),
+      bodyHtml: buildCardsShellHtml(`${catLabel} | Walkathawa`, slice, prevUrl, nextUrl),
     };
   }
 
@@ -728,15 +794,19 @@ function resolveRouteForSsr(
     };
   }
 
-  // 5. Popular & Archives: /popular, /archives, /archiveposts
+  // 5. Popular & Archives: /popular, /archives, /archiveposts + /page/:num
   if (
     normalizedPath === '/popular' ||
+    /^\/popular\/page\/(\d+)$/.test(normalizedPath) ||
     normalizedPath === '/archives' ||
-    normalizedPath === '/archiveposts'
+    normalizedPath === '/archiveposts' ||
+    /^\/archives\/page\/(\d+)$/.test(normalizedPath)
   ) {
-    const isPopular = normalizedPath === '/popular';
-    const canonicalBase = `${SITE_URL}${isPopular ? '/popular' : '/archives'}`;
-    const canonicalUrl = page > 1 ? `${canonicalBase}?page=${page}` : canonicalBase;
+    const isPopular = normalizedPath.startsWith('/popular');
+    const pathPageMatch = normalizedPath.match(/\/page\/(\d+)$/);
+    const listPage = pathPageMatch ? Math.max(1, parseInt(pathPageMatch[1], 10) || 1) : page;
+    const baseRoute = isPopular ? '/popular' : '/archives';
+    const canonicalUrl = buildSsrPageUrl(baseRoute, listPage);
     const sorted = [...activeStories].sort((a, b) =>
       isPopular
         ? (Number(b.views) || 0) - (Number(a.views) || 0)
@@ -744,17 +814,19 @@ function resolveRouteForSsr(
           new Date(a.uploadDate || a.createdAt || 0).getTime()
     );
     const totalPages = Math.max(1, Math.ceil(sorted.length / 20));
-    const slice = sorted.slice((page - 1) * 20, page * 20);
+    const slice = sorted.slice((listPage - 1) * 20, listPage * 20);
     const title = isPopular
-      ? page > 1
-        ? `ජනප්‍රිය කතා — පිටුව ${page} | Walkathawa`
+      ? listPage > 1
+        ? `ජනප්‍රිය කතා — පිටුව ${listPage} | Walkathawa`
         : 'ජනප්‍රිය කතා | Walkathawa'
-      : page > 1
-      ? `ලේඛනාගාරය — පිටුව ${page} | Walkathawa`
+      : listPage > 1
+      ? `ලේඛනාගාරය — පිටුව ${listPage} | Walkathawa`
       : 'ලේඛනාගාරය | Walkathawa';
     const description = isPopular
       ? 'Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව.'
       : 'Walkathawa සිංහල කතා ලේඛනාගාරය — සියලුම කතා එකතුව.';
+    const prevUrl = listPage > 1 ? buildSsrPageUrl(baseRoute, listPage - 1) : null;
+    const nextUrl = listPage < totalPages ? buildSsrPageUrl(baseRoute, listPage + 1) : null;
 
     return {
       status: 200,
@@ -763,21 +835,19 @@ function resolveRouteForSsr(
         title,
         description,
         canonicalUrl,
-        prevUrl:
-          page > 1 ? (page === 2 ? canonicalBase : `${canonicalBase}?page=${page - 1}`) : null,
-        nextUrl: page < totalPages ? `${canonicalBase}?page=${page + 1}` : null,
+        prevUrl,
+        nextUrl,
       }),
-      bodyHtml: buildCardsShellHtml(title, slice),
+      bodyHtml: buildCardsShellHtml(title, slice, prevUrl, nextUrl),
     };
   }
 
-  // 6. HTML Sitemap Page: /sitemap
+  // 6. HTML Sitemap Page: /sitemap (ALL stories)
   if (normalizedPath === '/sitemap') {
     const canonicalUrl = `${SITE_URL}/sitemap`;
     const title = 'සම්පූර්ණ කතා නාමාවලිය | Walkathawa';
-    const description = 'Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා සහ වර්ගීකරණ එකම පිටුවකින්.';
+    const description = `Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා (${activeStories.length}) සහ වර්ගීකරණ එකම පිටුවකින්.`;
     const storyLinks = activeStories
-      .slice(0, 200)
       .map(
         (s) =>
           `<li><a href="/story/${encodeURIComponent(stripZW(s.slug || s.id))}">${escapeHtmlText(
@@ -790,7 +860,7 @@ function resolveRouteForSsr(
       status: 200,
       noIndex: false,
       headHtml: buildStandardHead({ title, description, canonicalUrl }),
-      bodyHtml: `<div class="ssr-shell"><h1>Walkathawa — Complete Sitemap</h1><ul>${storyLinks}</ul></div>`,
+      bodyHtml: `<div class="ssr-shell"><h1>Walkathawa — Complete Sitemap (${activeStories.length})</h1><ul>${storyLinks}</ul></div>`,
     };
   }
 
@@ -831,28 +901,29 @@ function resolveRouteForSsr(
     };
   }
 
-  // 9. Homepage: /
-  if (normalizedPath === '/') {
+  // 9. Homepage: / and /page/:num
+  const homePageMatch = normalizedPath.match(/^\/page\/(\d+)$/);
+  if (normalizedPath === '/' || homePageMatch) {
+    const homePage = homePageMatch ? Math.max(1, parseInt(homePageMatch[1], 10) || 1) : page;
     const totalPages = Math.max(1, Math.ceil(activeStories.length / 20));
-    const startIdx = (page - 1) * 20;
+    const startIdx = (homePage - 1) * 20;
     const pageStories = activeStories.slice(startIdx, startIdx + 20);
     const title =
-      page > 1
-        ? `Walkathawa (වල් කතාව) — පිටුව ${page}`
+      homePage > 1
+        ? `Walkathawa (වල් කතාව) — පිටුව ${homePage}`
         : 'Walkathawa (වල් කතාව) | Sinhala Stories Online';
     const sampleTitles = pageStories
       .slice(0, 2)
       .map((s) => stripZW(s.title))
       .join(', ');
     const description =
-      page > 1 && sampleTitles
-        ? `Walkathawa පිටුව ${page}: ${sampleTitles} ඇතුළු සිංහල කතා නොමිලේ කියවන්න.`.slice(0, 158)
+      homePage > 1 && sampleTitles
+        ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු සිංහල කතා නොමිලේ කියවන්න.`.slice(0, 158)
         : 'Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala katha, romantic stories, fictional stories, and short stories updated regularly.';
 
-    const canonicalUrl = page > 1 ? `${SITE_URL}/?page=${page}` : `${SITE_URL}/`;
-    const prevUrl =
-      page > 1 ? (page === 2 ? `${SITE_URL}/` : `${SITE_URL}/?page=${page - 1}`) : null;
-    const nextUrl = page < totalPages ? `${SITE_URL}/?page=${page + 1}` : null;
+    const canonicalUrl = buildSsrPageUrl('/', homePage);
+    const prevUrl = homePage > 1 ? buildSsrPageUrl('/', homePage - 1) : null;
+    const nextUrl = homePage < totalPages ? buildSsrPageUrl('/', homePage + 1) : null;
 
     const jsonLd = {
       '@context': 'https://schema.org',
@@ -908,6 +979,16 @@ function resolveRouteForSsr(
       ],
     };
 
+    const initialScriptTag = `\n    <script id="__INITIAL_GALLERY__" type="application/json">${safeJsonForScript({
+      viewMode: 'home',
+      selectedCategory: 'all',
+      currentPage: homePage,
+      totalStories: activeStories.length,
+      totalPages,
+      stories: pageStories,
+      categories: activeCategories,
+    })}</script>`;
+
     return {
       status: 200,
       noIndex: false,
@@ -920,6 +1001,7 @@ function resolveRouteForSsr(
         jsonLd,
       }),
       bodyHtml: buildCardsShellHtml(title, pageStories, prevUrl, nextUrl),
+      initialScriptTag,
     };
   }
 
@@ -976,7 +1058,10 @@ function renderFullDocument(
       /<head>[\s\S]*?<\/head>/i,
       `<head>\n${resolved.headHtml}${assetTags}${popunderTag}\n  </head>`
     )
-    .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${resolved.bodyHtml}</div>`);
+    .replace(
+      /<div id="root">[\s\S]*?<\/div>/i,
+      `<div id="root">${resolved.bodyHtml}</div>${resolved.initialScriptTag || ''}`
+    );
 
   return { html, status: resolved.status, noIndex: resolved.noIndex };
 }

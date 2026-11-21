@@ -58,17 +58,43 @@ export function resolveRouteState(rawPathname: string, rawSearch: string): Parse
   if (path === '/' || path === '') {
     return { ...fallback, viewMode: 'home', currentPage: validPage, searchQuery: qParam };
   }
-  if (path === '/popular') {
+  const homePageMatch = path.match(/^\/page\/(\d+)$/);
+  if (homePageMatch) {
+    const pNum = Math.max(1, parseInt(homePageMatch[1], 10) || 1);
+    return {
+      ...fallback,
+      viewMode: 'home',
+      currentPage: pNum,
+      searchQuery: qParam,
+      canonicalReplacePath: pNum === 1 ? '/' : undefined,
+    };
+  }
+  if (path === '/popular' || /^\/popular\/page\/(\d+)$/.test(path)) {
+    const popMatch = path.match(/^\/popular\/page\/(\d+)$/);
+    const pNum = popMatch ? Math.max(1, parseInt(popMatch[1], 10) || 1) : validPage;
     return {
       ...fallback,
       viewMode: 'popular',
       sortBy: 'popular',
-      currentPage: validPage,
+      currentPage: pNum,
       searchQuery: qParam,
+      canonicalReplacePath: popMatch && pNum === 1 ? '/popular' : undefined,
     };
   }
-  if (path === '/archives' || path === '/archiveposts') {
-    return { ...fallback, viewMode: 'archives', currentPage: validPage, searchQuery: qParam };
+  if (
+    path === '/archives' ||
+    path === '/archiveposts' ||
+    /^\/archives\/page\/(\d+)$/.test(path)
+  ) {
+    const archMatch = path.match(/^\/archives\/page\/(\d+)$/);
+    const pNum = archMatch ? Math.max(1, parseInt(archMatch[1], 10) || 1) : validPage;
+    return {
+      ...fallback,
+      viewMode: 'archives',
+      currentPage: pNum,
+      searchQuery: qParam,
+      canonicalReplacePath: archMatch && pNum === 1 ? '/archives' : undefined,
+    };
   }
   if (path === '/search') {
     return { ...fallback, viewMode: 'search', currentPage: validPage, searchQuery: qParam };
@@ -118,16 +144,26 @@ export function resolveRouteState(rawPathname: string, rawSearch: string): Parse
     path.startsWith('/categories/') ||
     path.startsWith('/collections/')
   ) {
-    const catSlug = path.replace(/^\/(category|categories|collections)\//, '').trim();
+    const catRest = path.replace(/^\/(category|categories|collections)\//, '').trim();
+    const catPageMatch = catRest.match(/^(.+?)\/page\/(\d+)$/);
+    const catSlug = (catPageMatch ? catPageMatch[1] : catRest).trim();
+    const catPage = catPageMatch
+      ? Math.max(1, parseInt(catPageMatch[2], 10) || 1)
+      : validPage;
     if (catSlug) {
+      const encodedCat = encodeURIComponent(catSlug);
+      const needsCanonical =
+        !path.startsWith('/category/') || (Boolean(catPageMatch) && catPage === 1);
       return {
         ...fallback,
         viewMode: 'category',
         selectedCategory: catSlug,
-        currentPage: validPage,
+        currentPage: catPage,
         searchQuery: qParam,
-        canonicalReplacePath: !path.startsWith('/category/')
-          ? `/category/${encodeURIComponent(catSlug)}`
+        canonicalReplacePath: needsCanonical
+          ? catPage > 1
+            ? `/category/${encodedCat}/page/${catPage}`
+            : `/category/${encodedCat}`
           : undefined,
       };
     }

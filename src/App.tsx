@@ -9,6 +9,7 @@ import { StoryService } from './services/storyService';
 import { SeoService } from './services/seoService';
 import { testConnection } from './firebase';
 import { resolveRouteState, type ViewMode } from './utils/storyFormatting';
+import { readInitialGalleryFromDocument } from './utils/initialData';
 import { BannerAd, SIDE_BANNER_CONFIG, SIDE_BANNER_SLOTS } from './components/common/BannerAd';
 
 const CategoriesPage = lazy(() =>
@@ -54,11 +55,21 @@ export function App() {
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'oldest'>(() => initialRoute.sortBy);
   const [currentPage, setCurrentPage] = useState<number>(() => initialRoute.currentPage);
 
-  const [stories, setStories] = useState<Story[]>([]);
-  const [totalStories, setTotalStories] = useState<number>(0);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const initialGallery = readInitialGalleryFromDocument(
+    initialRoute.viewMode,
+    initialRoute.selectedCategory,
+    initialRoute.currentPage
+  );
+
+  const [stories, setStories] = useState<Story[]>(() => initialGallery?.stories || []);
+  const [totalStories, setTotalStories] = useState<number>(
+    () => initialGallery?.totalStories || 0
+  );
+  const [totalPages, setTotalPages] = useState<number>(() => initialGallery?.totalPages || 1);
+  const [categories, setCategories] = useState<Category[]>(
+    () => initialGallery?.categories || []
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(() => !initialGallery);
 
   useEffect(() => {
     testConnection();
@@ -109,7 +120,14 @@ export function App() {
   const loadGalleryStories = useCallback(
     async (isCancelled: () => boolean = () => false) => {
       if (!isGalleryView) return;
-      setIsLoading(true);
+      const hydratedMatch = readInitialGalleryFromDocument(
+        viewMode,
+        selectedCategory,
+        currentPage
+      );
+      if (!hydratedMatch || sortBy !== 'latest' || Boolean(searchQuery)) {
+        setIsLoading(true);
+      }
       try {
         const result = await StoryService.getStories({
           category:
@@ -143,16 +161,16 @@ export function App() {
             result.totalPages || 1
           );
         } else if (viewMode === 'popular') {
-          SeoService.updatePopularSeo();
+          SeoService.updatePopularSeo(currentPage, result.totalPages || 1);
         } else if (viewMode === 'archives') {
-          SeoService.updateArchivesSeo();
+          SeoService.updateArchivesSeo(currentPage, result.totalPages || 1);
         } else if (viewMode === 'profile') {
           SeoService.updateProfileSeo(selectedAuthor);
         } else if (viewMode === 'search') {
           SeoService.updateSearchSeo();
         }
       } catch {
-        if (!isCancelled()) setStories([]);
+        if (!isCancelled() && !hydratedMatch) setStories([]);
       } finally {
         if (!isCancelled()) setIsLoading(false);
       }
@@ -196,6 +214,17 @@ export function App() {
   };
 
   const handlePageChange = (newPage: number) => {
+    if (viewMode === 'search' && searchQuery) {
+      const qs = new URLSearchParams({ s: searchQuery });
+      if (newPage > 1) qs.set('page', String(newPage));
+      navigateTo(`/search?${qs.toString()}`);
+      return;
+    }
+    if (viewMode === 'profile') {
+      const base = `/profile/${encodeURIComponent(selectedAuthor)}`;
+      navigateTo(newPage > 1 ? `${base}?page=${newPage}` : base);
+      return;
+    }
     let baseUrl = '/';
     if (viewMode === 'category' && selectedCategory && selectedCategory !== 'all') {
       baseUrl = `/category/${encodeURIComponent(selectedCategory)}`;
@@ -203,15 +232,13 @@ export function App() {
       baseUrl = '/popular';
     } else if (viewMode === 'archives') {
       baseUrl = '/archives';
-    } else if (viewMode === 'profile') {
-      baseUrl = `/profile/${encodeURIComponent(selectedAuthor)}`;
-    } else if (viewMode === 'search' && searchQuery) {
-      const qs = new URLSearchParams({ s: searchQuery });
-      if (newPage > 1) qs.set('page', String(newPage));
-      navigateTo(`/search?${qs.toString()}`);
-      return;
     }
-    const targetUrl = newPage > 1 ? `${baseUrl}?page=${newPage}` : baseUrl;
+    const targetUrl =
+      newPage <= 1
+        ? baseUrl
+        : baseUrl === '/'
+        ? `/page/${newPage}`
+        : `${baseUrl}/page/${newPage}`;
     navigateTo(targetUrl);
   };
 

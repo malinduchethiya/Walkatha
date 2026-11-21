@@ -20,6 +20,15 @@ export function normalizeCanonicalPath(rawPathname: string): string {
     target = target.slice(0, -1);
   }
 
+  if (target === '/page/1') {
+    return '/';
+  }
+  if (/^\/(popular|archives)\/page\/1$/i.test(target)) {
+    return target.replace(/\/page\/1$/i, '');
+  }
+  if (/^\/category\/[^/]+\/page\/1$/i.test(target)) {
+    return target.replace(/\/page\/1$/i, '');
+  }
   if (target === '/posts') {
     return '/';
   }
@@ -57,12 +66,13 @@ export function normalizeCanonicalPath(rawPathname: string): string {
 }
 
 export function buildCanonicalUrl(pathname: string, page = 1): string {
-  const normalized = normalizeCanonicalPath(pathname);
-  const base = normalized === '/' ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${normalized}`;
+  const normalized = normalizeCanonicalPath(pathname).replace(/\/page\/\d+$/i, '') || '/';
   if (page > 1) {
-    return `${base}?page=${page}`;
+    return normalized === '/'
+      ? `${SITE_ORIGIN}/page/${page}`
+      : `${SITE_ORIGIN}${normalized}/page/${page}`;
   }
-  return base;
+  return normalized === '/' ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${normalized}`;
 }
 
 export interface RedirectResolution {

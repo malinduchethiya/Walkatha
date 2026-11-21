@@ -143,6 +143,9 @@ function normalizeCanonicalPath(rawPathname) {
   if (target.length > 1 && target.endsWith('/')) {
     target = target.slice(0, -1);
   }
+  if (target === '/page/1') return '/';
+  if (/^\/(popular|archives)\/page\/1$/i.test(target)) return target.replace(/\/page\/1$/i, '');
+  if (/^\/category\/[^/]+\/page\/1$/i.test(target)) return target.replace(/\/page\/1$/i, '');
   if (target === '/posts') return '/';
   if (target.startsWith('/posts/')) return target.replace(/^\/posts\//, '/story/');
   if (target.startsWith('/katha/')) return target.replace(/^\/katha\//, '/story/');
@@ -396,14 +399,60 @@ function buildOrganizationSchema() {
   };
 }
 
+function safeJsonForScript(obj) {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function buildPageHref(baseRoute, pageNum) {
+  if (pageNum <= 1) return baseRoute === '/' ? '/' : baseRoute;
+  return baseRoute === '/' ? `/page/${pageNum}` : `${baseRoute}/page/${pageNum}`;
+}
+
+function buildPageAbsoluteUrl(baseRoute, pageNum) {
+  const rel = buildPageHref(baseRoute, pageNum);
+  return rel === '/' ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${rel}`;
+}
+
+function buildSiteNavHtml(categories) {
+  const catLinks = (categories || [])
+    .map(
+      (c) =>
+        `<a href="/category/${encodeSlug(c.slug || c.id)}">${escapeHtmlText(
+          stripZW(c.sinhalaName || c.name || c.slug)
+        )}</a>`
+    )
+    .join(' ');
+  return `<header><nav aria-label="Primary navigation"><a href="/">Walkathawa</a> <a href="/categories">වර්ගීකරණ</a> <a href="/popular">ජනප්‍රිය</a> <a href="/archives">ලේඛනාගාරය</a> <a href="/sitemap">සම්පූර්ණ කතා නාමාවලිය</a></nav><nav aria-label="Categories">${catLinks}</nav></header>`;
+}
+
+function buildSiteFooterHtml(categories) {
+  const catLinks = (categories || [])
+    .map(
+      (c) =>
+        `<a href="/category/${encodeSlug(c.slug || c.id)}">${escapeHtmlText(
+          stripZW(c.sinhalaName || c.name || c.slug)
+        )}</a>`
+    )
+    .join(' ');
+  return `<footer><nav aria-label="Footer navigation"><a href="/">Home</a> <a href="/categories">Categories</a> <a href="/popular">Popular</a> <a href="/archives">Archives</a> <a href="/sitemap">Sitemap</a> <a href="/about">About</a> <a href="/contact">Contact</a> <a href="/page/privacy-policy">Privacy</a> <a href="/page/terms-and-conditions">Terms</a> <a href="/page/disclaimer">Disclaimer</a></nav><div>${catLinks}</div></footer>`;
+}
+
 function buildHead(opts) {
   const ogImg = opts.ogImage || DEFAULT_OG_IMAGE;
+  const robotsValue = opts.noIndex
+    ? 'noindex, nofollow'
+    : 'index, follow, max-image-preview:large';
   const lines = [
     '    <meta charset="UTF-8">',
     '    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">',
     `    <title>${escapeHtmlText(opts.title)}</title>`,
     `    <meta name="description" content="${escapeHtmlAttr(opts.description)}">`,
-    ...(opts.noIndex ? ['    <meta name="robots" content="noindex, nofollow">'] : []),
+    `    <meta name="robots" content="${robotsValue}">`,
     ...(opts.canonicalUrl
       ? [`    <link rel="canonical" href="${escapeHtmlAttr(opts.canonicalUrl)}">`]
       : []),
@@ -440,7 +489,16 @@ function buildHead(opts) {
   return lines.join('\n');
 }
 
-function buildCardsShell(h1Text, storiesSlice, prevUrl = null, nextUrl = null) {
+function buildCardsShell(
+  h1Text,
+  storiesSlice,
+  prevUrl = null,
+  nextUrl = null,
+  categories = [],
+  baseRoute = '/',
+  currentPage = 1,
+  totalPages = 1
+) {
   const items = storiesSlice
     .map((s) => {
       const slug = encodeSlug(s.slug || s.id);
@@ -449,18 +507,31 @@ function buildCardsShell(h1Text, storiesSlice, prevUrl = null, nextUrl = null) {
     .join('\n');
   const nav = [];
   if (prevUrl) nav.push(`<a rel="prev" href="${escapeHtmlAttr(prevUrl)}">Previous</a>`);
+  if (totalPages > 1) {
+    for (let p = 1; p <= totalPages; p++) {
+      nav.push(
+        `<a href="${escapeHtmlAttr(buildPageHref(baseRoute, p))}"${
+          p === currentPage ? ' aria-current="page"' : ''
+        }>${p}</a>`
+      );
+    }
+  }
   if (nextUrl) nav.push(`<a rel="next" href="${escapeHtmlAttr(nextUrl)}">Next</a>`);
   const navHtml = nav.length > 0 ? `\n  <nav aria-label="Pagination">${nav.join(' ')}</nav>` : '';
   return `<div class="ssr-shell">
-  <h1 class="sr-only">${escapeHtmlText(h1Text)}</h1>
-  <div>${items}</div>${navHtml}
+  ${buildSiteNavHtml(categories)}
+  <main>
+    <h1>${escapeHtmlText(h1Text)}</h1>
+    <div>${items}</div>${navHtml}
+  </main>
+  ${buildSiteFooterHtml(categories)}
 </div>`;
 }
 
 const POPUNDER_SCRIPT_TAG =
   '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
 
-function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isAdmin = false) {
+function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isAdmin = false, initialScriptTag = '') {
   const headMatch = rawSpaHtml.match(/<head>([\s\S]*?)<\/head>/i);
   const preservedAssets = [];
   if (headMatch) {
@@ -486,7 +557,7 @@ function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isAdmin = false) {
       /<head>[\s\S]*?<\/head>/i,
       `<head>\n${buildHead(headOpts)}${assetTags}${popunderTag}\n  </head>`
     )
-    .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${bodyHtml}</div>`);
+    .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${bodyHtml}</div>${initialScriptTag}`);
 }
 
 async function loadSpaTemplate(env, origin) {
@@ -838,8 +909,8 @@ export default {
 
     const spaTemplate = await loadSpaTemplate(env, url.origin);
 
-    const buildHtmlResponse = (headOpts, bodyHtml, status = 200, isAdmin = false) => {
-      const html = injectIntoTemplate(spaTemplate, headOpts, bodyHtml, isAdmin);
+    const buildHtmlResponse = (headOpts, bodyHtml, status = 200, isAdmin = false, initialScriptTag = '') => {
+      const html = injectIntoTemplate(spaTemplate, headOpts, bodyHtml, isAdmin, initialScriptTag);
       const headers = new Headers({
         'Content-Type': 'text/html; charset=utf-8',
         Vary: 'User-Agent',
@@ -974,9 +1045,51 @@ export default {
           : story.author || SITE_NAME
       );
 
+      const storyIdx = activeStories.indexOf(story);
+      const prevStory = storyIdx > 0 ? activeStories[storyIdx - 1] : null;
+      const nextStory = storyIdx >= 0 && storyIdx < activeStories.length - 1 ? activeStories[storyIdx + 1] : null;
+      const relatedStories = activeStories
+        .filter((s) => s !== story && stripZW(s.category).toLowerCase() === catSlug.toLowerCase())
+        .slice(0, 6);
+
       const paragraphsHtml = splitParagraphs(bodyText)
         .map((p) => `<p data-reading-content>${escapeHtmlText(p)}</p>`)
         .join('\n');
+
+      const adjLinks = [];
+      if (prevStory) {
+        adjLinks.push(
+          `<a rel="prev" href="/story/${encodeSlug(prevStory.slug || prevStory.id)}">${escapeHtmlText(
+            stripZW(prevStory.title)
+          )}</a>`
+        );
+      }
+      if (nextStory) {
+        adjLinks.push(
+          `<a rel="next" href="/story/${encodeSlug(nextStory.slug || nextStory.id)}">${escapeHtmlText(
+            stripZW(nextStory.title)
+          )}</a>`
+        );
+      }
+      const adjNavHtml =
+        adjLinks.length > 0 ? `<nav aria-label="Adjacent stories">${adjLinks.join(' ')}</nav>` : '';
+      const relatedHtml =
+        relatedStories.length > 0
+          ? `<section><h2>තවත් කියවන්න</h2><ul>${relatedStories
+              .map(
+                (rel) =>
+                  `<li><a href="/story/${encodeSlug(rel.slug || rel.id)}">${escapeHtmlText(
+                    stripZW(rel.title)
+                  )}</a></li>`
+              )
+              .join('\n')}</ul></section>`
+          : '';
+      const initialStoryScript = `\n    <script id="__INITIAL_STORY__" type="application/json">${safeJsonForScript({
+        story: { ...story, fullContent: bodyText, content: bodyText },
+        prevStory,
+        nextStory,
+        relatedStories,
+      })}</script>`;
 
       return buildHtmlResponse(
         {
@@ -1025,24 +1138,37 @@ export default {
           },
         },
         `<div class="ssr-article">
-  <article>
-    <header>
-      <a href="/category/${encodeSlug(catSlug)}">${escapeHtmlText(catLabel)}</a>
-      <h1>${escapeHtmlText(postTitle)}</h1>
-      <a href="/profile/${encodeURIComponent(authorName)}">${escapeHtmlText(authorName)}</a>
-    </header>
-    <div class="article-body">
-      ${paragraphsHtml}
-    </div>
-  </article>
+  ${buildSiteNavHtml(activeCategories)}
+  <main>
+    <article>
+      <header>
+        <nav aria-label="Breadcrumb"><a href="/">මුල් පිටුව</a> / <a href="/category/${encodeSlug(
+          catSlug
+        )}">${escapeHtmlText(catLabel)}</a></nav>
+        <h1>${escapeHtmlText(postTitle)}</h1>
+        <a href="/profile/${encodeURIComponent(authorName)}">${escapeHtmlText(authorName)}</a>
+      </header>
+      <div class="article-body">
+        ${paragraphsHtml}
+      </div>
+      ${adjNavHtml}
+      ${relatedHtml}
+    </article>
+  </main>
+  ${buildSiteFooterHtml(activeCategories)}
 </div>`,
-        200
+        200,
+        false,
+        initialStoryScript
       );
     }
 
-    // 6d. Category Page: /category/:slug
+    // 6d. Category Page: /category/:slug and /category/:slug/page/:num
     if (normalizedPath.startsWith('/category/')) {
-      const rawCatSlug = normalizedPath.replace(/^\/category\//, '').trim();
+      const catRest = normalizedPath.replace(/^\/category\//, '').trim();
+      const catPageMatch = catRest.match(/^(.+?)\/page\/(\d+)$/);
+      const rawCatSlug = (catPageMatch ? catPageMatch[1] : catRest).trim();
+      const catPage = catPageMatch ? Math.max(1, parseInt(catPageMatch[2], 10) || 1) : page;
       const decodedCat = stripZW(rawCatSlug).toLowerCase();
 
       const catObj =
@@ -1085,16 +1211,17 @@ export default {
 
       const category = catObj || { id: decodedCat, slug: decodedCat, name: rawCatSlug, sinhalaName: rawCatSlug };
       const totalPages = Math.max(1, Math.ceil(catStories.length / 20));
-      const slice = catStories.slice((page - 1) * 20, page * 20);
+      const slice = catStories.slice((catPage - 1) * 20, catPage * 20);
       const catLabel = stripZW(category.sinhalaName || category.name || rawCatSlug);
-      const title = page > 1 ? `${catLabel} — පිටුව ${page} | ${SITE_NAME}` : `${catLabel} | ${SITE_NAME}`;
+      const title = catPage > 1 ? `${catLabel} — පිටුව ${catPage} | ${SITE_NAME}` : `${catLabel} | ${SITE_NAME}`;
       const description = stripZW(
         category.description || `${catLabel} — සිංහල කතා එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`
       ).slice(0, 158);
-      const baseCatUrl = `${SITE_ORIGIN}/category/${encodeSlug(category.slug || rawCatSlug)}`;
-      const canonicalUrl = page > 1 ? `${baseCatUrl}?page=${page}` : baseCatUrl;
-      const prevUrl = page > 1 ? (page === 2 ? baseCatUrl : `${baseCatUrl}?page=${page - 1}`) : null;
-      const nextUrl = page < totalPages ? `${baseCatUrl}?page=${page + 1}` : null;
+      const catBaseRoute = `/category/${encodeSlug(category.slug || rawCatSlug)}`;
+      const baseCatUrl = `${SITE_ORIGIN}${catBaseRoute}`;
+      const canonicalUrl = buildPageAbsoluteUrl(catBaseRoute, catPage);
+      const prevUrl = catPage > 1 ? buildPageAbsoluteUrl(catBaseRoute, catPage - 1) : null;
+      const nextUrl = catPage < totalPages ? buildPageAbsoluteUrl(catBaseRoute, catPage + 1) : null;
 
       return buildHtmlResponse(
         {
@@ -1129,7 +1256,7 @@ export default {
                       numberOfItems: slice.length,
                       itemListElement: slice.map((s, idx) => ({
                         '@type': 'ListItem',
-                        position: (page - 1) * 20 + idx + 1,
+                        position: (catPage - 1) * 20 + idx + 1,
                         name: stripZW(s.title),
                         url: `${SITE_ORIGIN}/story/${encodeSlug(s.slug || s.id)}`,
                       })),
@@ -1139,7 +1266,7 @@ export default {
             ],
           },
         },
-        buildCardsShell(title, slice, prevUrl, nextUrl),
+        buildCardsShell(title, slice, prevUrl, nextUrl, activeCategories, catBaseRoute, catPage, totalPages),
         200
       );
     }
@@ -1189,15 +1316,19 @@ export default {
       );
     }
 
-    // 6f. Popular & Archives
+    // 6f. Popular & Archives (including /popular/page/:num and /archives/page/:num)
     if (
       normalizedPath === '/popular' ||
+      /^\/popular\/page\/(\d+)$/.test(normalizedPath) ||
       normalizedPath === '/archives' ||
-      normalizedPath === '/archiveposts'
+      normalizedPath === '/archiveposts' ||
+      /^\/archives\/page\/(\d+)$/.test(normalizedPath)
     ) {
-      const isPopular = normalizedPath === '/popular';
-      const canonicalBase = `${SITE_ORIGIN}${isPopular ? '/popular' : '/archives'}`;
-      const canonicalUrl = page > 1 ? `${canonicalBase}?page=${page}` : canonicalBase;
+      const isPopular = normalizedPath.startsWith('/popular');
+      const pathPageMatch = normalizedPath.match(/\/page\/(\d+)$/);
+      const listPage = pathPageMatch ? Math.max(1, parseInt(pathPageMatch[1], 10) || 1) : page;
+      const baseRoute = isPopular ? '/popular' : '/archives';
+      const canonicalUrl = buildPageAbsoluteUrl(baseRoute, listPage);
       const sorted = [...activeStories].sort((a, b) =>
         isPopular
           ? (Number(b.views) || 0) - (Number(a.views) || 0)
@@ -1205,34 +1336,33 @@ export default {
             new Date(a.uploadDate || a.createdAt || 0).getTime()
       );
       const totalPages = Math.max(1, Math.ceil(sorted.length / 20));
-      const slice = sorted.slice((page - 1) * 20, page * 20);
+      const slice = sorted.slice((listPage - 1) * 20, listPage * 20);
       const title = isPopular
-        ? page > 1
-          ? `ජනප්‍රිය කතා — පිටුව ${page} | ${SITE_NAME}`
+        ? listPage > 1
+          ? `ජනප්‍රිය කතා — පිටුව ${listPage} | ${SITE_NAME}`
           : `ජනප්‍රිය කතා | ${SITE_NAME}`
-        : page > 1
-        ? `ලේඛනාගාරය — පිටුව ${page} | ${SITE_NAME}`
+        : listPage > 1
+        ? `ලේඛනාගාරය — පිටුව ${listPage} | ${SITE_NAME}`
         : `ලේඛනාගාරය | ${SITE_NAME}`;
       const description = isPopular
         ? 'Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව.'
         : 'Walkathawa සිංහල කතා ලේඛනාගාරය — සියලුම කතා එකතුව.';
-      const prevUrl = page > 1 ? (page === 2 ? canonicalBase : `${canonicalBase}?page=${page - 1}`) : null;
-      const nextUrl = page < totalPages ? `${canonicalBase}?page=${page + 1}` : null;
+      const prevUrl = listPage > 1 ? buildPageAbsoluteUrl(baseRoute, listPage - 1) : null;
+      const nextUrl = listPage < totalPages ? buildPageAbsoluteUrl(baseRoute, listPage + 1) : null;
 
       return buildHtmlResponse(
         { title, description, canonicalUrl, prevUrl, nextUrl },
-        buildCardsShell(title, slice, prevUrl, nextUrl),
+        buildCardsShell(title, slice, prevUrl, nextUrl, activeCategories, baseRoute, listPage, totalPages),
         200
       );
     }
 
-    // 6g. HTML Sitemap Page: /sitemap
+    // 6g. HTML Sitemap Page: /sitemap (ALL stories, no truncation)
     if (normalizedPath === '/sitemap') {
       const canonicalUrl = `${SITE_ORIGIN}/sitemap`;
       const title = `සම්පූර්ණ කතා නාමාවලිය | ${SITE_NAME}`;
-      const description = 'Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා සහ වර්ගීකරණ එකම පිටුවකින්.';
+      const description = `Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා (${activeStories.length}) සහ වර්ගීකරණ එකම පිටුවකින්.`;
       const links = activeStories
-        .slice(0, 200)
         .map(
           (s) =>
             `<li><a href="/story/${encodeSlug(s.slug || s.id)}">${escapeHtmlText(stripZW(s.title))}</a></li>`
@@ -1240,7 +1370,11 @@ export default {
         .join('\n');
       return buildHtmlResponse(
         { title, description, canonicalUrl },
-        `<div class="ssr-shell"><h1>Walkathawa — Complete Sitemap</h1><ul>${links}</ul></div>`,
+        `<div class="ssr-shell">${buildSiteNavHtml(
+          activeCategories
+        )}<main><h1>Walkathawa — සම්පූර්ණ කතා නාමාවලිය (${activeStories.length})</h1><ul>${links}</ul></main>${buildSiteFooterHtml(
+          activeCategories
+        )}</div>`,
         200
       );
     }
@@ -1259,28 +1393,30 @@ export default {
           description: `${author} විසින් Walkathawa හි පළ කරන ලද සිංහල කතා එකතුව.`,
           canonicalUrl,
         },
-        buildCardsShell(`${author} | ${SITE_NAME}`, activeStories.slice(0, 20)),
+        buildCardsShell(`${author} | ${SITE_NAME}`, activeStories.slice(0, 20), null, null, activeCategories),
         200
       );
     }
 
-    // 6i. Homepage: /
-    if (normalizedPath === '/') {
+    // 6i. Homepage: / and /page/:num
+    const homePageMatch = normalizedPath.match(/^\/page\/(\d+)$/);
+    if (normalizedPath === '/' || homePageMatch) {
+      const homePage = homePageMatch ? Math.max(1, parseInt(homePageMatch[1], 10) || 1) : page;
       const totalPages = Math.max(1, Math.ceil(activeStories.length / 20));
-      const startIdx = (page - 1) * 20;
+      const startIdx = (homePage - 1) * 20;
       const pageStories = activeStories.slice(startIdx, startIdx + 20);
       const title =
-        page > 1
-          ? `Walkathawa (වල් කතාව) — පිටුව ${page}`
+        homePage > 1
+          ? `Walkathawa (වල් කතාව) — පිටුව ${homePage}`
           : 'Walkathawa (වල් කතාව) | Sinhala Stories Online';
       const sampleTitles = pageStories.slice(0, 2).map((s) => stripZW(s.title)).join(', ');
       const description =
-        page > 1 && sampleTitles
-          ? `Walkathawa පිටුව ${page}: ${sampleTitles} ඇතුළු සිංහල කතා නොමිලේ කියවන්න.`.slice(0, 158)
+        homePage > 1 && sampleTitles
+          ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු සිංහල කතා නොමිලේ කියවන්න.`.slice(0, 158)
           : 'Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala katha, romantic stories, fictional stories, and short stories updated regularly.';
-      const canonicalUrl = page > 1 ? `${SITE_ORIGIN}/?page=${page}` : `${SITE_ORIGIN}/`;
-      const prevUrl = page > 1 ? (page === 2 ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}/?page=${page - 1}`) : null;
-      const nextUrl = page < totalPages ? `${SITE_ORIGIN}/?page=${page + 1}` : null;
+      const canonicalUrl = buildPageAbsoluteUrl('/', homePage);
+      const prevUrl = homePage > 1 ? buildPageAbsoluteUrl('/', homePage - 1) : null;
+      const nextUrl = homePage < totalPages ? buildPageAbsoluteUrl('/', homePage + 1) : null;
 
       return buildHtmlResponse(
         {
@@ -1337,7 +1473,7 @@ export default {
             ],
           },
         },
-        buildCardsShell(title, pageStories, prevUrl, nextUrl),
+        buildCardsShell(title, pageStories, prevUrl, nextUrl, activeCategories, '/', homePage, totalPages),
         200
       );
     }

@@ -161,7 +161,7 @@ export class SeoService {
     this.removeMetaTag('name', 'keywords');
     this.removeMetaTag('property', 'article:published_time');
     this.removeMetaTag('property', 'article:modified_time');
-    this.setRobots(null);
+    this.setRobots('index, follow, max-image-preview:large');
     this.setMetaTag('name', 'description', description);
     this.setMetaTag('property', 'og:type', 'website');
     this.setMetaTag('property', 'og:site_name', SITE_NAME);
@@ -263,7 +263,7 @@ export class SeoService {
     }
 
     this.removeMetaTag('name', 'keywords');
-    this.setRobots(null);
+    this.setRobots('index, follow, max-image-preview:large');
     this.setMetaTag('name', 'description', description);
     this.setMetaTag('property', 'og:type', 'article');
     this.setMetaTag('property', 'og:site_name', SITE_NAME);
@@ -373,20 +373,28 @@ export class SeoService {
     );
   }
 
-  static updatePopularSeo() {
+  static updatePopularSeo(page = 1, totalPages = 1) {
+    const title = page > 1 ? `ජනප්‍රිය කතා — පිටුව ${page}` : 'ජනප්‍රිය කතා';
+    const canonicalPath = page > 1 ? `/popular/page/${page}` : '/popular';
     this.updateStaticPageSeo(
-      'ජනප්‍රිය කතා',
-      '/popular',
+      title,
+      canonicalPath,
       'Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව.'
     );
+    this.setLinkRel('prev', page > 1 ? buildCanonicalUrl('/popular', page - 1) : null);
+    this.setLinkRel('next', page < totalPages ? buildCanonicalUrl('/popular', page + 1) : null);
   }
 
-  static updateArchivesSeo() {
+  static updateArchivesSeo(page = 1, totalPages = 1) {
+    const title = page > 1 ? `ලේඛනාගාරය — පිටුව ${page}` : 'ලේඛනාගාරය';
+    const canonicalPath = page > 1 ? `/archives/page/${page}` : '/archives';
     this.updateStaticPageSeo(
-      'ලේඛනාගාරය',
-      '/archives',
+      title,
+      canonicalPath,
       'Walkathawa සිංහල කතා ලේඛනාගාරය — පැරණි හා අලුත් කතා සියල්ල.'
     );
+    this.setLinkRel('prev', page > 1 ? buildCanonicalUrl('/archives', page - 1) : null);
+    this.setLinkRel('next', page < totalPages ? buildCanonicalUrl('/archives', page + 1) : null);
   }
 
   static updateProfileSeo(authorName: string) {
@@ -429,7 +437,7 @@ export class SeoService {
     this.removeMetaTag('name', 'keywords');
     this.removeMetaTag('property', 'article:published_time');
     this.removeMetaTag('property', 'article:modified_time');
-    this.setRobots(null);
+    this.setRobots('index, follow, max-image-preview:large');
     this.setMetaTag('name', 'description', description);
     this.setMetaTag('property', 'og:type', 'website');
     this.setMetaTag('property', 'og:site_name', SITE_NAME);

@@ -18,7 +18,16 @@ export const Pagination: React.FC<PaginationProps> = ({
 
   const buildPageHref = (page: number): string => {
     const cleanBase = basePath === '/' ? '/' : basePath.replace(/\/+$/, '');
-    return page <= 1 ? cleanBase : `${cleanBase}?page=${page}`;
+    if (page <= 1) return cleanBase;
+    if (cleanBase === '/') return `/page/${page}`;
+    if (
+      cleanBase === '/popular' ||
+      cleanBase === '/archives' ||
+      cleanBase.startsWith('/category/')
+    ) {
+      return `${cleanBase}/page/${page}`;
+    }
+    return `${cleanBase}?page=${page}`;
   };
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, page: number) => {

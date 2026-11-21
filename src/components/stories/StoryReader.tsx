@@ -14,6 +14,7 @@ import {
   MOBILE_STORY_BANNER_CONFIG,
   MOBILE_STORY_BANNER_SLOTS,
 } from '../common/BannerAd';
+import { readInitialStoryFromDocument } from '../../utils/initialData';
 
 interface StoryReaderProps {
   slug: string;
@@ -35,20 +36,42 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   onSelectCategory,
   onSelectAuthor,
 }) => {
-  const [story, setStory] = useState<Story | null>(null);
-  const [relatedStories, setRelatedStories] = useState<Story[]>([]);
-  const [prevStory, setPrevStory] = useState<Story | null>(null);
-  const [nextStory, setNextStory] = useState<Story | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const initialPayload = readInitialStoryFromDocument(slug);
+
+  const [story, setStory] = useState<Story | null>(() => initialPayload?.story || null);
+  const [relatedStories, setRelatedStories] = useState<Story[]>(
+    () => initialPayload?.relatedStories || []
+  );
+  const [prevStory, setPrevStory] = useState<Story | null>(
+    () => initialPayload?.prevStory || null
+  );
+  const [nextStory, setNextStory] = useState<Story | null>(
+    () => initialPayload?.nextStory || null
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(() => !initialPayload?.story);
   const [notFound, setNotFound] = useState<boolean>(false);
   const [coverFailed, setCoverFailed] = useState<boolean>(false);
   const [fontScaleIdx, setFontScaleIdx] = useState<number>(1);
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
     setNotFound(false);
     setCoverFailed(false);
+
+    const embedded = readInitialStoryFromDocument(slug);
+    if (embedded && embedded.story) {
+      setStory(embedded.story);
+      setPrevStory(embedded.prevStory || null);
+      setNextStory(embedded.nextStory || null);
+      setRelatedStories(embedded.relatedStories || []);
+      setIsLoading(false);
+      SeoService.updateStorySeo(embedded.story);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsLoading(true);
 
     async function load() {
       try {
