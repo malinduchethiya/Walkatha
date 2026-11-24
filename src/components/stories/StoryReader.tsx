@@ -9,11 +9,6 @@ import {
   getStoryAuthorName,
   getCategoryLabel,
 } from '../../utils/storyFormatting';
-import {
-  BannerAd,
-  MOBILE_STORY_BANNER_CONFIG,
-  MOBILE_STORY_BANNER_SLOTS,
-} from '../common/BannerAd';
 import { readInitialStoryFromDocument } from '../../utils/initialData';
 
 interface StoryReaderProps {
@@ -260,21 +255,6 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           />
         </figure>
       )}
-
-      {/* Mobile Story Banners — 3 stacked vertically */}
-      <div
-        aria-label="Mobile story banners"
-        data-testid="mobile-story-banners"
-        className="md:hidden flex flex-col items-center gap-2 my-6 w-full"
-      >
-        {MOBILE_STORY_BANNER_SLOTS.map((idx) => (
-          <BannerAd
-            key={`mobile-story-${idx}`}
-            slotId={`mobile-story-${idx}`}
-            {...MOBILE_STORY_BANNER_CONFIG}
-          />
-        ))}
-      </div>
 
       {/* Story Prose */}
       <div className={`story-prose ${FONT_SIZES[fontScaleIdx]} text-zinc-200 space-y-6 my-8`}>

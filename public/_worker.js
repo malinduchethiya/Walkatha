@@ -528,10 +528,7 @@ function buildCardsShell(
 </div>`;
 }
 
-const POPUNDER_SCRIPT_TAG =
-  '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
-
-function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isAdmin = false, initialScriptTag = '') {
+function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, _isAdmin = false, initialScriptTag = '') {
   const headMatch = rawSpaHtml.match(/<head>([\s\S]*?)<\/head>/i);
   const preservedAssets = [];
   if (headMatch) {
@@ -549,13 +546,12 @@ function injectIntoTemplate(rawSpaHtml, headOpts, bodyHtml, isAdmin = false, ini
     }
   }
   const assetTags = preservedAssets.length > 0 ? `\n${preservedAssets.join('\n')}` : '';
-  const popunderTag = isAdmin ? '' : POPUNDER_SCRIPT_TAG;
 
   return rawSpaHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${buildHead(headOpts)}${assetTags}${popunderTag}\n  </head>`
+      `<head>\n${buildHead(headOpts)}${assetTags}\n  </head>`
     )
     .replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">${bodyHtml}</div>${initialScriptTag}`);
 }

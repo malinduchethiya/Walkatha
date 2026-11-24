@@ -13,23 +13,16 @@ import worker from '../public/_worker.js';
 const ROOT = process.cwd();
 const DIST_DIR = path.join(ROOT, 'dist');
 
-const POPUNDER_SRC = 'https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e';
-const POPUNDER_SNIPPET = `<script data-cfasync="false" src="${POPUNDER_SRC}"></script>`;
-const POPUNDER_BEFORE_HEAD_CLOSE =
-  /<script data-cfasync="false" src="https:\/\/ahuramazda\.org\/1\/9275b71384eefb562fbf9d9fd275cc5e"><\/script>\s*<\/head>/i;
+const AD_DOMAIN_PATTERN =
+  /ahuramazda\.org|brijmohan\.org|asiaso\.org|popunder-swap\.js|atOptions|BannerAd|NativeBannerAd|e308aeebc92b2395c18ed45beda64648|05ee890ed059b98d213910f338ece6d0|2e5f19d0bbe93686082673c139a7b1b1|9275b71384eefb562fbf9d9fd275cc5e/i;
 
-function assertExactlyOnePopunderBeforeHeadClose(html: string, contextLabel: string) {
-  const count = html.split(POPUNDER_SRC).length - 1;
-  assert.equal(count, 1, `${contextLabel} must contain exactly 1 popunder script (got ${count})`);
-  assert.ok(html.includes(POPUNDER_SNIPPET), `${contextLabel} must include exact popunder snippet`);
-  assert.match(
-    html,
-    POPUNDER_BEFORE_HEAD_CLOSE,
-    `${contextLabel} must place the popunder snippet right before </head>`
+function assertZeroAds(content: string, contextLabel: string) {
+  const match = content.match(AD_DOMAIN_PATTERN);
+  assert.equal(
+    match,
+    null,
+    `${contextLabel} must contain ZERO ad scripts or domains (found: ${match?.[0]})`
   );
-  assert.ok(!html.includes('brijmohan.org'), `${contextLabel} must not contain brijmohan.org`);
-  assert.ok(!html.includes('asiaso.org'), `${contextLabel} must not contain asiaso.org`);
-  assert.ok(!html.includes('popunder-swap.js'), `${contextLabel} must not contain popunder-swap.js`);
 }
 
 function collectHtmlFiles(dir: string, out: string[] = []): string[] {
@@ -153,11 +146,18 @@ test('site.ts: canonical origin https://www.walkathawa.site and single-hop 301 r
   assert.equal(normalizeCanonicalPath('/sitemap_index.xml'), '/sitemap.xml');
 });
 
-test('dist build artifacts: crawlable static pagination, full sitemap, rich story links, hydration payloads, _redirects, and 1 popunder before </head>', () => {
+test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, crawlable pagination, full sitemap, and _redirects', () => {
   assert.ok(fs.existsSync(DIST_DIR), 'dist/ directory must exist after npm run build');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_worker.js')), 'dist/_worker.js must be bundled');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_spa.html')), 'dist/_spa.html must exist');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_redirects')), 'dist/_redirects must exist');
+
+  // Verify productionTemplate.ts also contains ZERO ad scripts
+  const prodTemplate = fs.readFileSync(
+    path.join(ROOT, 'src', 'generated', 'productionTemplate.ts'),
+    'utf8'
+  );
+  assertZeroAds(prodTemplate, 'src/generated/productionTemplate.ts');
 
   const redirects = fs.readFileSync(path.join(DIST_DIR, '_redirects'), 'utf8');
   assert.ok(
@@ -172,6 +172,19 @@ test('dist build artifacts: crawlable static pagination, full sitemap, rich stor
   const sitemap = fs.readFileSync(path.join(DIST_DIR, 'sitemap.xml'), 'utf8');
   assertStrictGscSitemapXml(sitemap);
 
+  // Every URL in sitemap.xml must resolve to an existing static HTML file in dist/
+  const sitemapLocs = Array.from(sitemap.matchAll(/<loc>(.*?)<\/loc>/g), (m) => m[1]);
+  for (const loc of sitemapLocs) {
+    const pathname = decodeURIComponent(new URL(loc).pathname);
+    const clean = pathname.replace(/^\/+/, '');
+    const exists =
+      pathname === '/'
+        ? fs.existsSync(path.join(DIST_DIR, 'index.html'))
+        : fs.existsSync(path.join(DIST_DIR, `${clean}.html`)) ||
+          fs.existsSync(path.join(DIST_DIR, clean, 'index.html'));
+    assert.ok(exists, `Sitemap URL ${loc} is missing prerendered static HTML in dist/`);
+  }
+
   // Verify EVERY SINGLE generated HTML file in dist/ (excluding Google verification file)
   const allHtmlFiles = collectHtmlFiles(DIST_DIR).filter(
     (f) => !path.basename(f).startsWith('google')
@@ -180,10 +193,57 @@ test('dist build artifacts: crawlable static pagination, full sitemap, rich stor
     allHtmlFiles.length >= 650,
     `Expected at least 650 prerendered HTML pages (stories + pagination + hubs), found ${allHtmlFiles.length}`
   );
+
+  const seenTitles = new Map<string, string>();
+  const seenDescs = new Map<string, string>();
+
   for (const htmlFile of allHtmlFiles) {
     const rel = path.relative(DIST_DIR, htmlFile);
     const html = fs.readFileSync(htmlFile, 'utf8');
-    assertExactlyOnePopunderBeforeHeadClose(html, rel);
+    assertZeroAds(html, rel);
+
+    if (rel === '_spa.html' || rel === '404.html' || rel === 'search.html' || rel === 'admin.html') {
+      continue;
+    }
+
+    assert.ok(
+      html.includes('index, follow, max-image-preview:large'),
+      `${rel} must emit explicit indexable robots meta`
+    );
+
+    const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
+    assert.equal(h1Count, 1, `${rel} must contain exactly one <h1> tag (got ${h1Count})`);
+
+    const canonicals = Array.from(
+      html.matchAll(/<link\s+rel="canonical"\s+href="([^"]+)"/gi),
+      (m) => m[1]
+    );
+    assert.equal(canonicals.length, 1, `${rel} must contain exactly 1 canonical tag`);
+
+    const ldMatch = html.match(
+      /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i
+    );
+    assert.ok(ldMatch, `${rel} must include JSON-LD structured data`);
+    assert.doesNotThrow(() => JSON.parse(ldMatch[1]), `${rel} JSON-LD must be valid JSON`);
+
+    const title = (html.match(/<title>([\s\S]*?)<\/title>/i) || ['', ''])[1].trim();
+    assert.ok(title.length >= 10 && title.length <= 70, `${rel} title length out of range: "${title}"`);
+    assert.ok(
+      !seenTitles.has(title),
+      `Duplicate <title> "${title}" on ${rel} and ${seenTitles.get(title)}`
+    );
+    seenTitles.set(title, rel);
+
+    const desc = (html.match(/<meta\s+name="description"\s+content="([^"]*)"/i) || ['', ''])[1].trim();
+    assert.ok(
+      desc.length >= 50 && desc.length <= 165,
+      `${rel} meta description length (${desc.length}) out of 50-165 range`
+    );
+    assert.ok(
+      !seenDescs.has(desc),
+      `Duplicate <meta description> on ${rel} and ${seenDescs.get(desc)}`
+    );
+    seenDescs.set(desc, rel);
   }
 
   for (const check of [
@@ -195,17 +255,8 @@ test('dist build artifacts: crawlable static pagination, full sitemap, rich stor
     { file: 'sitemap.html', expectedCanonical: 'https://www.walkathawa.site/sitemap' },
   ]) {
     const html = fs.readFileSync(path.join(DIST_DIR, check.file), 'utf8');
-    const canonicals = Array.from(
-      html.matchAll(/<link\s+rel="canonical"\s+href="([^"]+)"/gi),
-      (m) => m[1]
-    );
-    assert.equal(canonicals.length, 1, `${check.file} must have exactly 1 canonical tag`);
-    assert.equal(canonicals[0], check.expectedCanonical, `${check.file} canonical mismatch`);
-    assert.ok(
-      html.includes('index, follow, max-image-preview:large'),
-      `${check.file} must include explicit indexable robots meta`
-    );
-    assert.ok(html.includes('application/ld+json'), `${check.file} must include JSON-LD`);
+    const canonical = (html.match(/<link\s+rel="canonical"\s+href="([^"]+)"/i) || ['', ''])[1];
+    assert.equal(canonical, check.expectedCanonical, `${check.file} canonical mismatch`);
   }
 
   // Homepage must link to hubs + page 2 and embed initial gallery state
@@ -253,7 +304,6 @@ test('dist build artifacts: crawlable static pagination, full sitemap, rich stor
   assert.ok(sampleHtml.includes('"BlogPosting"'), 'Story JSON-LD must use BlogPosting');
   assert.ok(sampleHtml.includes('data-reading-content'), 'Story initial HTML must include readable body');
   assert.ok(sampleHtml.includes('id="__INITIAL_STORY__"'), 'Story HTML must embed __INITIAL_STORY__');
-  assert.ok(sampleHtml.includes('index, follow, max-image-preview:large'), 'Story HTML must emit indexable robots meta');
   assert.ok(sampleHtml.includes('href="/sitemap"'), 'Story HTML must link to /sitemap');
   const storyInternalLinks = new Set(
     Array.from(sampleHtml.matchAll(/href="(\/story\/[^"]+)"/g), (m) => m[1])
@@ -264,7 +314,7 @@ test('dist build artifacts: crawlable static pagination, full sitemap, rich stor
   );
 });
 
-test('Cloudflare Worker (public/_worker.js): routes, path pagination, full sitemap, redirects, and 1 popunder before </head>', async () => {
+test('Cloudflare Worker (public/_worker.js): routes, path pagination, full sitemap, redirects, and ZERO ads', async () => {
   const env = createMockEnvFromDist();
   const sampleSlug = getSampleStorySlug();
   const encodedSlug = encodeURIComponent(sampleSlug);
@@ -273,13 +323,13 @@ test('Cloudflare Worker (public/_worker.js): routes, path pagination, full sitem
   assert.equal(homeRes.status, 200);
   const homeHtml = await homeRes.text();
   assert.ok(homeHtml.includes('rel="canonical" href="https://www.walkathawa.site/"'));
-  assertExactlyOnePopunderBeforeHeadClose(homeHtml, 'Worker homepage');
+  assertZeroAds(homeHtml, 'Worker homepage');
 
   const page2Res = await worker.fetch(new Request('https://www.walkathawa.site/page/2'), env);
   assert.equal(page2Res.status, 200);
   const page2Html = await page2Res.text();
   assert.ok(page2Html.includes('rel="canonical" href="https://www.walkathawa.site/page/2"'));
-  assertExactlyOnePopunderBeforeHeadClose(page2Html, 'Worker homepage page 2');
+  assertZeroAds(page2Html, 'Worker homepage page 2');
 
   const storyRes = await worker.fetch(
     new Request(`https://www.walkathawa.site/story/${encodedSlug}`),
@@ -292,11 +342,11 @@ test('Cloudflare Worker (public/_worker.js): routes, path pagination, full sitem
   );
   assert.ok(storyHtml.includes('"@type": "BlogPosting"'));
   assert.ok(storyHtml.includes('id="__INITIAL_STORY__"'));
-  assertExactlyOnePopunderBeforeHeadClose(storyHtml, 'Worker story HTML');
+  assertZeroAds(storyHtml, 'Worker story HTML');
 
   const catRes = await worker.fetch(new Request('https://www.walkathawa.site/category/wife'), env);
   assert.equal(catRes.status, 200);
-  assertExactlyOnePopunderBeforeHeadClose(await catRes.text(), 'Worker category HTML');
+  assertZeroAds(await catRes.text(), 'Worker category HTML');
 
   const catPage2Res = await worker.fetch(
     new Request('https://www.walkathawa.site/category/wife/page/2'),
@@ -307,7 +357,7 @@ test('Cloudflare Worker (public/_worker.js): routes, path pagination, full sitem
   assert.ok(
     catPage2Html.includes('rel="canonical" href="https://www.walkathawa.site/category/wife/page/2"')
   );
-  assertExactlyOnePopunderBeforeHeadClose(catPage2Html, 'Worker category page 2 HTML');
+  assertZeroAds(catPage2Html, 'Worker category page 2 HTML');
 
   const htmlSitemapRes = await worker.fetch(new Request('https://www.walkathawa.site/sitemap'), env);
   assert.equal(htmlSitemapRes.status, 200);
@@ -343,46 +393,5 @@ test('Cloudflare Worker (public/_worker.js): routes, path pagination, full sitem
   assert.equal(
     apexRes.headers.get('Location'),
     `https://www.walkathawa.site/story/${encodedSlug}`
-  );
-});
-
-test('BannerAd: side 8x 160x600, mobile story 3x 320x50, and footer native banner configs', async () => {
-  const {
-    SIDE_BANNER_CONFIG,
-    SIDE_BANNER_SLOTS,
-    MOBILE_STORY_BANNER_CONFIG,
-    MOBILE_STORY_BANNER_SLOTS,
-    FOOTER_NATIVE_BANNER_CONFIG,
-    buildBannerSrcDoc,
-  } = await import('../src/components/common/BannerAd.tsx');
-
-  assert.equal(SIDE_BANNER_SLOTS.length, 8, 'Must render exactly 8 vertical banners per side');
-  const sideDoc = buildBannerSrcDoc(SIDE_BANNER_CONFIG);
-  assert.ok(sideDoc.includes('<meta name="color-scheme" content="dark" />'));
-  assert.ok(sideDoc.includes("'key' : '05ee890ed059b98d213910f338ece6d0'"));
-  assert.ok(sideDoc.includes("'format' : 'iframe'"));
-  assert.ok(sideDoc.includes("'height' : 600"));
-  assert.ok(sideDoc.includes("'width' : 160"));
-  assert.ok(
-    sideDoc.includes('<script src="https://brijmohan.org/22/05ee890ed059b98d213910f338ece6d0"></script>')
-  );
-
-  assert.equal(MOBILE_STORY_BANNER_SLOTS.length, 3, 'Must render exactly 3 vertical mobile story banners');
-  const mobileDoc = buildBannerSrcDoc(MOBILE_STORY_BANNER_CONFIG);
-  assert.ok(mobileDoc.includes("'key' : '2e5f19d0bbe93686082673c139a7b1b1'"));
-  assert.ok(mobileDoc.includes("'format' : 'iframe'"));
-  assert.ok(mobileDoc.includes("'height' : 50"));
-  assert.ok(mobileDoc.includes("'width' : 320"));
-  assert.ok(
-    mobileDoc.includes('<script src="https://brijmohan.org/22/2e5f19d0bbe93686082673c139a7b1b1"></script>')
-  );
-
-  assert.equal(
-    FOOTER_NATIVE_BANNER_CONFIG.containerId,
-    'container-e308aeebc92b2395c18ed45beda64648'
-  );
-  assert.equal(
-    FOOTER_NATIVE_BANNER_CONFIG.scriptSrc,
-    'https://brijmohan.org/21/e308aeebc92b2395c18ed45beda64648'
   );
 });

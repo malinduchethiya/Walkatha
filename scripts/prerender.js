@@ -19,35 +19,35 @@ const STATIC_PAGES = [
     route: '/contact',
     file: 'contact.html',
     title: 'Contact Us',
-    description: 'Walkathawa සම්බන්ධයෙන් විමසීම් සහ යෝජනා සඳහා අප හා සම්බන්ධ වන්න.',
+    description: 'Walkathawa (walkathawa.site) සම්බන්ධයෙන් විමසීම්, ප්‍රතිපෝෂණ සහ යෝජනා සඳහා අප හා සම්බන්ධ වන්න.',
     body: 'Walkathawa සම්බන්ධයෙන් ඕනෑම විමසීමක් සඳහා අප හා සම්බන්ධ වන්න: contact@walkathawa.site',
   },
   {
     route: '/page/privacy-policy',
     file: 'page/privacy-policy.html',
     title: 'Privacy Policy',
-    description: 'Walkathawa (walkathawa.site) පෞද්ගලිකත්ව ප්‍රතිපත්තිය.',
+    description: 'Walkathawa (walkathawa.site) පෞද්ගලිකත්ව ප්‍රතිපත්තිය — පරිශීලක දත්ත ආරක්ෂාව සහ කුකීස් භාවිතය.',
     body: 'Walkathawa (walkathawa.site) ඔබගේ පෞද්ගලිකත්වයට සහ දත්ත ආරක්ෂාවට ගරු කරයි.',
   },
   {
     route: '/page/terms-and-conditions',
     file: 'page/terms-and-conditions.html',
     title: 'Terms and Conditions',
-    description: 'Walkathawa වෙබ් අඩවිය භාවිතා කිරීමේ නියමයන් සහ කොන්දේසි.',
+    description: 'Walkathawa (walkathawa.site) වෙබ් අඩවිය භාවිතා කිරීමේ නියමයන්, කොන්දේසි සහ ප්‍රබන්ධ සාහිත්‍ය නීති.',
     body: 'Walkathawa වෙබ් අඩවිය භාවිතා කිරීමේදී වයස අවුරුදු 18+ වීම සහ ප්‍රබන්ධ අන්තර්ගත කොන්දේසි අදාළ වේ.',
   },
   {
     route: '/page/send-your-story',
     file: 'page/send-your-story.html',
     title: 'Send Your Story',
-    description: 'ඔබ විසින් රචිත සිංහල කතා Walkathawa වෙබ් අඩවියට එවන්න.',
+    description: 'ඔබ විසින් රචිත නිර්මාණාත්මක සිංහල කතා Walkathawa වෙබ් අඩවියේ පළ කිරීම සඳහා අප වෙත එවන්න.',
     body: 'ඔබ විසින් රචිත නිර්මාණාත්මක සිංහල කතා Walkathawa වෙබ් අඩවියේ පළ කිරීමට stories@walkathawa.site වෙත එවන්න.',
   },
   {
     route: '/page/disclaimer',
     file: 'page/disclaimer.html',
     title: 'Disclaimer',
-    description: 'Walkathawa (walkathawa.site) වගකීම් ප්‍රකාශය.',
+    description: 'Walkathawa (walkathawa.site) වගකීම් ප්‍රකාශය — ප්‍රබන්ධ කතා අන්තර්ගතය පිළිබඳ නිල දැනුම්දීම.',
     body: 'Walkathawa (walkathawa.site) හි පළවන සියලුම කතා හුදෙක් ප්‍රබන්ධ නිර්මාණ වන අතර සැබෑ පුද්ගලයන් හෝ සිදුවීම් සමඟ සම්බන්ධ නොවේ.',
   },
 ];
@@ -113,18 +113,31 @@ function formatCleanDescription(rawDesc, fallbackBody, fallbackTitle) {
   const cleanText = (val) =>
     stripZW(val)
       .replace(/https?:\/\/[^\s]+/g, '')
+      .replace(/["<>]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
-  let candidate = cleanText(rawDesc);
-  if (!candidate || candidate.length < 40) {
-    candidate = cleanText(fallbackBody);
+  const desc = cleanText(rawDesc);
+  const body = cleanText(fallbackBody);
+  const title = cleanText(fallbackTitle);
+
+  let candidate = desc;
+  if (!candidate || candidate.length < 65) {
+    if (body.length >= 65) {
+      candidate =
+        candidate && !body.startsWith(candidate.slice(0, 20))
+          ? `${candidate} ${body}`
+          : body;
+    } else if (title) {
+      candidate = `${title} — ${candidate || body || 'සිංහල කතා Walkathawa වෙතින් නොමිලේ කියවන්න.'}`;
+    }
   }
-  if (!candidate || candidate.length < 35) {
-    candidate = `${cleanText(fallbackTitle)} — සිංහල කතා Walkathawa වෙතින් නොමිලේ කියවන්න.`;
+  if (!candidate || candidate.length < 55) {
+    candidate = `${title || 'Walkathawa'} — අලුත්ම සිංහල කතා Walkathawa වෙතින් නොමිලේ කියවන්න.`;
   }
-  if (candidate.length <= 158) return candidate;
-  return `${candidate.slice(0, 155).replace(/\s+\S*$/, '')}...`;
+  if (candidate.length <= 152) return candidate;
+  const trimmed = candidate.slice(0, 149).replace(/\s+\S*$/, '').trim();
+  return `${trimmed || candidate.slice(0, 149).trim()}...`;
 }
 
 function splitParagraphs(rawContent) {
@@ -289,16 +302,13 @@ function buildHead(opts) {
   return lines.join('\n');
 }
 
-const POPUNDER_SCRIPT_TAG =
-  '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
-
 function renderDocument(templateParts, headOpts, bodyHtml, initialScriptTag = '') {
   const headHtml = buildHead(headOpts);
   return templateParts.baseHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${headHtml}${templateParts.assetTags}${POPUNDER_SCRIPT_TAG}\n  </head>`
+      `<head>\n${headHtml}${templateParts.assetTags}\n  </head>`
     )
     .replace(
       /<div id="root">[\s\S]*?<\/div>/i,
@@ -665,8 +675,20 @@ function main() {
   const popularSorted = [...stories].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
   const totalPopularPages = Math.max(1, Math.ceil(popularSorted.length / PAGE_SIZE));
   for (let p = 1; p <= totalPopularPages; p++) {
-    const slice = popularSorted.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE);
+    const startIdx = (p - 1) * PAGE_SIZE;
+    const slice = popularSorted.slice(startIdx, startIdx + PAGE_SIZE);
     const title = p > 1 ? `ජනප්‍රිය කතා — පිටුව ${p} | ${SITE_NAME}` : `ජනප්‍රිය කතා | ${SITE_NAME}`;
+    const sampleTitles = slice
+      .slice(0, 2)
+      .map((s) => stripZW(s.title))
+      .join(', ');
+    const description = formatCleanDescription(
+      p > 1
+        ? `Walkathawa ජනප්‍රිය සිංහල කතා පිටුව ${p}: ${sampleTitles} ඇතුළු වැඩිපුරම කියවන කතා එකතුව.`
+        : `Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව: ${sampleTitles} සහ තවත් කතා.`,
+      '',
+      title
+    );
     const canonicalUrl = buildPageAbsoluteUrl('/popular', p);
     const prevUrl = p > 1 ? buildPageAbsoluteUrl('/popular', p - 1) : null;
     const nextUrl = p < totalPopularPages ? buildPageAbsoluteUrl('/popular', p + 1) : null;
@@ -688,10 +710,45 @@ function main() {
         templateParts,
         {
           title,
-          description: 'Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව.',
+          description,
           canonicalUrl,
           prevUrl,
           nextUrl,
+          jsonLd: {
+            '@context': 'https://schema.org',
+            '@graph': [
+              buildOrganizationSchema(),
+              {
+                '@type': 'CollectionPage',
+                '@id': `${canonicalUrl}#collection`,
+                url: canonicalUrl,
+                name: title,
+                description,
+                inLanguage: 'si-LK',
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'මුල් පිටුව', item: `${SITE_ORIGIN}/` },
+                  { '@type': 'ListItem', position: 2, name: 'ජනප්‍රිය කතා', item: `${SITE_ORIGIN}/popular` },
+                ],
+              },
+              ...(slice.length > 0
+                ? [
+                    {
+                      '@type': 'ItemList',
+                      numberOfItems: slice.length,
+                      itemListElement: slice.map((s, idx) => ({
+                        '@type': 'ListItem',
+                        position: startIdx + idx + 1,
+                        name: stripZW(s.title),
+                        url: `${SITE_ORIGIN}/story/${encodeSlug(s.slug || s.id)}`,
+                      })),
+                    },
+                  ]
+                : []),
+            ],
+          },
         },
         buildCardsShell(title, slice, categories, '/popular', p, totalPopularPages),
         initialGalleryScript
@@ -702,9 +759,21 @@ function main() {
 
   const totalArchivePages = Math.max(1, Math.ceil(stories.length / PAGE_SIZE));
   for (let p = 1; p <= totalArchivePages; p++) {
-    const slice = stories.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE);
+    const startIdx = (p - 1) * PAGE_SIZE;
+    const slice = stories.slice(startIdx, startIdx + PAGE_SIZE);
     const title =
       p > 1 ? `ලේඛනාගාරය — පිටුව ${p} | ${SITE_NAME}` : `ලේඛනාගාරය | ${SITE_NAME}`;
+    const sampleTitles = slice
+      .slice(0, 2)
+      .map((s) => stripZW(s.title))
+      .join(', ');
+    const description = formatCleanDescription(
+      p > 1
+        ? `Walkathawa සිංහල කතා ලේඛනාගාරය පිටුව ${p}: ${sampleTitles} ඇතුළු සම්පූර්ණ කතා එකතුව.`
+        : `Walkathawa සිංහල කතා ලේඛනාගාරය — ${sampleTitles} ඇතුළු සියලුම පැරණි හා අලුත් කතා එකතුව.`,
+      '',
+      title
+    );
     const canonicalUrl = buildPageAbsoluteUrl('/archives', p);
     const prevUrl = p > 1 ? buildPageAbsoluteUrl('/archives', p - 1) : null;
     const nextUrl = p < totalArchivePages ? buildPageAbsoluteUrl('/archives', p + 1) : null;
@@ -726,10 +795,45 @@ function main() {
         templateParts,
         {
           title,
-          description: 'Walkathawa සිංහල කතා ලේඛනාගාරය — සියලුම කතා එකතුව.',
+          description,
           canonicalUrl,
           prevUrl,
           nextUrl,
+          jsonLd: {
+            '@context': 'https://schema.org',
+            '@graph': [
+              buildOrganizationSchema(),
+              {
+                '@type': 'CollectionPage',
+                '@id': `${canonicalUrl}#collection`,
+                url: canonicalUrl,
+                name: title,
+                description,
+                inLanguage: 'si-LK',
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'මුල් පිටුව', item: `${SITE_ORIGIN}/` },
+                  { '@type': 'ListItem', position: 2, name: 'ලේඛනාගාරය', item: `${SITE_ORIGIN}/archives` },
+                ],
+              },
+              ...(slice.length > 0
+                ? [
+                    {
+                      '@type': 'ItemList',
+                      numberOfItems: slice.length,
+                      itemListElement: slice.map((s, idx) => ({
+                        '@type': 'ListItem',
+                        position: startIdx + idx + 1,
+                        name: stripZW(s.title),
+                        url: `${SITE_ORIGIN}/story/${encodeSlug(s.slug || s.id)}`,
+                      })),
+                    },
+                  ]
+                : []),
+            ],
+          },
         },
         buildCardsShell(title, slice, categories, '/archives', p, totalArchivePages),
         initialGalleryScript
@@ -789,9 +893,9 @@ function main() {
       return sCat === catLower || sCatId === catLower || sTags.includes(catLower);
     });
     const catLabel = stripZW(cat.sinhalaName || cat.name || rawSlug);
-    const description = stripZW(
+    const baseCatDesc = stripZW(
       cat.description || `${catLabel} — සිංහල කතා එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`
-    ).slice(0, 158);
+    );
     const catBaseRoute = `/category/${encodeSlug(rawSlug)}`;
     const totalCatPages = Math.max(1, Math.ceil(matching.length / PAGE_SIZE));
 
@@ -799,6 +903,19 @@ function main() {
       const startIdx = (p - 1) * PAGE_SIZE;
       const slice = matching.slice(startIdx, startIdx + PAGE_SIZE);
       const title = p > 1 ? `${catLabel} — පිටුව ${p} | ${SITE_NAME}` : `${catLabel} | ${SITE_NAME}`;
+      const sampleTitles = slice
+        .slice(0, 2)
+        .map((s) => stripZW(s.title))
+        .join(', ');
+      const description = formatCleanDescription(
+        p > 1
+          ? `${catLabel} පිටුව ${p}: ${sampleTitles} ඇතුළු සිංහල කතා Walkathawa වෙතින් නොමිලේ කියවන්න.`
+          : baseCatDesc.length < 65 && sampleTitles
+          ? `${baseCatDesc} — ${sampleTitles} ඇතුළු කතා ${matching.length} ක් Walkathawa වෙතින් කියවන්න.`
+          : baseCatDesc,
+        '',
+        title
+      );
       const canonicalUrl = buildPageAbsoluteUrl(catBaseRoute, p);
       const prevUrl = p > 1 ? buildPageAbsoluteUrl(catBaseRoute, p - 1) : null;
       const nextUrl = p < totalCatPages ? buildPageAbsoluteUrl(catBaseRoute, p + 1) : null;
@@ -875,19 +992,41 @@ function main() {
   // 5. Prerender All Published Story Pages with Rich Internal Links + Zero-Flicker Hydration JSON
   let storyRendered = 0;
   let storyHashed = 0;
+  const seenStoryTitles = new Map();
+  const seenStoryDescriptions = new Set();
+
   for (let i = 0; i < stories.length; i++) {
     const story = stories[i];
     const rawSlug = stripZW(story.slug || story.id);
     if (!rawSlug) continue;
     const postTitle = stripZW(story.title || rawSlug);
-    const cleanTitle = formatCleanStoryTitle(postTitle);
+    let cleanTitle = formatCleanStoryTitle(postTitle);
+    const titleKey = cleanTitle.toLowerCase();
+    const prevTitleCount = seenStoryTitles.get(titleKey) || 0;
+    seenStoryTitles.set(titleKey, prevTitleCount + 1);
+    if (prevTitleCount > 0) {
+      const suffixNum = prevTitleCount + 1;
+      const baseWithoutBrand = cleanTitle.replace(/\s*\|\s*Walkathawa$/i, '').trim();
+      const maxBase = Math.max(10, 56 - ` (${suffixNum}) | ${SITE_NAME}`.length);
+      cleanTitle = `${baseWithoutBrand.slice(0, maxBase).trim()} (${suffixNum}) | ${SITE_NAME}`;
+    }
+
     const bodyText =
       story.fullContent || story.content || story.shortDescription || story.description || postTitle;
-    const excerpt = formatCleanDescription(
+    let excerpt = formatCleanDescription(
       story.shortDescription || story.description,
       bodyText,
       postTitle
     );
+    if (seenStoryDescriptions.has(excerpt.toLowerCase())) {
+      const altSnippet = String(bodyText).replace(/\s+/g, ' ').trim().slice(140, 320);
+      excerpt = formatCleanDescription(
+        `${postTitle} (${i + 1}) — ${altSnippet || bodyText}`,
+        bodyText,
+        `${postTitle} ${i + 1}`
+      );
+    }
+    seenStoryDescriptions.add(excerpt.toLowerCase());
     const canonicalSlug = encodeSlug(rawSlug);
     const canonicalUrl = `${SITE_ORIGIN}/story/${canonicalSlug}`;
     const ogImg =

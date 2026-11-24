@@ -1019,15 +1019,11 @@ function resolveRouteForSsr(
   };
 }
 
-const POPUNDER_SCRIPT_TAG =
-  '\n    <script data-cfasync="false" src="https://ahuramazda.org/1/9275b71384eefb562fbf9d9fd275cc5e"></script>';
-
 function renderFullDocument(
   rawHtml: string,
   reqPath: string,
   queryString: string
 ): { html: string; status: number; noIndex: boolean } {
-  const normalizedPath = reqPath.replace(/\/+$/, '') || '/';
   const queryParams = new URLSearchParams(queryString);
   const resolved = resolveRouteForSsr(reqPath, queryParams);
 
@@ -1049,14 +1045,11 @@ function renderFullDocument(
     }
   }
 
-  const isAdmin = normalizedPath === '/admin' || normalizedPath.startsWith('/admin/');
-  const popunderTag = isAdmin ? '' : POPUNDER_SCRIPT_TAG;
-
   const html = rawHtml
     .replace(/<html[^>]*>/i, '<html lang="si" class="dark">')
     .replace(
       /<head>[\s\S]*?<\/head>/i,
-      `<head>\n${resolved.headHtml}${assetTags}${popunderTag}\n  </head>`
+      `<head>\n${resolved.headHtml}${assetTags}\n  </head>`
     )
     .replace(
       /<div id="root">[\s\S]*?<\/div>/i,

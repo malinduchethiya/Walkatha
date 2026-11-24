@@ -10,7 +10,6 @@ import { SeoService } from './services/seoService';
 import { testConnection } from './firebase';
 import { resolveRouteState, type ViewMode } from './utils/storyFormatting';
 import { readInitialGalleryFromDocument } from './utils/initialData';
-import { BannerAd, SIDE_BANNER_CONFIG, SIDE_BANNER_SLOTS } from './components/common/BannerAd';
 
 const CategoriesPage = lazy(() =>
   import('./components/categories/CategoriesPage').then((m) => ({ default: m.CategoriesPage }))
@@ -284,22 +283,7 @@ export function App() {
         onNavigate={navigateTo}
       />
 
-      <div className="flex-1 w-full flex items-start justify-center gap-4 px-2 sm:px-4">
-        <aside
-          aria-label="Left side banners"
-          data-testid="left-banner-rail"
-          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px] pt-8 pb-8"
-        >
-          {SIDE_BANNER_SLOTS.map((idx) => (
-            <BannerAd
-              key={`left-side-${idx}`}
-              slotId={`left-side-${idx}`}
-              {...SIDE_BANNER_CONFIG}
-            />
-          ))}
-        </aside>
-
-        <main className="flex-1 min-w-0">
+      <main className="flex-1 w-full min-w-0">
           {isGalleryView && (
             <StoryGallery
               stories={stories}
@@ -371,22 +355,7 @@ export function App() {
               />
             </Suspense>
           )}
-        </main>
-
-        <aside
-          aria-label="Right side banners"
-          data-testid="right-banner-rail"
-          className="hidden xl:flex flex-col items-center gap-4 shrink-0 w-[160px] pt-8 pb-8"
-        >
-          {SIDE_BANNER_SLOTS.map((idx) => (
-            <BannerAd
-              key={`right-side-${idx}`}
-              slotId={`right-side-${idx}`}
-              {...SIDE_BANNER_CONFIG}
-            />
-          ))}
-        </aside>
-      </div>
+      </main>
 
       <Footer
         categories={categories}
