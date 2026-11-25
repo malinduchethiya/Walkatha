@@ -11,6 +11,7 @@ import {
 } from '../../utils/storyFormatting';
 import { readInitialStoryFromDocument } from '../../utils/initialData';
 import { formatStoryImageAlt, getCategoryAnchorText } from '../../config/seoMetadata';
+import { resolveCanonicalCategorySlug } from '../../config/site';
 
 interface StoryReaderProps {
   slug: string;
@@ -159,8 +160,8 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     );
   }
 
-  const categorySlug = story.category || story.categoryId || 'romantic';
-  const categoryLabel = getCategoryLabel(story, categories);
+  const categorySlug = resolveCanonicalCategorySlug(story.category || story.categoryId || 'romantic');
+  const categoryLabel = getCategoryLabel({ ...story, category: categorySlug }, categories);
   const authorName = getStoryAuthorName(story);
   const formattedDate = formatSinhalaDate(story.uploadDate || story.createdAt);
   const readMins = story.readingTime || 5;
@@ -200,13 +201,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
           <div className="flex flex-wrap items-center gap-2">
-            <a
-              href={`/profile/${encodeURIComponent(authorName)}`}
-              onClick={(e) => handleLink(e, () => onSelectAuthor(authorName))}
-              className="text-zinc-300 hover:text-zinc-50 font-medium transition-colors"
-            >
-              {authorName}
-            </a>
+            <span className="text-zinc-300 font-medium">{authorName}</span>
             {formattedDate && (
               <>
                 <span aria-hidden="true" className="text-zinc-600">

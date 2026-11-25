@@ -146,18 +146,27 @@ export function resolveRouteState(rawPathname: string, rawSearch: string): Parse
   ) {
     const catRest = path.replace(/^\/(category|categories|collections)\//, '').trim();
     const catPageMatch = catRest.match(/^(.+?)\/page\/(\d+)$/);
-    const catSlug = (catPageMatch ? catPageMatch[1] : catRest).trim();
+    const rawCatSlug = (catPageMatch ? catPageMatch[1] : catRest).trim();
     const catPage = catPageMatch
       ? Math.max(1, parseInt(catPageMatch[2], 10) || 1)
       : validPage;
-    if (catSlug) {
-      const encodedCat = encodeURIComponent(catSlug);
+    if (rawCatSlug) {
+      if (rawCatSlug.toLowerCase() === 'all') {
+        return {
+          ...fallback,
+          viewMode: 'home',
+          currentPage: catPage,
+          searchQuery: qParam,
+          canonicalReplacePath: catPage > 1 ? `/page/${catPage}` : '/',
+        };
+      }
+      const encodedCat = encodeURIComponent(rawCatSlug);
       const needsCanonical =
         !path.startsWith('/category/') || (Boolean(catPageMatch) && catPage === 1);
       return {
         ...fallback,
         viewMode: 'category',
-        selectedCategory: catSlug,
+        selectedCategory: rawCatSlug,
         currentPage: catPage,
         searchQuery: qParam,
         canonicalReplacePath: needsCanonical

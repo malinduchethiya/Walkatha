@@ -8,7 +8,9 @@ import {
   SITE_ORIGIN,
   SITE_NAME,
   DEFAULT_OG_IMAGE,
+  PRODUCTION_HOSTS,
   resolveCanonicalRedirect,
+  resolveCanonicalCategorySlug,
 } from './src/config/site.js';
 import {
   HOME_SEO,
@@ -501,8 +503,8 @@ function resolveRouteForSsr(
     const { datePublished, dateModified } = resolveStoryTimestamps(story);
     const wordCount = story.wordCount || String(bodyText).split(/\s+/).length || 950;
     const readingMinutes = story.readingTime || Math.max(3, Math.ceil(wordCount / 180));
-    const catSlug = stripZW(story.category || 'romantic');
-    const catLabel = stripZW(story.categoryName || story.category || 'සිංහල කතා');
+    const catSlug = resolveCanonicalCategorySlug(story.category || 'romantic');
+    const catLabel = stripZW(getCategorySeoCopy(catSlug, story.categoryName || story.category).anchorText);
     const authorName = stripZW(
       typeof story.author === 'object' && story.author !== null
         ? story.author.name || SITE_NAME
@@ -617,7 +619,7 @@ function resolveRouteForSsr(
     <header>
       <a href="/">මුල් පිටුව</a> / <a href="/category/${encodeURIComponent(catSlug)}">${escapeHtmlText(catLabel)}</a>
       <h1>${escapeHtmlText(postTitle)}</h1>
-      <a href="/profile/${encodeURIComponent(authorName)}">${escapeHtmlText(authorName)}</a>
+      <span>${escapeHtmlText(authorName)}</span>
     </header>
     <div class="article-body">
       ${paragraphsHtml}
@@ -1052,6 +1054,19 @@ async function startServer() {
 
     if (redirect) {
       return res.redirect(redirect.status, redirect.location);
+    }
+
+    if (req.path.startsWith('/story/')) {
+      const requestedSlug = req.path.replace(/^\/story\//, '');
+      const story = findStoryBySlug(requestedSlug);
+      if (story) {
+        const canonicalSlug = encodeURIComponent(stripZW(story.slug || story.id));
+        const host = rawHost.split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
+        const originPrefix = PRODUCTION_HOSTS.has(host) ? SITE_ORIGIN : '';
+        if (requestedSlug !== canonicalSlug && encodeURIComponent(decodeURIComponent(requestedSlug)) !== canonicalSlug) {
+          return res.redirect(301, `${originPrefix}/story/${canonicalSlug}`);
+        }
+      }
     }
 
     next();

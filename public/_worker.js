@@ -87,28 +87,50 @@ function storyMatchesCategory(story, rawCatSlug) {
   return false;
 }
 
-const CATEGORY_SLUG_ALIASES = {
-  amma: '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
-  'amma-wal-katha': '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
-  'ammai-puthai': '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+const VALID_CANONICAL_CATEGORIES = new Set([
+  'අම්මා-පුතා',
+  'wife',
+  'thaththa-duwa',
+  'akka-malli',
+  'nanda',
+  'ඇන්ටි-පුතා',
+  'school',
+  'spa-katha',
+  'lesbian',
+  'වටේ-යාම',
+  'romantic',
+]);
+
+const CATEGORY_SLUG_ALIASES_DECODED = {
+  amma: 'අම්මා-පුතා',
+  'amma-wal-katha': 'අම්මා-පුතා',
+  'ammai-puthai': 'අම්මා-පුතා',
   'thaththa-wal-katha': 'thaththa-duwa',
   'akka-wal-katha': 'akka-malli',
   'akkagen-sapa': 'akka-malli',
   'sahodhara-sohadhari': 'akka-malli',
+  'අක්කා-මල්ලි': 'akka-malli',
   'wife-wal-katha': 'wife',
   'wife-gf': 'wife',
+  'වයිෆ්-බිරිඳ': 'wife',
+  office: 'wife',
   'nana-wal-katha': 'nanda',
   'pawule-an-aya': 'nanda',
-  'aunty-wal-katha': '%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
-  'wadimahal-bala': '%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'aunty-wal-katha': 'ඇන්ටි-පුතා',
+  'wadimahal-bala': 'ඇන්ටි-පුතා',
+  neighbour: 'ඇන්ටි-පුතා',
   'teacher-wal-katha': 'school',
   'model-wal-katha': 'school',
+  'පාසල්-කතා': 'school',
   samalingika: 'lesbian',
   'spa-kathawa': 'spa-katha',
-  'threesome-wal-katha': '%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8',
-  'walle-kathawa': '%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8',
+  'threesome-wal-katha': 'වටේ-යාම',
+  'walle-kathawa': 'වටේ-යාම',
   'sex-katha': 'romantic',
   'sinhala-sex-katha': 'romantic',
+  'ආදර-කතා': 'romantic',
+  'ට්-රිප්-ගිහින්': 'romantic',
+  'වෙනත්': 'romantic',
 };
 
 const STATIC_SITE_PAGES = [
@@ -211,27 +233,65 @@ function isBotUserAgent(ua) {
   return Boolean(ua && BOT_UA_PATTERN.test(ua));
 }
 
+function decodeSlug(rawSlug) {
+  const clean = stripZW(rawSlug);
+  if (!clean) return '';
+  try {
+    return stripZW(decodeURIComponent(clean));
+  } catch {
+    return clean;
+  }
+}
+
+function resolveCanonicalCategorySlug(rawCatSlug) {
+  const decoded = decodeSlug(rawCatSlug || '').toLowerCase();
+  if (!decoded || decoded === 'all') return 'romantic';
+  if (CATEGORY_SLUG_ALIASES_DECODED[decoded]) return CATEGORY_SLUG_ALIASES_DECODED[decoded];
+  if (VALID_CANONICAL_CATEGORIES.has(decoded)) return decoded;
+  return 'romantic';
+}
+
 function normalizeCanonicalPath(rawPathname) {
   let target = (rawPathname || '/').replace(/\/{2,}/g, '/');
   if (target.length > 1 && target.endsWith('/')) {
     target = target.slice(0, -1);
   }
+  if (/^\/index\.(html?|php)$/i.test(target)) return '/';
+  if (/\.html$/i.test(target) && !/^\/google[a-z0-9]+\.html$/i.test(target)) {
+    target = target.replace(/\.html$/i, '') || '/';
+  }
+  if (/^\/(story|posts|katha)\/[^/]+\/amp$/i.test(target)) {
+    target = target.replace(/\/amp$/i, '');
+  }
   if (target === '/page/1') return '/';
   if (/^\/(popular|archives)\/page\/1$/i.test(target)) return target.replace(/\/page\/1$/i, '');
   if (/^\/category\/[^/]+\/page\/1$/i.test(target)) target = target.replace(/\/page\/1$/i, '');
-  if (target === '/posts') return '/';
-  if (target.startsWith('/posts/')) return target.replace(/^\/posts\//, '/story/');
-  if (target.startsWith('/katha/')) return target.replace(/^\/katha\//, '/story/');
+  if (target === '/posts' || target === '/katha') return '/';
+  if (target.startsWith('/posts/')) target = target.replace(/^\/posts\//, '/story/');
+  if (target.startsWith('/katha/')) target = target.replace(/^\/katha\//, '/story/');
   if (target.startsWith('/categories/')) target = target.replace(/^\/categories\//, '/category/');
   if (target.startsWith('/collections/')) target = target.replace(/^\/collections\//, '/category/');
+  if (
+    target === '/profile' ||
+    target.startsWith('/profile/') ||
+    target.startsWith('/followers/') ||
+    target.startsWith('/following/')
+  ) {
+    return '/';
+  }
+  if (target === '/archiveposts' || target.startsWith('/archiveposts/')) {
+    target = target.replace(/^\/archiveposts/, '/archives');
+    if (/^\/archives\/page\/1$/i.test(target)) return '/archives';
+  }
   if (target.startsWith('/category/')) {
     const parts = target.split('/');
-    const rawCatSlug = (parts[2] || '').toLowerCase();
-    const mapped = CATEGORY_SLUG_ALIASES[rawCatSlug];
-    if (mapped) {
-      parts[2] = mapped;
-      target = parts.join('/');
+    const decodedCat = decodeSlug(parts[2] || '').toLowerCase();
+    if (!decodedCat || decodedCat === 'all') {
+      return '/';
     }
+    const mapped = CATEGORY_SLUG_ALIASES_DECODED[decodedCat];
+    parts[2] = encodeSlug(mapped || decodedCat);
+    target = parts.join('/');
   }
   if (target === '/collections') return '/categories';
   if (target === '/privacy') return '/page/privacy-policy';
@@ -245,6 +305,15 @@ function normalizeCanonicalPath(rawPathname) {
   ) {
     return '/sitemap.xml';
   }
+  if (target !== '/') {
+    target =
+      '/' +
+      target
+        .split('/')
+        .filter(Boolean)
+        .map((seg) => encodeSlug(seg))
+        .join('/');
+  }
   return target || '/';
 }
 
@@ -254,15 +323,52 @@ function resolveCanonicalRedirect(url) {
   const needsHostOrProtoRedirect =
     LEGACY_HOSTS.has(host) || (host === SITE_HOSTNAME && url.protocol === 'http:');
 
-  const targetPath = normalizeCanonicalPath(url.pathname);
-  const pathChanged = targetPath !== url.pathname;
+  let targetPath = normalizeCanonicalPath(url.pathname);
+  const rawQuery = url.search ? url.search.replace(/^\?/, '') : '';
+  let targetQuery = '';
 
-  if (!needsHostOrProtoRedirect && !pathChanged) {
+  const preservesQuery =
+    targetPath === '/search' ||
+    targetPath === '/admin' ||
+    targetPath.startsWith('/admin/') ||
+    targetPath.startsWith('/api/');
+
+  if (rawQuery) {
+    if (preservesQuery) {
+      targetQuery = rawQuery;
+    } else {
+      const searchQ = (url.searchParams.get('s') || url.searchParams.get('q') || '').trim();
+      if (targetPath === '/' && searchQ) {
+        targetPath = '/search';
+        targetQuery = `s=${encodeURIComponent(searchQ)}`;
+      } else {
+        const pageVal = parseInt(url.searchParams.get('page') || '', 10);
+        if (!isNaN(pageVal) && pageVal > 1) {
+          if (targetPath === '/') {
+            targetPath = `/page/${pageVal}`;
+          } else if (
+            targetPath === '/popular' ||
+            targetPath === '/archives' ||
+            /^\/category\/[^/]+$/.test(targetPath)
+          ) {
+            targetPath = `${targetPath}/page/${pageVal}`;
+          }
+        }
+        targetQuery = '';
+      }
+    }
+  }
+
+  const pathChanged = targetPath !== url.pathname;
+  const queryChanged = targetQuery !== rawQuery;
+
+  if (!needsHostOrProtoRedirect && !pathChanged && !queryChanged) {
     return null;
   }
 
   const destinationOrigin = isProdHost ? SITE_ORIGIN : url.origin;
-  return `${destinationOrigin}${targetPath}${url.search || ''}`;
+  const querySuffix = targetQuery ? `?${targetQuery}` : '';
+  return `${destinationOrigin}${targetPath}${querySuffix}`;
 }
 
 function decodeFirestoreValue(val) {
@@ -1132,12 +1238,18 @@ export default {
         );
       }
 
+      const canonicalSlug = encodeSlug(story.slug || story.id);
+      const requestedEncodedSlug = encodeSlug(rawSlug);
+      if (requestedEncodedSlug !== canonicalSlug || normalizedPath.endsWith('/amp')) {
+        return Response.redirect(`${SITE_ORIGIN}/story/${canonicalSlug}`, 301);
+      }
+
       const postTitle = stripZW(story.title);
       const cleanTitle = formatCleanStoryTitle(postTitle);
       const bodyText =
         story.fullContent || story.content || story.shortDescription || story.description || postTitle;
       const excerpt = String(bodyText).replace(/\s+/g, ' ').trim().slice(0, 155);
-      const canonicalUrl = `${SITE_ORIGIN}/story/${encodeSlug(story.slug || story.id)}`;
+      const canonicalUrl = `${SITE_ORIGIN}/story/${canonicalSlug}`;
       const ogImg =
         story.coverImage && String(story.coverImage).startsWith('http')
           ? String(story.coverImage).trim()
@@ -1146,8 +1258,9 @@ export default {
       const dateModified = toIsoDate(story.updatedAt || story.updatedDate || story._updateTime) || datePublished;
       const wordCount = story.wordCount || String(bodyText).split(/\s+/).length || 950;
       const readingMinutes = story.readingTime || Math.max(3, Math.ceil(wordCount / 180));
-      const catSlug = stripZW(story.category || 'romantic');
-      const catLabel = stripZW(story.categoryName || story.category || 'සිංහල කතා');
+      const catSlug = resolveCanonicalCategorySlug(story.category || 'romantic');
+      const catObj = DEFAULT_CATEGORIES.find((c) => c.slug === catSlug);
+      const catLabel = stripZW(catObj?.sinhalaName || story.categoryName || story.category || 'සිංහල කතා');
       const authorName = stripZW(
         typeof story.author === 'object' && story.author !== null
           ? story.author.name || SITE_NAME
@@ -1158,7 +1271,7 @@ export default {
       const prevStory = storyIdx > 0 ? activeStories[storyIdx - 1] : null;
       const nextStory = storyIdx >= 0 && storyIdx < activeStories.length - 1 ? activeStories[storyIdx + 1] : null;
       const relatedStories = activeStories
-        .filter((s) => s !== story && stripZW(s.category).toLowerCase() === catSlug.toLowerCase())
+        .filter((s) => s !== story && storyMatchesCategory(s, catSlug))
         .slice(0, 6);
 
       const paragraphsHtml = splitParagraphs(bodyText)
@@ -1194,7 +1307,7 @@ export default {
               .join('\n')}</ul></section>`
           : '';
       const initialStoryScript = `\n    <script id="__INITIAL_STORY__" type="application/json">${safeJsonForScript({
-        story: { ...story, fullContent: bodyText, content: bodyText },
+        story: { ...story, category: catSlug, fullContent: bodyText, content: bodyText },
         prevStory,
         nextStory,
         relatedStories,
@@ -1255,7 +1368,7 @@ export default {
           catSlug
         )}">${escapeHtmlText(catLabel)}</a></nav>
         <h1>${escapeHtmlText(postTitle)}</h1>
-        <a href="/profile/${encodeURIComponent(authorName)}">${escapeHtmlText(authorName)}</a>
+        <span>${escapeHtmlText(authorName)}</span>
       </header>
       <div class="article-body">
         ${paragraphsHtml}

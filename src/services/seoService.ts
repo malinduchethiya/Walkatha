@@ -4,6 +4,7 @@ import {
   SITE_NAME,
   DEFAULT_OG_IMAGE,
   buildCanonicalUrl,
+  resolveCanonicalCategorySlug,
 } from '../config/site';
 import {
   HOME_SEO,
@@ -146,8 +147,11 @@ export class SeoService {
         : HOME_SEO.description
     );
 
+    const canonicalCategorySlug = isCategory
+      ? resolveCanonicalCategorySlug(category!.slug || category!.id)
+      : '';
     const routePath = isCategory
-      ? `/category/${encodeURIComponent(category!.slug || category!.id)}`
+      ? `/category/${encodeURIComponent(canonicalCategorySlug)}`
       : '/';
     const basePath = buildCanonicalUrl(routePath, 1);
     const canonicalUrl = buildCanonicalUrl(routePath, page);
@@ -361,7 +365,9 @@ export class SeoService {
               '@type': 'ListItem',
               position: 2,
               name: story.categoryName || story.category || 'සිංහල කතා',
-              item: `${SITE_ORIGIN}/category/${encodeURIComponent(story.category || 'romantic')}`,
+              item: `${SITE_ORIGIN}/category/${encodeURIComponent(
+                resolveCanonicalCategorySlug(story.category || 'romantic')
+              )}`,
             },
             {
               '@type': 'ListItem',

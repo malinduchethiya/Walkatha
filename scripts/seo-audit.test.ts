@@ -161,12 +161,52 @@ test('site.ts: canonical origin https://www.walkathawa.site and single-hop 301 r
   assert.equal(normalizeCanonicalPath('/terms'), '/page/terms-and-conditions');
   assert.equal(normalizeCanonicalPath('/sitemap_index.xml'), '/sitemap.xml');
 
+  assert.equal(normalizeCanonicalPath('/index.html'), '/');
+  assert.equal(normalizeCanonicalPath('/about.html'), '/about');
+  assert.equal(normalizeCanonicalPath('/story/test-1.html'), '/story/test-1');
+  assert.equal(normalizeCanonicalPath('/story/test-1/amp'), '/story/test-1');
+  assert.equal(normalizeCanonicalPath('/profile/Walkathawa'), '/');
+  assert.equal(normalizeCanonicalPath('/category/all'), '/');
+  assert.equal(normalizeCanonicalPath('/category/office'), '/category/wife');
+  assert.equal(
+    normalizeCanonicalPath('/category/neighbour'),
+    `/category/${encodeURIComponent('ඇන්ටි-පුතා')}`
+  );
+
   const walakathaCom = resolveCanonicalRedirect('walakatha.com', 'https', '/category/amma-wal-katha');
   assert.deepEqual(walakathaCom, {
     shouldRedirect: true,
     status: 301,
     location: `https://www.walkathawa.site/category/${encodeURIComponent('අම්මා-පුතා')}`,
   });
+
+  // Query pagination and tracking params must 301-redirect to clean canonical URLs
+  assert.deepEqual(resolveCanonicalRedirect('www.walkathawa.site', 'https', '/?page=2'), {
+    shouldRedirect: true,
+    status: 301,
+    location: 'https://www.walkathawa.site/page/2',
+  });
+  assert.deepEqual(resolveCanonicalRedirect('www.walkathawa.site', 'https', '/?page=1'), {
+    shouldRedirect: true,
+    status: 301,
+    location: 'https://www.walkathawa.site/',
+  });
+  assert.deepEqual(
+    resolveCanonicalRedirect('www.walkathawa.site', 'https', '/category/wife?page=3'),
+    {
+      shouldRedirect: true,
+      status: 301,
+      location: 'https://www.walkathawa.site/category/wife/page/3',
+    }
+  );
+  assert.deepEqual(
+    resolveCanonicalRedirect('www.walkathawa.site', 'https', '/story/test-1?m=1'),
+    {
+      shouldRedirect: true,
+      status: 301,
+      location: 'https://www.walkathawa.site/story/test-1',
+    }
+  );
 });
 
 test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, crawlable pagination, full sitemap, and _redirects', () => {
@@ -176,6 +216,9 @@ test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, 
   assert.equal(wranglerConfig.main, 'public/_worker.js');
   assert.equal(wranglerConfig.assets?.directory, './dist');
   assert.equal(wranglerConfig.assets?.binding, 'ASSETS');
+  assert.equal(wranglerConfig.assets?.run_worker_first, true);
+  assert.equal(wranglerConfig.assets?.not_found_handling, 'none');
+  assert.equal(wranglerConfig.assets?.html_handling, 'none');
 
   assert.ok(fs.existsSync(DIST_DIR), 'dist/ directory must exist after npm run build');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_worker.js')), 'dist/_worker.js must be bundled');
@@ -441,4 +484,49 @@ test('Cloudflare Worker (public/_worker.js): routes, path pagination, full sitem
     apexRes.headers.get('Location'),
     `https://www.walkathawa.site/story/${encodedSlug}`
   );
+
+  // Query pagination and Blogger ?m=1 on Worker must 301-redirect (never HTTP 200 alternative page)
+  const queryPage2Res = await worker.fetch(
+    new Request('https://www.walkathawa.site/?page=2'),
+    env
+  );
+  assert.equal(queryPage2Res.status, 301);
+  assert.equal(queryPage2Res.headers.get('Location'), 'https://www.walkathawa.site/page/2');
+
+  const queryM1Res = await worker.fetch(
+    new Request(`https://www.walkathawa.site/story/${encodedSlug}?m=1`),
+    env
+  );
+  assert.equal(queryM1Res.status, 301);
+  assert.equal(
+    queryM1Res.headers.get('Location'),
+    `https://www.walkathawa.site/story/${encodedSlug}`
+  );
+
+  const htmlExtRes = await worker.fetch(
+    new Request(`https://www.walkathawa.site/story/${encodedSlug}.html`),
+    env
+  );
+  assert.equal(htmlExtRes.status, 301);
+  assert.equal(
+    htmlExtRes.headers.get('Location'),
+    `https://www.walkathawa.site/story/${encodedSlug}`
+  );
+
+  // Requesting a story by its Firestore ID (story.id !== story.slug) must 301-redirect to canonical /story/:slug
+  const catalog = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'public', 'api-data', 'catalog.json'), 'utf8')
+  );
+  const storyWithDiffId = catalog.stories.find((s: any) => s.id && s.slug && s.id !== s.slug);
+  if (storyWithDiffId) {
+    const idRes = await worker.fetch(
+      new Request(`https://www.walkathawa.site/story/${encodeURIComponent(storyWithDiffId.id)}`),
+      env
+    );
+    assert.equal(idRes.status, 301);
+    assert.equal(
+      idRes.headers.get('Location'),
+      `https://www.walkathawa.site/story/${encodeURIComponent(storyWithDiffId.slug)}`
+    );
+  }
 });

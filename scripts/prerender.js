@@ -195,6 +195,51 @@ const CATEGORY_THEME_PATTERNS = {
   romantic: /(romantic|ආදර|love|රස|sex katha|real|ඇත්ත)/i,
 };
 
+const CATEGORY_SLUG_ALIASES_DECODED = {
+  amma: 'අම්මා-පුතා',
+  'amma-wal-katha': 'අම්මා-පුතා',
+  'ammai-puthai': 'අම්මා-පුතා',
+  'thaththa-wal-katha': 'thaththa-duwa',
+  'akka-wal-katha': 'akka-malli',
+  'akkagen-sapa': 'akka-malli',
+  'sahodhara-sohadhari': 'akka-malli',
+  'අක්කා-මල්ලි': 'akka-malli',
+  'wife-wal-katha': 'wife',
+  'wife-gf': 'wife',
+  'වයිෆ්-බිරිඳ': 'wife',
+  office: 'wife',
+  'nana-wal-katha': 'nanda',
+  'pawule-an-aya': 'nanda',
+  'aunty-wal-katha': 'ඇන්ටි-පුතා',
+  'wadimahal-bala': 'ඇන්ටි-පුතා',
+  neighbour: 'ඇන්ටි-පුතා',
+  'teacher-wal-katha': 'school',
+  'model-wal-katha': 'school',
+  'පාසල්-කතා': 'school',
+  samalingika: 'lesbian',
+  'spa-kathawa': 'spa-katha',
+  'threesome-wal-katha': 'වටේ-යාම',
+  'walle-kathawa': 'වටේ-යාම',
+  'sex-katha': 'romantic',
+  'sinhala-sex-katha': 'romantic',
+  'ආදර-කතා': 'romantic',
+  'ට්-රිප්-ගිහින්': 'romantic',
+  'වෙනත්': 'romantic',
+};
+
+function resolveCanonicalCategorySlug(rawCatSlug) {
+  let clean = stripZW(rawCatSlug || '').toLowerCase();
+  try {
+    clean = stripZW(decodeURIComponent(clean)).toLowerCase();
+  } catch {
+    // ignore
+  }
+  if (!clean || clean === 'all') return 'romantic';
+  if (CATEGORY_SLUG_ALIASES_DECODED[clean]) return CATEGORY_SLUG_ALIASES_DECODED[clean];
+  if (CATEGORY_SEO_MAP[clean]) return clean;
+  return 'romantic';
+}
+
 function storyMatchesCategory(story, rawCatSlug) {
   const catLower = stripZW(rawCatSlug).toLowerCase();
   const sCat = stripZW(story.category).toLowerCase();
@@ -294,15 +339,16 @@ function toSummaryCard(story) {
     body,
     story.title || rawSlug
   );
+  const canonicalCat = resolveCanonicalCategorySlug(story.category || story.categoryId || 'romantic');
   return {
     id: stripZW(story.id || rawSlug),
     slug: rawSlug,
     title: stripZW(story.title || rawSlug),
     shortDescription: desc,
     description: desc,
-    category: stripZW(story.category || 'romantic') || 'romantic',
-    categoryId: stripZW(story.categoryId || story.category || 'romantic') || 'romantic',
-    categoryName: stripZW(story.categoryName || story.category || 'සිංහල කතා'),
+    category: canonicalCat,
+    categoryId: canonicalCat,
+    categoryName: stripZW(story.categoryName || canonicalCat || 'සිංහල කතා'),
     coverImage: story.coverImage || '',
     views: Number(story.views) || 12,
     readingTime: Number(story.readingTime) || 5,
@@ -1184,8 +1230,8 @@ function main() {
     const dateModified = toIsoDate(story.updatedAt || story.updatedDate) || datePublished;
     const wordCount = story.wordCount || String(bodyText).split(/\s+/).length || 950;
     const readingMinutes = story.readingTime || Math.max(3, Math.ceil(wordCount / 180));
-    const catSlug = stripZW(story.category || 'romantic');
-    const catLabel = stripZW(story.categoryName || story.category || 'සිංහල කතා');
+    const catSlug = resolveCanonicalCategorySlug(story.category || story.categoryId || 'romantic');
+    const catLabel = stripZW(CATEGORY_SEO_MAP[catSlug]?.anchorText || story.categoryName || story.category || 'සිංහල කතා');
     const authorName = stripZW(
       typeof story.author === 'object' && story.author !== null
         ? story.author.name || SITE_NAME
@@ -1318,7 +1364,7 @@ function main() {
           catSlug
         )}">${escapeHtmlText(catLabel)}</a></nav>
         <h1>${escapeHtmlText(postTitle)}</h1>
-        <a href="/profile/${encodeURIComponent(authorName)}">${escapeHtmlText(authorName)}</a>
+        <span>${escapeHtmlText(authorName)}</span>
       </header>
       ${coverHtml}
       <div class="article-body">
