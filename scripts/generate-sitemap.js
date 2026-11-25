@@ -195,7 +195,8 @@ async function fetchFromFirestore() {
         const data = docSnap.data() || {};
         stories.push({
           ...data,
-          id: stripZW(data.id || docSnap.id),
+          id: stripZW(docSnap.id || data.id),
+          docId: stripZW(docSnap.id),
           slug: stripZW(data.slug || data.id || docSnap.id),
           title: stripZW(data.title || 'සිංහල කතාව'),
         });

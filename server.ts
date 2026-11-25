@@ -1281,6 +1281,14 @@ async function startServer() {
     );
   });
 
+  const safeDecodePath = (rawPath: string): string => {
+    try {
+      return decodeURIComponent(rawPath || '/');
+    } catch {
+      return rawPath || '/';
+    }
+  };
+
   if (!isProd) {
     const { createServer } = await import('vite');
     const vite = await createServer({
@@ -1296,7 +1304,7 @@ async function startServer() {
         let template = fs.readFileSync(indexPath, 'utf8');
         template = await vite.transformIndexHtml(req.originalUrl, template);
         const [rawPath, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
-        const reqPath = decodeURIComponent(rawPath || '/');
+        const reqPath = safeDecodePath(rawPath || '/');
         const rendered = renderFullDocument(template, reqPath, rawQuery);
         res.setHeader('Vary', 'User-Agent');
         if (rendered.noIndex) {
@@ -1314,6 +1322,29 @@ async function startServer() {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath, { maxAge: '7d', index: false }));
     app.get('*', (req, res) => {
+      const [rawPath, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
+      const reqPath = safeDecodePath(rawPath || '/');
+      const normalizedReqPath = reqPath.replace(/\/+$/, '') || '/';
+
+      if (!rawQuery && normalizedReqPath !== '/admin' && !normalizedReqPath.startsWith('/admin/') && normalizedReqPath !== '/search') {
+        const prerenderedCandidate =
+          normalizedReqPath === '/'
+            ? path.join(distPath, 'index.html')
+            : path.join(distPath, `${normalizedReqPath.replace(/^\/+/, '')}.html`);
+        if (
+          prerenderedCandidate.startsWith(distPath) &&
+          fs.existsSync(prerenderedCandidate) &&
+          fs.statSync(prerenderedCandidate).isFile()
+        ) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader(
+            'Cache-Control',
+            'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400'
+          );
+          return res.status(200).sendFile(prerenderedCandidate);
+        }
+      }
+
       const spaFile = path.join(distPath, '_spa.html');
       const indexFile = fs.existsSync(spaFile) ? spaFile : path.join(distPath, 'index.html');
       if (!fs.existsSync(indexFile)) {
@@ -1322,8 +1353,6 @@ async function startServer() {
 
       try {
         const rawHtml = fs.readFileSync(indexFile, 'utf8');
-        const [rawPath, rawQuery = ''] = (req.originalUrl || req.url || '/').split('?');
-        const reqPath = decodeURIComponent(rawPath || '/');
         const rendered = renderFullDocument(rawHtml, reqPath, rawQuery);
         res.setHeader('Vary', 'User-Agent');
         if (rendered.noIndex) {
@@ -1340,7 +1369,7 @@ async function startServer() {
           .set({ 'Content-Type': 'text/html; charset=utf-8' })
           .send(rendered.html);
       } catch {
-        return res.sendFile(indexFile);
+        return res.status(404).send('Not found');
       }
     });
   }

@@ -461,15 +461,45 @@ function getEdgeCache() {
   }
 }
 
-async function fetchFirestoreCollection(collectionName) {
+const STORY_LIST_MASK_PARAMS = [
+  'title',
+  'slug',
+  'category',
+  'categories',
+  'tags',
+  'excerpt',
+  'content',
+  'createdAt',
+  'updatedAt',
+  'uploadDate',
+  'uploadedDate',
+  'updatedDate',
+  'status',
+  'published',
+  'isPublished',
+  'isDeleted',
+  'deleted',
+  'visibility',
+  'private',
+  'author',
+  'coverImage',
+  'views',
+  'likes',
+  'parts',
+]
+  .map((f) => `mask.fieldPaths=${encodeURIComponent(f)}`)
+  .join('&');
+
+async function fetchFirestoreCollection(collectionName, useStoryMask = false) {
   const docs = [];
   let pageToken = '';
   const base = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${collectionName}`;
+  const maskSuffix = useStoryMask ? `&${STORY_LIST_MASK_PARAMS}` : '';
 
   for (let page = 0; page < 20; page++) {
     const query = pageToken
-      ? `?pageSize=300&pageToken=${encodeURIComponent(pageToken)}`
-      : '?pageSize=300';
+      ? `?pageSize=300&pageToken=${encodeURIComponent(pageToken)}${maskSuffix}`
+      : `?pageSize=300${maskSuffix}`;
     const res = await fetch(`${base}${query}`, {
       headers: { Accept: 'application/json' },
     });
@@ -501,10 +531,48 @@ async function fetchLiveStoreCached(env, ctx) {
     }
   }
 
+  // 1. Primary fast-path: read pre-built build-time catalog.json from local Cloudflare ASSETS (<1ms CPU, zero 5xx risk)
+  if (env && env.ASSETS) {
+    try {
+      const catResp = await env.ASSETS.fetch(new Request(`${SITE_ORIGIN}/api-data/catalog.json`));
+      if (catResp.ok) {
+        const data = await catResp.json();
+        const stories = Array.isArray(data.stories) ? data.stories : [];
+        if (stories.length > 0) {
+          const payload = {
+            stories,
+            categories:
+              Array.isArray(data.categories) && data.categories.length > 0
+                ? data.categories
+                : DEFAULT_CATEGORIES,
+            source: 'static-catalog',
+          };
+          if (cache) {
+            const cacheResp = new Response(JSON.stringify(payload), {
+              headers: {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'public, max-age=120',
+              },
+            });
+            if (ctx && typeof ctx.waitUntil === 'function') {
+              ctx.waitUntil(cache.put(cacheKey, cacheResp));
+            } else {
+              await cache.put(cacheKey, cacheResp);
+            }
+          }
+          return payload;
+        }
+      }
+    } catch {
+      // fall through to Firestore REST
+    }
+  }
+
+  // 2. Fallback: query Firestore REST API with field projection (excludes multi-megabyte fullContent bodies)
   try {
     const [rawStories, rawCategories] = await Promise.all([
-      fetchFirestoreCollection('stories'),
-      fetchFirestoreCollection('categories'),
+      fetchFirestoreCollection('stories', true),
+      fetchFirestoreCollection('categories', false),
     ]);
 
     if (rawStories.length > 0) {
@@ -551,27 +619,7 @@ async function fetchLiveStoreCached(env, ctx) {
       return payload;
     }
   } catch {
-    // Fall back to static build catalog below
-  }
-
-  // Fallback to static build-time catalog.json from ASSETS
-  if (env && env.ASSETS) {
-    try {
-      const catResp = await env.ASSETS.fetch(new Request(`${SITE_ORIGIN}/api-data/catalog.json`));
-      if (catResp.ok) {
-        const data = await catResp.json();
-        return {
-          stories: Array.isArray(data.stories) ? data.stories : [],
-          categories:
-            Array.isArray(data.categories) && data.categories.length > 0
-              ? data.categories
-              : DEFAULT_CATEGORIES,
-          source: 'static-catalog',
-        };
-      }
-    } catch {
-      // ignore
-    }
+    // Fall back to empty store below
   }
 
   return { stories: [], categories: DEFAULT_CATEGORIES, source: 'empty' };
@@ -760,17 +808,43 @@ async function loadSpaTemplate(env, origin) {
 
 async function handleSitemapRequest(request, env, ctx, shardNumber = null) {
   const cache = getEdgeCache();
-  const cacheKey = new Request(`${SITE_ORIGIN}${shardNumber ? `/sitemap-${shardNumber}.xml` : '/sitemap.xml'}`);
+  const targetPath = shardNumber ? `/sitemap-${shardNumber}.xml` : '/sitemap.xml';
+  const cacheKey = new Request(`${SITE_ORIGIN}${targetPath}`);
   if (cache) {
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
   }
 
-  const store = await fetchLiveStoreCached(env, ctx);
-  if (store.stories.length === 0 && env && env.ASSETS) {
-    const staticSitemap = await env.ASSETS.fetch(request);
-    if (staticSitemap.ok) return staticSitemap;
+  if (env && env.ASSETS) {
+    try {
+      const staticSitemap = await env.ASSETS.fetch(new Request(`${SITE_ORIGIN}${targetPath}`));
+      if (staticSitemap && staticSitemap.ok) {
+        const xmlBody = await staticSitemap.text();
+        if (xmlBody.includes('<urlset') || xmlBody.includes('<sitemapindex')) {
+          const response = new Response(xmlBody, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/xml; charset=utf-8',
+              'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600',
+              'X-Robots-Tag': 'all',
+            },
+          });
+          if (cache) {
+            if (ctx && typeof ctx.waitUntil === 'function') {
+              ctx.waitUntil(cache.put(cacheKey, response.clone()));
+            } else {
+              await cache.put(cacheKey, response.clone());
+            }
+          }
+          return response;
+        }
+      }
+    } catch {
+      // fall through to dynamic sitemap builder
+    }
   }
+
+  const store = await fetchLiveStoreCached(env, ctx);
 
   const seenLocs = new Set();
   let latestStoryMod = null;
@@ -1031,8 +1105,9 @@ function isStaticAssetPath(pathname) {
 
 export default {
   async fetch(request, env = {}, ctx = {}) {
-    const url = new URL(request.url);
-    const pathname = url.pathname;
+    try {
+      const url = new URL(request.url);
+      const pathname = url.pathname;
 
     // 1. Authenticated publishing sync endpoint
     if (pathname === '/api/trigger-rebuild' || pathname === '/api/regenerate-sitemap') {
@@ -1216,13 +1291,14 @@ export default {
         activeStories.find((s) => {
           const sSlug = stripZW(s.slug).toLowerCase();
           const sId = stripZW(s.id).toLowerCase();
+          const sDocId = stripZW(s.docId || '').toLowerCase();
           let sSlugDec = sSlug;
           try {
             sSlugDec = stripZW(decodeURIComponent(String(s.slug || ''))).toLowerCase();
           } catch {
             // ignore
           }
-          return sSlug === target || sSlugDec === target || sId === target;
+          return sSlug === target || sSlugDec === target || sId === target || (sDocId && sDocId === target);
         }) || null;
 
       if (!story) {
@@ -1242,6 +1318,26 @@ export default {
       const requestedEncodedSlug = encodeSlug(rawSlug);
       if (requestedEncodedSlug !== canonicalSlug || normalizedPath.endsWith('/amp')) {
         return Response.redirect(`${SITE_ORIGIN}/story/${canonicalSlug}`, 301);
+      }
+
+      if (!story.fullContent && !story.content && typeof story.chunkIndex === 'number' && env && env.ASSETS) {
+        try {
+          const chunkRes = await env.ASSETS.fetch(
+            new Request(`${SITE_ORIGIN}/api-data/chunks/chunk-${story.chunkIndex}.json`)
+          );
+          if (chunkRes.ok) {
+            const chunkData = await chunkRes.json();
+            const fullMatch = (chunkData.stories || []).find(
+              (cs) => stripZW(cs.slug || cs.id) === stripZW(story.slug || story.id)
+            );
+            if (fullMatch) {
+              story.fullContent = fullMatch.fullContent || fullMatch.content || '';
+              story.content = story.fullContent;
+            }
+          }
+        } catch {
+          // ignore chunk read error
+        }
       }
 
       const postTitle = stripZW(story.title);
@@ -1700,5 +1796,18 @@ export default {
       '<div class="ssr-shell"><h1>404 — පිටුව හමු නොවීය</h1><p><a href="/">මුල් පිටුවට යන්න</a></p></div>',
       404
     );
+    } catch {
+      return new Response(
+        '<!DOCTYPE html><html lang="si" class="dark"><head><meta charset="UTF-8"><meta name="robots" content="noindex, nofollow"><title>404 — පිටුව හමු නොවීය | Walkathawa</title></head><body><div id="root"><div class="ssr-shell"><h1>404 — පිටුව හමු නොවීය</h1><p><a href="/">මුල් පිටුවට යන්න</a></p></div></div></body></html>',
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'X-Robots-Tag': 'noindex, nofollow',
+            'Cache-Control': 'no-store',
+          },
+        }
+      );
+    }
   },
 };
