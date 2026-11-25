@@ -170,6 +170,13 @@ test('site.ts: canonical origin https://www.walkathawa.site and single-hop 301 r
 });
 
 test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, crawlable pagination, full sitemap, and _redirects', () => {
+  const wranglerConfigRaw = fs.readFileSync(path.join(ROOT, 'wrangler.jsonc'), 'utf8');
+  const wranglerConfig = JSON.parse(wranglerConfigRaw);
+  assert.equal(wranglerConfig.name, 'walkatha');
+  assert.equal(wranglerConfig.main, 'public/_worker.js');
+  assert.equal(wranglerConfig.assets?.directory, './dist');
+  assert.equal(wranglerConfig.assets?.binding, 'ASSETS');
+
   assert.ok(fs.existsSync(DIST_DIR), 'dist/ directory must exist after npm run build');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_worker.js')), 'dist/_worker.js must be bundled');
   assert.ok(fs.existsSync(path.join(DIST_DIR, '_spa.html')), 'dist/_spa.html must exist');
