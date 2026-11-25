@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Category } from '../../types/story';
 import { cleanCategoryBadgeName } from '../../utils/formatters';
+import { getCategoryAnchorText } from '../../config/seoMetadata';
 
 interface FooterProps {
   categories: Category[];
@@ -48,7 +49,7 @@ export const Footer: React.FC<FooterProps> = ({
               Walkathawa
             </a>
             <p className="text-xs text-zinc-500 leading-relaxed">
-              Walkathawa (වල් කතාව) — අලුත්ම Sinhala wal katha, wela katha සහ walkatha එකතුව. 18+ ප්‍රබන්ධ සාහිත්‍යය.
+              Walkathawa (වල් කතාව) — අලුත්ම sinhala wal katha, wela katha, sinhala wela katha, walkatha සහ sinhala wal එකතුව. 18+ ප්‍රබන්ධ සාහිත්‍යය.
             </p>
           </div>
 
@@ -56,6 +57,7 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-400">
               {categories.map((cat) => {
                 const slug = cat.slug || cat.id;
+                const fallback = cleanCategoryBadgeName(cat.sinhalaName || cat.name);
                 return (
                   <a
                     key={slug}
@@ -63,7 +65,7 @@ export const Footer: React.FC<FooterProps> = ({
                     onClick={(e) => handleCat(e, slug)}
                     className="hover:text-zinc-100 transition-colors"
                   >
-                    {cleanCategoryBadgeName(cat.sinhalaName || cat.name)}
+                    {getCategoryAnchorText(slug, fallback)}
                   </a>
                 );
               })}

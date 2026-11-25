@@ -16,8 +16,8 @@ export { SITE_NAME, DEFAULT_OG_IMAGE };
 
 export const HOME_FAQ_ENTRIES: { question: string; answer: string }[] = [];
 
-export function formatCleanTitle(rawTitle: string): string {
-  return formatStorySeoTitle(rawTitle);
+export function formatCleanTitle(rawTitle: string, categorySlug?: string): string {
+  return formatStorySeoTitle(rawTitle, categorySlug);
 }
 
 export function formatCleanDescription(rawDesc: string, fallbackTitle?: string): string {
@@ -130,19 +130,19 @@ export class SeoService {
     const catSeo = isCategory ? getCategorySeoCopy(category!.slug || category!.id, categoryLabel) : null;
     const title = isCategory && catSeo
       ? page > 1
-        ? `${catSeo.titleBase} — පිටුව ${page} | Walkathawa`
+        ? `${catSeo.shortBase} — පිටුව ${page} | Walkathawa`
         : `${catSeo.titleBase} | Walkathawa`
       : page > 1
-      ? `Sinhala Wal Katha — පිටුව ${page} | Walkathawa`
+      ? `Sinhala Wal Katha & Wela Katha — පිටුව ${page} | Walkathawa`
       : HOME_SEO.title;
 
     const description = formatCleanDescription(
       isCategory && catSeo
         ? page > 1
-          ? `${catSeo.titleBase} පිටුව ${page} — අලුත්ම sinhala wal katha සහ wela katha Walkathawa වෙතින් නොමිලේ කියවන්න.`
+          ? `${catSeo.shortBase} පිටුව ${page} — අලුත්ම sinhala wal katha, wela katha සහ sinhala wela katha Walkathawa වෙතින් නොමිලේ කියවන්න.`
           : catSeo.description
         : page > 1
-        ? `Walkathawa (වල් කතාව) පිටුව ${page} — අලුත්ම sinhala wal katha, wela katha, sinhala wala katha සහ wal katha new නොමිලේ කියවන්න.`
+        ? `Walkathawa (වල් කතාව) පිටුව ${page} — අලුත්ම sinhala wal katha, wela katha, sinhala wela katha, walkatha සහ sinhala wal නොමිලේ කියවන්න.`
         : HOME_SEO.description
     );
 
@@ -243,7 +243,7 @@ export class SeoService {
   }
 
   static updateStorySeo(story: Story, _relatedStories: Story[] = []) {
-    const title = formatCleanTitle(story.title);
+    const title = formatCleanTitle(story.title, story.category);
     const bodyText = story.fullContent || story.content || '';
     const description = formatCleanDescription(
       story.shortDescription || story.description || bodyText.slice(0, 145),
@@ -307,12 +307,13 @@ export class SeoService {
       timeRequired: `PT${readingMinutes}M`,
       articleSection: story.categoryName || story.category || 'Sinhala Wal Katha',
       keywords: [
-        'wal katha',
         'sinhala wal katha',
         'wela katha',
+        'sinhala wela katha',
         'walkatha',
-        'sinhala wala katha',
-        story.categoryName || story.category || 'sinhala walkatha',
+        'wal katha',
+        'sinhala wal',
+        story.categoryName || story.category || 'walkatha sinhala',
       ],
       image: [imageUrl],
       ...(datePublished ? { datePublished } : {}),
@@ -378,7 +379,7 @@ export class SeoService {
     this.updateStaticPageSeo(
       'Sinhala Wal Katha Categories — වර්ගීකරණ',
       '/categories',
-      'Walkathawa (වල් කතාව) සියලුම sinhala wal katha, wela katha, wife, akka, amma, aunty සහ school wal katha වර්ගීකරණ එකම තැනකින්.'
+      'Walkathawa (වල් කතාව) සියලුම sinhala wal katha, wela katha, amma wal katha, wife wal katha, thaththa duwa, akka wal katha, teacher සහ spa kathawa වර්ගීකරණ.'
     );
   }
 

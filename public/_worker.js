@@ -23,6 +23,8 @@ const LEGACY_HOSTS = new Set([
   'walkathawa.site',
   'walkathawa.com',
   'www.walkathawa.com',
+  'walakatha.com',
+  'www.walakatha.com',
 ]);
 
 const PRODUCTION_HOSTS = new Set([SITE_HOSTNAME, ...LEGACY_HOSTS]);
@@ -31,12 +33,83 @@ const BOT_UA_PATTERN =
   /googlebot|google-inspectiontool|googleother|adsbot-google|mediapartners-google|apis-google|storebot-google|bingbot|msnbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|facebookexternalhit|ia_archiver|applebot|twitterbot|linkedinbot|pinterest|whatsapp|telegrambot|discordbot|semrushbot|ahrefsbot|mj12bot|dotbot|petalbot|bytespider|gptbot|claudebot|perplexitybot|oai-searchbot|chrome-lighthouse|pagespeed|gtmetrix|headlesschrome|lighthouse/i;
 
 const DEFAULT_CATEGORIES = [
-  { id: 'wife', slug: 'wife', name: 'Wife Stories', sinhalaName: 'වයිෆ් / බිරිඳ කතා', description: 'බිරිඳ සහ පවුලේ ජීවිතය ඇසුරින් ලියැවුණු සිංහල කතා එකතුව.' },
-  { id: 'akka-malli', slug: 'akka-malli', name: 'Akka Malli', sinhalaName: 'අක්කා - මල්ලි කතා', description: 'අක්කා - මල්ලි සහ යෞවන සබඳතා ඇසුරින් ලියැවුණු රසවත් සිංහල කතා.' },
-  { id: 'nanda', slug: 'nanda', name: 'Aunty Stories', sinhalaName: 'නැන්දා / ඇන්ටි කතා', description: 'නැන්දා සහ ඇන්ටි චරිත ඇසුරින් නිර්මාණය වූ සිංහල කතා එකතුව.' },
-  { id: 'school', slug: 'school', name: 'School & Campus', sinhalaName: 'පාසල් සහ කැම්පස් කතා', description: 'කැම්පස්, පාසල් සහ යෞවන ආදර අත්දැකීම් ඇසුරින් ලියැවුණු සිංහල කතා.' },
-  { id: 'romantic', slug: 'romantic', name: 'Romantic Stories', sinhalaName: 'ආදර සහ රස කතා', description: 'ආදරණීය හා හැඟීම්බර සිංහල කතා සහ කෙටි කතා එකතුව.' },
+  { id: 'අම්මා-පුතා', slug: 'අම්මා-පුතා', name: 'අම්ම පුතා (Amma Wal Katha)', sinhalaName: 'අම්ම පුතා', description: 'අලුත්ම amma wal katha, අම්ම පුතා (ammai puthai) කතා සහ sinhala wal katha එකතුව.' },
+  { id: 'wife', slug: 'wife', name: 'වයිෆ් හෝ GF (Wife Wal Katha)', sinhalaName: 'වයිෆ් හෝ GF', description: 'අලුත්ම wife wal katha, wife gf (වයිෆ් හෝ GF) සහ විවාහක sinhala wal katha එකතුව.' },
+  { id: 'thaththa-duwa', slug: 'thaththa-duwa', name: 'පියා සහ දියණියෝ (Thaththa Duwa)', sinhalaName: 'පියා සහ දියණියෝ', description: 'අලුත්ම thaththa duwa, thaththa wal katha (පියා සහ දියණියෝ) සහ sinhala wal katha එකතුව.' },
+  { id: 'akka-malli', slug: 'akka-malli', name: 'ලොකු අක්කා (Akka Wal Katha)', sinhalaName: 'ලොකු අක්කා / අක්කා මල්ලි', description: 'නවතම akka wal katha, akkagen sapa, ලොකු අක්කා සහ sahodhara sohadhari (අක්කා මල්ලි) කතා.' },
+  { id: 'nanda', slug: 'nanda', name: 'නෑනා / නැන්දා (Nana Wal Katha)', sinhalaName: 'නෑනා / නැන්දා', description: 'හොඳම nana wal katha, pawule an aya (නෑනා සහ නැන්දා) සහ අලුත්ම sinhala wela katha.' },
+  { id: 'ඇන්ටි-පුතා', slug: 'ඇන්ටි-පුතා', name: 'ඇන්ටි පුතා (Aunty Wal Katha)', sinhalaName: 'ඇන්ටි පුතා', description: 'අලුත්ම aunty wal katha, ඇන්ටි පුතා, wadimahal bala සහ uncle තේමා රැගත් sinhala wal katha.' },
+  { id: 'school', slug: 'school', name: 'පාසල් / ගුරු (Teacher Wal Katha)', sinhalaName: 'පාසල් / ගුරු', description: 'නවතම teacher wal katha, model wal katha, campus, hostel සහ bus wal katha එකතුව.' },
+  { id: 'spa-katha', slug: 'spa-katha', name: 'ස්පා කතා (Spa Kathawa)', sinhalaName: 'ස්පා කතා', description: 'අලුත්ම spa kathawa, spa katha, මසාජ් අත්දැකීම් සහ real story (ඇත්ත සීන් එකක්) කතා.' },
+  { id: 'lesbian', slug: 'lesbian', name: 'සමලිංගික (Samalingika)', sinhalaName: 'සමලිංගික කතා', description: 'අලුත්ම samalingika (සමලිංගික) කතා, lesbian wal katha සහ sinhala wela katha එකතුව.' },
+  { id: 'වටේ-යාම', slug: 'වටේ-යාම', name: 'වටේ යාම (Threesome & Walle Kathawa)', sinhalaName: 'වටේ යාම', description: 'අලුත්ම threesome wal katha, walle kathawa, wife sharing සහ වටේ යාම sinhala wal katha.' },
+  { id: 'romantic', slug: 'romantic', name: 'ආදර කතා (Sinhala Sex Katha)', sinhalaName: 'ආදර සහ රස කතා', description: 'ආදර හා හැඟීම්බර sinhala sex katha, sinhala sex stories, real story සහ jil katha එකතුව.' },
 ];
+
+const CATEGORY_THEME_PATTERNS = {
+  'අම්මා-පුතා': /(amma|අම්ම|මව|putha|පුතා)/i,
+  wife: /(wife|වයිෆ්|බිරිඳ|බිරින්ද|gf|girlfriend|කෙල්ල|couple|ජෝඩු|husband)/i,
+  'thaththa-duwa': /(thaththa|තාත්ත|පියා|duwa|දුව|දියණි|bappa|බාප්ප)/i,
+  'akka-malli': /(akka|අක්ක|නංගි|nangi|මල්ලි|malli|සහෝදර|sahodhara)/i,
+  nanda: /(nanda|නැන්ද|nana|නෑන|පවුල|pawul|මාමා|mama)/i,
+  'ඇන්ටි-පුතා': /(aunty|ඇන්ටි|anti|අන්කල්|uncle)/i,
+  school: /(school|පාසල්|ඉස්කෝල|teacher|ටීච|මැඩම්|madam|campus|කැම්පස්|hostel|හොස්ටල්|model|ක්ලාස්|class)/i,
+  'spa-katha': /(spa|ස්පා|massage|මසාජ්)/i,
+  lesbian: /(lesbian|සමලිංගික|samalingika|ලෙස්බියන්)/i,
+  'වටේ-යාම': /(වටේ|wate|cuckold|threesome|ත්‍රීසම්|ජෝඩු මාරු|sharing|වල්ලෙ|walle)/i,
+  romantic: /(romantic|ආදර|love|රස|sex katha|real|ඇත්ත)/i,
+};
+
+function storyMatchesCategory(story, rawCatSlug) {
+  let catLower = stripZW(rawCatSlug).toLowerCase();
+  try {
+    catLower = stripZW(decodeURIComponent(catLower)).toLowerCase();
+  } catch {
+    // ignore
+  }
+  const sCat = stripZW(story.category).toLowerCase();
+  const sCatId = stripZW(story.categoryId).toLowerCase();
+  const sCatName = stripZW(story.categoryName).toLowerCase();
+  const sTags = Array.isArray(story.tags) ? story.tags.map((t) => stripZW(t).toLowerCase()) : [];
+  if (
+    sCat === catLower ||
+    sCatId === catLower ||
+    (catLower.length > 2 && sCatName.includes(catLower)) ||
+    sTags.includes(catLower)
+  ) {
+    return true;
+  }
+  const rx = CATEGORY_THEME_PATTERNS[catLower];
+  if (rx) {
+    const text = `${story.title || ''} ${story.slug || ''} ${story.shortDescription || story.description || ''} ${sTags.join(' ')}`;
+    return rx.test(text);
+  }
+  return false;
+}
+
+const CATEGORY_SLUG_ALIASES = {
+  amma: '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'amma-wal-katha': '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'ammai-puthai': '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'thaththa-wal-katha': 'thaththa-duwa',
+  'akka-wal-katha': 'akka-malli',
+  'akkagen-sapa': 'akka-malli',
+  'sahodhara-sohadhari': 'akka-malli',
+  'wife-wal-katha': 'wife',
+  'wife-gf': 'wife',
+  'nana-wal-katha': 'nanda',
+  'pawule-an-aya': 'nanda',
+  'aunty-wal-katha': '%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'wadimahal-bala': '%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'teacher-wal-katha': 'school',
+  'model-wal-katha': 'school',
+  samalingika: 'lesbian',
+  'spa-kathawa': 'spa-katha',
+  'threesome-wal-katha': '%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8',
+  'walle-kathawa': '%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8',
+  'sex-katha': 'romantic',
+  'sinhala-sex-katha': 'romantic',
+};
 
 const STATIC_SITE_PAGES = [
   { path: '/', changefreq: 'daily', priority: '1.0' },
@@ -145,12 +218,21 @@ function normalizeCanonicalPath(rawPathname) {
   }
   if (target === '/page/1') return '/';
   if (/^\/(popular|archives)\/page\/1$/i.test(target)) return target.replace(/\/page\/1$/i, '');
-  if (/^\/category\/[^/]+\/page\/1$/i.test(target)) return target.replace(/\/page\/1$/i, '');
+  if (/^\/category\/[^/]+\/page\/1$/i.test(target)) target = target.replace(/\/page\/1$/i, '');
   if (target === '/posts') return '/';
   if (target.startsWith('/posts/')) return target.replace(/^\/posts\//, '/story/');
   if (target.startsWith('/katha/')) return target.replace(/^\/katha\//, '/story/');
-  if (target.startsWith('/categories/')) return target.replace(/^\/categories\//, '/category/');
-  if (target.startsWith('/collections/')) return target.replace(/^\/collections\//, '/category/');
+  if (target.startsWith('/categories/')) target = target.replace(/^\/categories\//, '/category/');
+  if (target.startsWith('/collections/')) target = target.replace(/^\/collections\//, '/category/');
+  if (target.startsWith('/category/')) {
+    const parts = target.split('/');
+    const rawCatSlug = (parts[2] || '').toLowerCase();
+    const mapped = CATEGORY_SLUG_ALIASES[rawCatSlug];
+    if (mapped) {
+      parts[2] = mapped;
+      target = parts.join('/');
+    }
+  }
   if (target === '/collections') return '/categories';
   if (target === '/privacy') return '/page/privacy-policy';
   if (target === '/terms') return '/page/terms-and-conditions';
@@ -1210,18 +1292,7 @@ export default {
       const catStories =
         decodedCat === 'all'
           ? activeStories
-          : activeStories.filter((s) => {
-              const sCat = stripZW(s.category).toLowerCase();
-              const sCatId = stripZW(s.categoryId).toLowerCase();
-              const sCatName = stripZW(s.categoryName).toLowerCase();
-              const sTags = Array.isArray(s.tags) ? s.tags.map((t) => stripZW(t).toLowerCase()) : [];
-              return (
-                sCat === decodedCat ||
-                sCatId === decodedCat ||
-                (decodedCat.length > 2 && sCatName.includes(decodedCat)) ||
-                sTags.includes(decodedCat)
-              );
-            });
+          : activeStories.filter((s) => storyMatchesCategory(s, decodedCat));
 
       if (!catObj && catStories.length === 0) {
         return buildHtmlResponse(
@@ -1434,13 +1505,13 @@ export default {
       const pageStories = activeStories.slice(startIdx, startIdx + 20);
       const title =
         homePage > 1
-          ? `Sinhala Wal Katha — පිටුව ${homePage} | ${SITE_NAME}`
-          : 'Walkathawa (වල් කතාව) — Sinhala Wal Katha & Wela Katha New';
+          ? `Sinhala Wal Katha & Wela Katha — පිටුව ${homePage} | ${SITE_NAME}`
+          : 'Sinhala Wal Katha & Wela Katha — Walkathawa (වල් කතාව)';
       const sampleTitles = pageStories.slice(0, 2).map((s) => stripZW(s.title)).join(', ');
       const description =
         homePage > 1 && sampleTitles
-          ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha සහ wal katha sinhala නොමිලේ කියවන්න.`.slice(0, 158)
-          : 'Walkathawa (වල් කතාව) — Read new Sinhala wal katha, wela katha, and sinhala wala katha online free. Daily updated wal katha sinhala and aluth sinhala walkatha.';
+          ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha, sinhala wela katha සහ walkatha නොමිලේ කියවන්න.`.slice(0, 158)
+          : 'Sinhala wal katha, wela katha සහ sinhala wela katha නොමිලේ කියවන්න. Walkathawa (වල් කතාව) අලුත්ම walkatha, wal katha 2026 සහ sinhala wal එකතුව.';
       const canonicalUrl = buildPageAbsoluteUrl('/', homePage);
       const prevUrl = homePage > 1 ? buildPageAbsoluteUrl('/', homePage - 1) : null;
       const nextUrl = homePage < totalPages ? buildPageAbsoluteUrl('/', homePage + 1) : null;

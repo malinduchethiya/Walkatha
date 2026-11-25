@@ -52,7 +52,10 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         )
       : null;
 
-  let heading = currentPage > 1 ? `Sinhala Wal Katha — පිටුව ${currentPage}` : HOME_SEO.h1;
+  let heading =
+    currentPage > 1
+      ? `Sinhala Wal Katha & Wela Katha — පිටුව ${currentPage}`
+      : HOME_SEO.h1;
   let subheading: string | undefined = currentPage === 1 ? HOME_SEO.subtitle : undefined;
   let paginationBase = '/';
 
@@ -61,16 +64,18 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
       ? cleanCategoryBadgeName(activeCatObj.sinhalaName || activeCatObj.name)
       : selectedCategory;
     const catSeo = getCategorySeoCopy(selectedCategory, fallbackLabel);
-    heading = catSeo.h1;
-    subheading = activeCatObj?.description || catSeo.description;
+    heading = currentPage > 1 ? `${catSeo.h1} — පිටුව ${currentPage}` : catSeo.h1;
+    subheading = catSeo.description;
     paginationBase = `/category/${encodeURIComponent(selectedCategory)}`;
   } else if (pageKind === 'popular') {
-    heading = 'Popular Sinhala Wal Katha — ජනප්‍රිය කතා';
-    subheading = undefined;
+    heading = 'Popular Sinhala Wal Katha & Wela Katha — ජනප්‍රිය කතා';
+    subheading =
+      'Walkathawa වැඩිපුරම කියවන ජනප්‍රිය sinhala wal katha, wela katha, sinhala wela katha සහ walkatha එකතුව.';
     paginationBase = '/popular';
   } else if (pageKind === 'archives') {
-    heading = 'Wal Katha New & Archives — ලේඛනාගාරය';
-    subheading = undefined;
+    heading = 'Aluth Wal Katha 2026 & Archives — ලේඛනාගාරය';
+    subheading =
+      'අලුත්ම aluth wal katha, new wal katha, wal katha 2025 / 2026 සහ සම්පූර්ණ sinhala wal katha ලේඛනාගාරය.';
     paginationBase = '/archives';
   } else if (pageKind === 'profile') {
     heading = selectedAuthor;

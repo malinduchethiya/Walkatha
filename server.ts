@@ -10,6 +10,12 @@ import {
   DEFAULT_OG_IMAGE,
   resolveCanonicalRedirect,
 } from './src/config/site.js';
+import {
+  HOME_SEO,
+  getCategorySeoCopy,
+  formatStorySeoTitle,
+  storyMatchesCategory,
+} from './src/config/seoMetadata.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,41 +32,17 @@ interface SyncStore {
 }
 
 const DEFAULT_CATEGORIES = [
-  {
-    id: 'wife',
-    slug: 'wife',
-    name: 'Wife Stories',
-    sinhalaName: 'වයිෆ් / බිරිඳ කතා',
-    description: 'බිරිඳ සහ පවුලේ ජීවිතය ඇසුරින් ලියැවුණු සිංහල කතා එකතුව.',
-  },
-  {
-    id: 'akka-malli',
-    slug: 'akka-malli',
-    name: 'Akka Malli',
-    sinhalaName: 'අක්කා - මල්ලි කතා',
-    description: 'අක්කා - මල්ලි සහ යෞවන සබඳතා ඇසුරින් ලියැවුණු රසවත් සිංහල කතා.',
-  },
-  {
-    id: 'nanda',
-    slug: 'nanda',
-    name: 'Aunty Stories',
-    sinhalaName: 'නැන්දා / ඇන්ටි කතා',
-    description: 'නැන්දා සහ ඇන්ටි චරිත ඇසුරින් නිර්මාණය වූ සිංහල කතා එකතුව.',
-  },
-  {
-    id: 'school',
-    slug: 'school',
-    name: 'School & Campus',
-    sinhalaName: 'පාසල් සහ කැම්පස් කතා',
-    description: 'කැම්පස්, පාසල් සහ යෞවන ආදර අත්දැකීම් ඇසුරින් ලියැවුණු සිංහල කතා.',
-  },
-  {
-    id: 'romantic',
-    slug: 'romantic',
-    name: 'Romantic Stories',
-    sinhalaName: 'ආදර සහ රස කතා',
-    description: 'ආදරණීය හා හැඟීම්බර සිංහල කතා සහ කෙටි කතා එකතුව.',
-  },
+  { id: 'අම්මා-පුතා', slug: 'අම්මා-පුතා', name: 'අම්ම පුතා (Amma Wal Katha)', sinhalaName: 'අම්ම පුතා', description: 'අලුත්ම amma wal katha, අම්ම පුතා (ammai puthai) කතා සහ sinhala wal katha එකතුව.' },
+  { id: 'wife', slug: 'wife', name: 'වයිෆ් හෝ GF (Wife Wal Katha)', sinhalaName: 'වයිෆ් හෝ GF', description: 'අලුත්ම wife wal katha, wife gf (වයිෆ් හෝ GF) සහ විවාහක sinhala wal katha එකතුව.' },
+  { id: 'thaththa-duwa', slug: 'thaththa-duwa', name: 'පියා සහ දියණියෝ (Thaththa Duwa)', sinhalaName: 'පියා සහ දියණියෝ', description: 'අලුත්ම thaththa duwa, thaththa wal katha (පියා සහ දියණියෝ) සහ sinhala wal katha එකතුව.' },
+  { id: 'akka-malli', slug: 'akka-malli', name: 'ලොකු අක්කා (Akka Wal Katha)', sinhalaName: 'ලොකු අක්කා / අක්කා මල්ලි', description: 'නවතම akka wal katha, akkagen sapa, ලොකු අක්කා සහ sahodhara sohadhari (අක්කා මල්ලි) කතා.' },
+  { id: 'nanda', slug: 'nanda', name: 'නෑනා / නැන්දා (Nana Wal Katha)', sinhalaName: 'නෑනා / නැන්දා', description: 'හොඳම nana wal katha, pawule an aya (නෑනා සහ නැන්දා) සහ අලුත්ම sinhala wela katha.' },
+  { id: 'ඇන්ටි-පුතා', slug: 'ඇන්ටි-පුතා', name: 'ඇන්ටි පුතා (Aunty Wal Katha)', sinhalaName: 'ඇන්ටි පුතා', description: 'අලුත්ම aunty wal katha, ඇන්ටි පුතා, wadimahal bala සහ uncle තේමා රැගත් sinhala wal katha.' },
+  { id: 'school', slug: 'school', name: 'පාසල් / ගුරු (Teacher Wal Katha)', sinhalaName: 'පාසල් / ගුරු', description: 'නවතම teacher wal katha, model wal katha, campus, hostel සහ bus wal katha එකතුව.' },
+  { id: 'spa-katha', slug: 'spa-katha', name: 'ස්පා කතා (Spa Kathawa)', sinhalaName: 'ස්පා කතා', description: 'අලුත්ම spa kathawa, spa katha, මසාජ් අත්දැකීම් සහ real story (ඇත්ත සීන් එකක්) කතා.' },
+  { id: 'lesbian', slug: 'lesbian', name: 'සමලිංගික (Samalingika)', sinhalaName: 'සමලිංගික කතා', description: 'අලුත්ම samalingika (සමලිංගික) කතා, lesbian wal katha සහ sinhala wela katha එකතුව.' },
+  { id: 'වටේ-යාම', slug: 'වටේ-යාම', name: 'වටේ යාම (Threesome & Walle Kathawa)', sinhalaName: 'වටේ යාම', description: 'අලුත්ම threesome wal katha, walle kathawa, wife sharing සහ වටේ යාම sinhala wal katha.' },
+  { id: 'romantic', slug: 'romantic', name: 'ආදර කතා (Sinhala Sex Katha)', sinhalaName: 'ආදර සහ රස කතා', description: 'ආදර හා හැඟීම්බර sinhala sex katha, sinhala sex stories, real story සහ jil katha එකතුව.' },
 ];
 
 const STATIC_PAGES: Record<
@@ -303,18 +285,7 @@ function findCategoryAndStories(rawSlug: string): {
         stripZW(c.slug).toLowerCase() === decoded || stripZW(c.id).toLowerCase() === decoded
     ) || null;
 
-  const matchingStories = activeStories.filter((s) => {
-    const sCat = stripZW(s.category).toLowerCase();
-    const sCatId = stripZW(s.categoryId).toLowerCase();
-    const sCatName = stripZW(s.categoryName).toLowerCase();
-    const sTags = Array.isArray(s.tags) ? s.tags.map((t: any) => stripZW(t).toLowerCase()) : [];
-    return (
-      sCat === decoded ||
-      sCatId === decoded ||
-      (decoded.length > 2 && sCatName.includes(decoded)) ||
-      sTags.includes(decoded)
-    );
-  });
+  const matchingStories = activeStories.filter((s) => storyMatchesCategory(s, decoded));
 
   return {
     category: catObj || (matchingStories.length > 0 ? { id: decoded, slug: decoded, name: rawSlug, sinhalaName: rawSlug } : null),
@@ -337,18 +308,6 @@ function splitParagraphsForSsr(rawContent: string): string[] {
     .filter((s) => s.length > 0);
 
   return sentences.length > 0 ? sentences : ['සිංහල කතාව'];
-}
-
-function formatCleanStoryTitle(rawTitle: string): string {
-  const cleaned = stripZW(rawTitle)
-    .replace(/\s*[–|-]\s*(Sinhala\s+)?(Wal|Wela|Wala|Sex)\s+Katha.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const suffix = ' | Walkathawa';
-  if (cleaned.length + suffix.length <= 60) {
-    return `${cleaned}${suffix}`;
-  }
-  return `${cleaned.slice(0, Math.max(10, 57 - suffix.length)).trim()}...${suffix}`;
 }
 
 function buildStandardHead(opts: {
@@ -702,7 +661,7 @@ function resolveRouteForSsr(
     const catSeo = getCategorySeoCopy(category.slug || rawCatSlug, catLabel);
     const title =
       catPage > 1
-        ? `${catSeo.titleBase} — පිටුව ${catPage} | Walkathawa`
+        ? `${catSeo.shortBase} — පිටුව ${catPage} | Walkathawa`
         : `${catSeo.titleBase} | Walkathawa`;
     const description = stripZW(catSeo.description).slice(0, 158);
     const catBaseRoute = `/category/${encodeURIComponent(category.slug || rawCatSlug)}`;
@@ -911,7 +870,7 @@ function resolveRouteForSsr(
     const pageStories = activeStories.slice(startIdx, startIdx + 20);
     const title =
       homePage > 1
-        ? `Sinhala Wal Katha — පිටුව ${homePage} | Walkathawa`
+        ? `Sinhala Wal Katha & Wela Katha — පිටුව ${homePage} | Walkathawa`
         : HOME_SEO.title;
     const sampleTitles = pageStories
       .slice(0, 2)
@@ -919,7 +878,7 @@ function resolveRouteForSsr(
       .join(', ');
     const description =
       homePage > 1 && sampleTitles
-        ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha සහ wal katha sinhala නොමිලේ කියවන්න.`.slice(0, 158)
+        ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha, sinhala wela katha සහ walkatha නොමිලේ කියවන්න.`.slice(0, 158)
         : HOME_SEO.description;
 
     const canonicalUrl = buildSsrPageUrl('/', homePage);

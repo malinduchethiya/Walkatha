@@ -42,7 +42,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           {hasValidCover ? (
             <img
               src={story.coverImage}
-              alt={formatStoryImageAlt(story.title, categoryLabel)}
+              alt={formatStoryImageAlt(story.title, categoryLabel, story.category)}
               loading="lazy"
               decoding="async"
               onError={() => setImageFailed(true)}

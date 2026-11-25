@@ -139,11 +139,34 @@ test('site.ts: canonical origin https://www.walkathawa.site and single-hop 301 r
 
   assert.equal(normalizeCanonicalPath('/page/1'), '/');
   assert.equal(normalizeCanonicalPath('/category/wife/page/1'), '/category/wife');
+  assert.equal(
+    normalizeCanonicalPath('/category/amma-wal-katha'),
+    `/category/${encodeURIComponent('අම්මා-පුතා')}`
+  );
+  assert.equal(normalizeCanonicalPath('/category/thaththa-wal-katha'), '/category/thaththa-duwa');
+  assert.equal(normalizeCanonicalPath('/category/akka-wal-katha'), '/category/akka-malli');
+  assert.equal(normalizeCanonicalPath('/category/wife-wal-katha'), '/category/wife');
+  assert.equal(normalizeCanonicalPath('/category/nana-wal-katha'), '/category/nanda');
+  assert.equal(normalizeCanonicalPath('/category/teacher-wal-katha'), '/category/school');
+  assert.equal(normalizeCanonicalPath('/category/samalingika'), '/category/lesbian');
+  assert.equal(normalizeCanonicalPath('/category/spa-kathawa'), '/category/spa-katha');
+  assert.equal(
+    normalizeCanonicalPath('/category/threesome-wal-katha'),
+    `/category/${encodeURIComponent('වටේ-යාම')}`
+  );
+  assert.equal(normalizeCanonicalPath('/category/sex-katha'), '/category/romantic');
   assert.equal(normalizeCanonicalPath('/posts'), '/');
   assert.equal(normalizeCanonicalPath('/collections'), '/categories');
   assert.equal(normalizeCanonicalPath('/privacy'), '/page/privacy-policy');
   assert.equal(normalizeCanonicalPath('/terms'), '/page/terms-and-conditions');
   assert.equal(normalizeCanonicalPath('/sitemap_index.xml'), '/sitemap.xml');
+
+  const walakathaCom = resolveCanonicalRedirect('walakatha.com', 'https', '/category/amma-wal-katha');
+  assert.deepEqual(walakathaCom, {
+    shouldRedirect: true,
+    status: 301,
+    location: `https://www.walkathawa.site/category/${encodeURIComponent('අම්මා-පුතා')}`,
+  });
 });
 
 test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, crawlable pagination, full sitemap, and _redirects', () => {
@@ -161,9 +184,19 @@ test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, 
 
   const redirects = fs.readFileSync(path.join(DIST_DIR, '_redirects'), 'utf8');
   assert.ok(
-    redirects.includes('https://walkathawa.site/* https://www.walkathawa.site/:splat 301!'),
-    '_redirects must force 301 from apex domain to www'
+    redirects.includes('/posts/:slug /story/:slug 301'),
+    '_redirects must contain relative path 301 rules'
   );
+  const redirectLines = redirects
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'));
+  for (const line of redirectLines) {
+    assert.ok(
+      line.startsWith('/') && !line.includes('http://') && !line.includes('https://') && !line.includes('301!'),
+      `Invalid _redirects rule for Cloudflare Workers Static Assets: "${line}"`
+    );
+  }
 
   const robots = fs.readFileSync(path.join(DIST_DIR, 'robots.txt'), 'utf8');
   assert.match(robots, /Sitemap:\s*https:\/\/www\.walkathawa\.site\/sitemap\.xml/);
@@ -252,6 +285,8 @@ test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, 
     { file: 'about.html', expectedCanonical: 'https://www.walkathawa.site/about' },
     { file: 'categories.html', expectedCanonical: 'https://www.walkathawa.site/categories' },
     { file: 'category/wife.html', expectedCanonical: 'https://www.walkathawa.site/category/wife' },
+    { file: 'category/thaththa-duwa.html', expectedCanonical: 'https://www.walkathawa.site/category/thaththa-duwa' },
+    { file: 'category/spa-katha.html', expectedCanonical: 'https://www.walkathawa.site/category/spa-katha' },
     { file: 'sitemap.html', expectedCanonical: 'https://www.walkathawa.site/sitemap' },
   ]) {
     const html = fs.readFileSync(path.join(DIST_DIR, check.file), 'utf8');
@@ -259,8 +294,13 @@ test('dist build artifacts: ZERO ads, 100% unique titles/descriptions, JSON-LD, 
     assert.equal(canonical, check.expectedCanonical, `${check.file} canonical mismatch`);
   }
 
-  // Homepage must link to hubs + page 2 and embed initial gallery state
+  // Homepage must include "Sinhala Wal Katha & Wela Katha" in title and link to hubs + page 2
   const homeHtml = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf8');
+  assert.ok(
+    homeHtml.includes('<title>Sinhala Wal Katha &amp; Wela Katha') ||
+      homeHtml.includes('<title>Sinhala Wal Katha & Wela Katha'),
+    'dist/index.html title must include "Sinhala Wal Katha & Wela Katha"'
+  );
   for (const requiredHref of ['/categories', '/popular', '/archives', '/sitemap', '/page/2']) {
     assert.ok(
       homeHtml.includes(`href="${requiredHref}"`),

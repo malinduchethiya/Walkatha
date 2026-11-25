@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import type { Category } from '../../types/story';
 import { SeoService } from '../../services/seoService';
 import { cleanCategoryBadgeName } from '../../utils/formatters';
+import { getCategorySeoCopy } from '../../config/seoMetadata';
 
 interface CategoriesPageProps {
   categories: Category[];
@@ -29,10 +30,10 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
       <div className="pb-5 border-b border-zinc-800/80 flex items-baseline justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-50">
-            වර්ගීකරණ
+            Sinhala Wal Katha &amp; Wela Katha — වර්ගීකරණ
           </h1>
-          <p className="text-sm text-zinc-400">
-            කැමති විෂය පථය තෝරා සිංහල කතා කියවන්න.
+          <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
+            අම්ම පුතා (amma wal katha), වයිෆ් හෝ GF (wife wal katha), පියා සහ දියණියෝ (thaththa duwa), ලොකු අක්කා (akka wal katha), ගුරු සහ ස්පා කතා ඇතුළු සියලුම sinhala wela katha වර්ගීකරණ.
           </p>
         </div>
         <a
@@ -47,7 +48,8 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories.map((cat) => {
           const slug = cat.slug || cat.id;
-          const label = cleanCategoryBadgeName(cat.sinhalaName || cat.name);
+          const fallbackLabel = cleanCategoryBadgeName(cat.sinhalaName || cat.name);
+          const catSeo = getCategorySeoCopy(slug, fallbackLabel);
           return (
             <a
               key={slug}
@@ -57,13 +59,11 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
             >
               <div className="space-y-1.5">
                 <h2 className="text-base font-semibold text-zinc-100 group-hover:text-amber-400 transition-colors">
-                  {label}
+                  {catSeo.anchorText}
                 </h2>
-                {cat.description && (
-                  <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
-                    {cat.description}
-                  </p>
-                )}
+                <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                  {catSeo.description}
+                </p>
               </div>
               {typeof cat.storyCount === 'number' && cat.storyCount > 0 && (
                 <span className="text-xs text-zinc-500 tabular-nums">

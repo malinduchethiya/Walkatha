@@ -97,73 +97,145 @@ function toIsoDate(raw) {
   return isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-const HOME_SEO_TITLE = 'Walkathawa (වල් කතාව) — Sinhala Wal Katha & Wela Katha New';
+const HOME_SEO_TITLE = 'Sinhala Wal Katha & Wela Katha — Walkathawa (වල් කතාව)';
 const HOME_SEO_DESCRIPTION =
-  'Walkathawa (වල් කතාව) — Read new Sinhala wal katha, wela katha, and sinhala wala katha online free. Daily updated wal katha sinhala and aluth sinhala walkatha.';
+  'Sinhala wal katha, wela katha සහ sinhala wela katha නොමිලේ කියවන්න. Walkathawa (වල් කතාව) අලුත්ම walkatha, wal katha 2026 සහ sinhala wal එකතුව.';
 
 const CATEGORY_SEO_MAP = {
-  wife: {
-    titleBase: 'Wife Wal Katha — වයිෆ් / බිරිඳ කතා',
-    shortBase: 'Wife Wal Katha',
-    description:
-      'අලුත්ම wife wal katha, බිරිඳ කතා සහ sinhala wal katha Walkathawa වෙතින් නොමිලේ කියවන්න. Daily updated wela katha sinhala.',
-  },
-  'akka-malli': {
-    titleBase: 'Akka Malli Wal Katha — අක්කා මල්ලි කතා',
-    shortBase: 'Akka Malli Wal Katha',
-    description:
-      'නවතම akka wal katha, අක්කා මල්ලි කතා සහ sinhala wala katha Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
-  },
-  nanda: {
-    titleBase: 'Aunty & Nanda Wal Katha — නැන්දා කතා',
-    shortBase: 'Aunty & Nanda Wal Katha',
-    description:
-      'හොඳම aunty wal katha, නැන්දා කතා සහ sinhala wal katha new එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.',
-  },
-  'ඇන්ටි-පුතා': {
-    titleBase: 'Aunty Wal Katha — ඇන්ටි පුතා කතා',
-    shortBase: 'Aunty Wal Katha',
-    description:
-      'අලුත්ම aunty wal katha, ඇන්ටි පුතා කතා සහ wal katha sinhala Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
-  },
   'අම්මා-පුතා': {
-    titleBase: 'Amma Wal Katha — අම්මා පුතා කතා',
+    anchorText: 'අම්ම පුතා (Amma Wal Katha)',
+    titleBase: 'Amma Wal Katha — අම්ම පුතා සහ Ammai Puthai',
     shortBase: 'Amma Wal Katha',
     description:
-      'අලුත්ම amma wal katha, අම්මා පුතා කතා සහ sinhala wal katha Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
+      'අලුත්ම amma wal katha, අම්ම පුතා (ammai puthai) කතා සහ sinhala wal katha එකතුව. Walkathawa වෙතින් sinhala wela katha නොමිලේ කියවන්න.',
+  },
+  wife: {
+    anchorText: 'වයිෆ් හෝ GF (Wife Wal Katha)',
+    titleBase: 'Wife Wal Katha & Wife GF — වයිෆ් හෝ GF කතා',
+    shortBase: 'Wife Wal Katha',
+    description:
+      'අලුත්ම wife wal katha, wife gf (වයිෆ් හෝ GF) කතා සහ sinhala wal katha එකතුව. Walkathawa වෙතින් දිනපතා wela katha සහ walkatha කියවන්න.',
+  },
+  'thaththa-duwa': {
+    anchorText: 'පියා සහ දියණියෝ (Thaththa Duwa)',
+    titleBase: 'Thaththa Duwa & Thaththa Wal Katha — පියා දියණි',
+    shortBase: 'Thaththa Duwa Wal Katha',
+    description:
+      'අලුත්ම thaththa duwa, thaththa wal katha (පියා සහ දියණියෝ) කතා සහ sinhala wal katha එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.',
+  },
+  'akka-malli': {
+    anchorText: 'ලොකු අක්කා (Akka Wal Katha)',
+    titleBase: 'Akka Wal Katha — ලොකු අක්කා සහ අක්කා මල්ලි',
+    shortBase: 'Akka Wal Katha',
+    description:
+      'නවතම akka wal katha, akkagen sapa, ලොකු අක්කා සහ sahodhara sohadhari (අක්කා මල්ලි) sinhala wal katha හා wela katha නොමිලේ කියවන්න.',
+  },
+  nanda: {
+    anchorText: 'නෑනා / නැන්දා (Nana Wal Katha)',
+    titleBase: 'Nana Wal Katha & Nanda — නෑනා සහ පවුලේ අන් අය',
+    shortBase: 'Nana & Nanda Wal Katha',
+    description:
+      'හොඳම nana wal katha, pawule an aya (නෑනා සහ නැන්දා) කතා සහ අලුත්ම sinhala wal katha හා wela katha Walkathawa වෙතින් කියවන්න.',
+  },
+  'ඇන්ටි-පුතා': {
+    anchorText: 'ඇන්ටි පුතා (Aunty Wal Katha)',
+    titleBase: 'Aunty Wal Katha — ඇන්ටි පුතා සහ වැඩිමහල් කතා',
+    shortBase: 'Aunty Wal Katha',
+    description:
+      'අලුත්ම aunty wal katha, ඇන්ටි පුතා, wadimahal bala සහ uncle තේමා රැගත් sinhala wal katha හා sinhala wela katha නොමිලේ කියවන්න.',
   },
   school: {
-    titleBase: 'School & Teacher Wal Katha — පාසල් කතා',
-    shortBase: 'School & Teacher Wal Katha',
+    anchorText: 'පාසල් / ගුරු (Teacher Wal Katha)',
+    titleBase: 'Teacher & School Wal Katha — පාසල් සහ කැම්පස්',
+    shortBase: 'Teacher & School Wal Katha',
     description:
-      'නවතම school wal katha, teacher wal katha සහ පාසල් කැම්පස් sinhala walkatha එකතුව Walkathawa වෙතින් කියවන්න.',
+      'නවතම teacher wal katha, model wal katha, campus, hostel සහ bus wal katha ඇතුළු පාසල් sinhala wal katha එකතුව නොමිලේ කියවන්න.',
+  },
+  'spa-katha': {
+    anchorText: 'ස්පා කතා (Spa Kathawa)',
+    titleBase: 'Spa Kathawa & Spa Katha — ස්පා සිංහල වල් කතා',
+    shortBase: 'Spa Kathawa',
+    description:
+      'අලුත්ම spa kathawa, spa katha, මසාජ් අත්දැකීම් සහ real story (ඇත්ත සීන් එකක්) ඇතුළත් sinhala wal katha හා wela katha කියවන්න.',
   },
   lesbian: {
-    titleBase: 'Lesbian Wal Katha — සිංහල වල් කතා',
-    shortBase: 'Lesbian Wal Katha',
+    anchorText: 'සමලිංගික (Samalingika)',
+    titleBase: 'Samalingika & Lesbian Wal Katha — සමලිංගික කතා',
+    shortBase: 'Samalingika Wal Katha',
     description:
-      'අලුත්ම lesbian wal katha සහ sinhala wela katha එකතුව Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
+      'අලුත්ම samalingika (සමලිංගික) කතා, lesbian wal katha සහ sinhala wela katha එකතුව Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
   },
   'වටේ-යාම': {
-    titleBase: 'Cuckold & Wife Sharing Wal Katha — වටේ යාම',
-    shortBase: 'Cuckold Wal Katha',
+    anchorText: 'වටේ යාම (Threesome & Walle Kathawa)',
+    titleBase: 'Threesome Wal Katha & Walle Kathawa — වටේ යාම',
+    shortBase: 'Threesome & Walle Kathawa',
     description:
-      'අලුත්ම cuckold wal katha, wife sharing සහ වටේ යාම sinhala wal katha Walkathawa වෙතින් නොමිලේ කියවන්න.',
+      'අලුත්ම threesome wal katha, walle kathawa, wife sharing සහ වටේ යාම sinhala wal katha හා wela katha Walkathawa වෙතින් කියවන්න.',
   },
   romantic: {
-    titleBase: 'Romantic Sinhala Wal Katha — ආදර කතා',
-    shortBase: 'Romantic Sinhala Wal Katha',
+    anchorText: 'ආදර කතා (Sinhala Sex Katha)',
+    titleBase: 'Sinhala Sex Katha & Real Story — ආදර වල් කතා',
+    shortBase: 'Sinhala Sex Katha',
     description:
-      'ආදර හා හැඟීම්බර sinhala wal katha, wela katha සහ sinhala walkatha කෙටි කතා Walkathawa වෙතින් නොමිලේ කියවන්න.',
+      'ආදර හා හැඟීම්බර sinhala sex katha, sinhala sex stories, real story (ඇත්ත සීන් එකක්), jil katha සහ sinhala wal katha කියවන්න.',
   },
 };
 
-function formatCleanStoryTitle(rawTitle) {
+const CATEGORY_THEME_PATTERNS = {
+  'අම්මා-පුතා': /(amma|අම්ම|මව|putha|පුතා)/i,
+  wife: /(wife|වයිෆ්|බිරිඳ|බිරින්ද|gf|girlfriend|කෙල්ල|couple|ජෝඩු|husband)/i,
+  'thaththa-duwa': /(thaththa|තාත්ත|පියා|duwa|දුව|දියණි|bappa|බාප්ප)/i,
+  'akka-malli': /(akka|අක්ක|නංගි|nangi|මල්ලි|malli|සහෝදර|sahodhara)/i,
+  nanda: /(nanda|නැන්ද|nana|නෑන|පවුල|pawul|මාමා|mama)/i,
+  'ඇන්ටි-පුතා': /(aunty|ඇන්ටි|anti|අන්කල්|uncle)/i,
+  school: /(school|පාසල්|ඉස්කෝල|teacher|ටීච|මැඩම්|madam|campus|කැම්පස්|hostel|හොස්ටල්|model|ක්ලාස්|class)/i,
+  'spa-katha': /(spa|ස්පා|massage|මසාජ්)/i,
+  lesbian: /(lesbian|සමලිංගික|samalingika|ලෙස්බියන්)/i,
+  'වටේ-යාම': /(වටේ|wate|cuckold|threesome|ත්‍රීසම්|ජෝඩු මාරු|sharing|වල්ලෙ|walle)/i,
+  romantic: /(romantic|ආදර|love|රස|sex katha|real|ඇත්ත)/i,
+};
+
+function storyMatchesCategory(story, rawCatSlug) {
+  const catLower = stripZW(rawCatSlug).toLowerCase();
+  const sCat = stripZW(story.category).toLowerCase();
+  const sCatId = stripZW(story.categoryId).toLowerCase();
+  const sTags = Array.isArray(story.tags) ? story.tags.map((t) => stripZW(t).toLowerCase()) : [];
+  if (sCat === catLower || sCatId === catLower || sTags.includes(catLower)) return true;
+  const rx = CATEGORY_THEME_PATTERNS[catLower];
+  if (rx) {
+    const text = `${story.title || ''} ${story.slug || ''} ${story.shortDescription || story.description || ''} ${sTags.join(' ')}`;
+    return rx.test(text);
+  }
+  return false;
+}
+
+function detectStoryThemeKeyword(rawTitle, categorySlug) {
+  const text = `${rawTitle || ''} ${categorySlug || ''}`;
+  if (/(amma|අම්ම|මව)/i.test(text)) return 'Amma Wal Katha';
+  if (/(thaththa|තාත්ත|පියා|duwa|දුව)/i.test(text)) return 'Thaththa Duwa';
+  if (/(akka|අක්ක|නංගි|nangi)/i.test(text)) return 'Akka Wal Katha';
+  if (/(wife|වයිෆ්|බිරිඳ|gf)/i.test(text)) return 'Wife Wal Katha';
+  if (/(nana|නෑන|nanda|නැන්ද)/i.test(text)) return 'Nana Wal Katha';
+  if (/(teacher|ටීච|මැඩම්|school|පාසල්|campus|model)/i.test(text)) return 'Teacher Wal Katha';
+  if (/(spa|ස්පා|මසාජ්)/i.test(text)) return 'Spa Kathawa';
+  if (/(aunty|ඇන්ටි)/i.test(text)) return 'Aunty Wal Katha';
+  return 'Sinhala Wal Katha';
+}
+
+function formatCleanStoryTitle(rawTitle, categorySlug) {
   const cleaned = stripZW(rawTitle).replace(/\s+/g, ' ').trim();
   const suffix = ` | ${SITE_NAME}`;
-  const hasCoreKeyword = /(wal\s*katha|wela\s*katha|wala\s*katha|walkatha|වල්\s*කතා)/i.test(cleaned);
-  const withKeyword = hasCoreKeyword ? `${cleaned}${suffix}` : `${cleaned} — Wal Katha${suffix}`;
-  if (withKeyword.length <= 65) return withKeyword;
+  const hasCoreKeyword =
+    /(wal\s*katha|wela\s*katha|wala\s*katha|walkatha|sex\s*katha|වල්\s*කතා|වැල\s*කතා)/i.test(
+      cleaned
+    );
+  if (!hasCoreKeyword) {
+    const themeKw = detectStoryThemeKeyword(cleaned, categorySlug);
+    const withTheme = `${cleaned} — ${themeKw}${suffix}`;
+    if (withTheme.length <= 65) return withTheme;
+    const withShort = `${cleaned} — Wal Katha${suffix}`;
+    if (withShort.length <= 65) return withShort;
+  }
   if (cleaned.length + suffix.length <= 65) return `${cleaned}${suffix}`;
   return `${cleaned.slice(0, Math.max(12, 62 - suffix.length)).trim()}...${suffix}`;
 }
@@ -376,12 +448,17 @@ function renderDocument(templateParts, headOpts, bodyHtml, initialScriptTag = ''
     );
 }
 
+function getCatAnchorText(slug, fallback) {
+  const key = stripZW(slug).toLowerCase();
+  return CATEGORY_SEO_MAP[key]?.anchorText || stripZW(fallback || slug);
+}
+
 function buildSiteNavHtml(categories) {
   const catLinks = categories
     .map(
       (c) =>
         `<a href="/category/${encodeSlug(c.slug || c.id)}">${escapeHtmlText(
-          stripZW(c.sinhalaName || c.name || c.slug)
+          getCatAnchorText(c.slug || c.id, c.sinhalaName || c.name)
         )}</a>`
     )
     .join(' ');
@@ -402,7 +479,7 @@ function buildSiteFooterHtml(categories) {
     .map(
       (c) =>
         `<a href="/category/${encodeSlug(c.slug || c.id)}">${escapeHtmlText(
-          stripZW(c.sinhalaName || c.name || c.slug)
+          getCatAnchorText(c.slug || c.id, c.sinhalaName || c.name)
         )}</a>`
     )
     .join(' ');
@@ -551,7 +628,7 @@ function main() {
     const startIdx = (p - 1) * PAGE_SIZE;
     const pageStories = stories.slice(startIdx, startIdx + PAGE_SIZE);
     const title =
-      p > 1 ? `Sinhala Wal Katha — පිටුව ${p} | ${SITE_NAME}` : HOME_SEO_TITLE;
+      p > 1 ? `Sinhala Wal Katha & Wela Katha — පිටුව ${p} | ${SITE_NAME}` : HOME_SEO_TITLE;
     const sampleTitles = pageStories
       .slice(0, 2)
       .map((s) => stripZW(s.title))
@@ -559,7 +636,7 @@ function main() {
     const description =
       p > 1 && sampleTitles
         ? formatCleanDescription(
-            `Walkathawa පිටුව ${p}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha සහ wal katha sinhala නොමිලේ කියවන්න.`,
+            `Walkathawa පිටුව ${p}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha, sinhala wela katha සහ walkatha නොමිලේ කියවන්න.`,
             '',
             title
           )
@@ -956,17 +1033,13 @@ function main() {
     const rawSlug = stripZW(cat.slug || cat.id);
     if (!rawSlug || rawSlug.includes('/')) continue;
     const catLower = rawSlug.toLowerCase();
-    const matching = stories.filter((s) => {
-      const sCat = stripZW(s.category).toLowerCase();
-      const sCatId = stripZW(s.categoryId).toLowerCase();
-      const sTags = Array.isArray(s.tags) ? s.tags.map((t) => stripZW(t).toLowerCase()) : [];
-      return sCat === catLower || sCatId === catLower || sTags.includes(catLower);
-    });
+    const matching = stories.filter((s) => storyMatchesCategory(s, catLower));
     const catLabel = stripZW(cat.sinhalaName || cat.name || rawSlug);
     const catSeo = CATEGORY_SEO_MAP[catLower] || {
-      titleBase: `${catLabel} — Wal Katha`,
+      anchorText: `${catLabel} (Wal Katha)`,
+      titleBase: `${catLabel} — Sinhala Wal Katha`,
       shortBase: catLabel,
-      description: `${catLabel} — අලුත්ම sinhala wal katha, wela katha සහ walkatha එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`,
+      description: `${catLabel} — අලුත්ම sinhala wal katha, wela katha, sinhala wela katha සහ walkatha එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`,
     };
     const catBaseRoute = `/category/${encodeSlug(rawSlug)}`;
     const totalCatPages = Math.max(1, Math.ceil(matching.length / PAGE_SIZE));
@@ -1073,7 +1146,7 @@ function main() {
     const rawSlug = stripZW(story.slug || story.id);
     if (!rawSlug) continue;
     const postTitle = stripZW(story.title || rawSlug);
-    let cleanTitle = formatCleanStoryTitle(postTitle);
+    let cleanTitle = formatCleanStoryTitle(postTitle, story.category);
     const titleKey = cleanTitle.toLowerCase();
     const prevTitleCount = seenStoryTitles.get(titleKey) || 0;
     seenStoryTitles.set(titleKey, prevTitleCount + 1);
@@ -1127,10 +1200,11 @@ function main() {
       .map((p) => `<p data-reading-content>${escapeHtmlText(p)}</p>`)
       .join('\n');
 
+    const themeKw = detectStoryThemeKeyword(postTitle, catSlug);
     const coverHtml =
       story.coverImage && String(story.coverImage).startsWith('http')
         ? `<figure><img src="${escapeHtmlAttr(String(story.coverImage).trim())}" alt="${escapeHtmlAttr(
-            `${postTitle} — ${catLabel} | Sinhala Wal Katha`
+            `${postTitle} — ${catLabel} (${themeKw} | Sinhala Wal Katha & Wela Katha)`
           )}" loading="eager" /></figure>`
         : '';
 
@@ -1154,7 +1228,7 @@ function main() {
 
     const relatedHtml =
       relatedStories.length > 0
-        ? `<section><h2>තවත් කියවන්න</h2><ul>${relatedStories
+        ? `<section><h2>තවත් Sinhala Wal Katha හා Wela Katha කියවන්න</h2><ul>${relatedStories
             .map(
               (rel) =>
                 `<li><a href="/story/${encodeSlug(rel.slug || rel.id)}">${escapeHtmlText(
@@ -1203,7 +1277,16 @@ function main() {
               wordCount,
               timeRequired: `PT${readingMinutes}M`,
               articleSection: catLabel,
-              keywords: ['wal katha', 'sinhala wal katha', 'wela katha', 'walkatha', 'sinhala wala katha', catLabel],
+              keywords: [
+                'sinhala wal katha',
+                'wela katha',
+                'sinhala wela katha',
+                'walkatha',
+                'wal katha',
+                'sinhala wal',
+                themeKw.toLowerCase(),
+                catLabel,
+              ],
               image: [ogImg],
               ...(datePublished ? { datePublished } : {}),
               ...(dateModified ? { dateModified } : {}),

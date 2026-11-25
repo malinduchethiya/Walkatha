@@ -18,42 +18,96 @@ import {
   toW3CDatetime,
   hasSubstantiveStoryChanges,
 } from '../types/story';
+import { storyMatchesCategory } from '../config/seoMetadata';
 
 const DEFAULT_CATEGORIES: Category[] = [
   {
+    id: 'අම්මා-පුතා',
+    slug: 'අම්මා-පුතා',
+    name: 'අම්ම පුතා (Amma Wal Katha)',
+    sinhalaName: 'අම්ම පුතා',
+    description:
+      'අලුත්ම amma wal katha, අම්ම පුතා (ammai puthai) කතා සහ sinhala wal katha එකතුව.',
+  },
+  {
     id: 'wife',
     slug: 'wife',
-    name: 'වයිෆ් / බිරිඳ (Wife Stories)',
-    sinhalaName: 'වයිෆ් / බිරිඳ කතා',
-    description: 'බිරිඳ, පවුලේ ජීවිතය සහ විවාහක අත්දැකීම් ඇසුරින් ලියැවුණු සිංහල වැල කතා එකතුව.',
+    name: 'වයිෆ් හෝ GF (Wife Wal Katha)',
+    sinhalaName: 'වයිෆ් හෝ GF',
+    description:
+      'අලුත්ම wife wal katha, wife gf (වයිෆ් හෝ GF) සහ විවාහක sinhala wal katha එකතුව.',
+  },
+  {
+    id: 'thaththa-duwa',
+    slug: 'thaththa-duwa',
+    name: 'පියා සහ දියණියෝ (Thaththa Duwa)',
+    sinhalaName: 'පියා සහ දියණියෝ',
+    description:
+      'අලුත්ම thaththa duwa, thaththa wal katha (පියා සහ දියණියෝ) සහ sinhala wal katha එකතුව.',
   },
   {
     id: 'akka-malli',
     slug: 'akka-malli',
-    name: 'අක්කා - මල්ලි (Akka Malli)',
-    sinhalaName: 'අක්කා - මල්ලි කතා',
-    description: 'අක්කා, මල්ලි සහ අසල්වැසි යෞවන සබඳතා ඇසුරින් ලියැවුණු රසවත් සිංහල වල් කතා.',
+    name: 'ලොකු අක්කා / අක්කා මල්ලි (Akka Wal Katha)',
+    sinhalaName: 'ලොකු අක්කා / අක්කා මල්ලි',
+    description:
+      'නවතම akka wal katha, akkagen sapa, ලොකු අක්කා සහ sahodhara sohadhari (අක්කා මල්ලි) කතා.',
   },
   {
     id: 'nanda',
     slug: 'nanda',
-    name: 'නැන්දා / ඇන්ටි (Aunty Stories)',
-    sinhalaName: 'නැන්දා / ඇන්ටි කතා',
-    description: 'අම්මා වල් කතා 2026, නැන්දා සහ ඇන්ටි චරිත ඇසුරින් නිර්මාණය වූ සිංහල කතා.',
+    name: 'නෑනා / නැන්දා (Nana Wal Katha)',
+    sinhalaName: 'නෑනා / නැන්දා',
+    description:
+      'හොඳම nana wal katha, pawule an aya (නෑනා සහ නැන්දා) සහ අලුත්ම sinhala wela katha.',
+  },
+  {
+    id: 'ඇන්ටි-පුතා',
+    slug: 'ඇන්ටි-පුතා',
+    name: 'ඇන්ටි පුතා (Aunty Wal Katha)',
+    sinhalaName: 'ඇන්ටි පුතා',
+    description:
+      'අලුත්ම aunty wal katha, ඇන්ටි පුතා, wadimahal bala සහ uncle තේමා රැගත් sinhala wal katha.',
   },
   {
     id: 'school',
     slug: 'school',
-    name: 'පාසල් සහ කැම්පස් (School & Campus)',
-    sinhalaName: 'පාසල් සහ කැම්පස් කතා',
-    description: 'කැම්පස්, පාසල් සහ යෞවන ආදර අත්දැකීම් ඇසුරින් ලියැවුණු අලුත්ම සිංහල වැල කතා.',
+    name: 'පාසල් / ගුරු (Teacher Wal Katha)',
+    sinhalaName: 'පාසල් / ගුරු',
+    description:
+      'නවතම teacher wal katha, model wal katha, campus, hostel සහ bus wal katha එකතුව.',
+  },
+  {
+    id: 'spa-katha',
+    slug: 'spa-katha',
+    name: 'ස්පා කතා (Spa Kathawa)',
+    sinhalaName: 'ස්පා කතා',
+    description:
+      'අලුත්ම spa kathawa, spa katha, මසාජ් අත්දැකීම් සහ real story (ඇත්ත සීන් එකක්) කතා.',
+  },
+  {
+    id: 'lesbian',
+    slug: 'lesbian',
+    name: 'සමලිංගික (Samalingika)',
+    sinhalaName: 'සමලිංගික කතා',
+    description:
+      'අලුත්ම samalingika (සමලිංගික) කතා, lesbian wal katha සහ sinhala wela katha එකතුව.',
+  },
+  {
+    id: 'වටේ-යාම',
+    slug: 'වටේ-යාම',
+    name: 'වටේ යාම (Threesome & Walle Kathawa)',
+    sinhalaName: 'වටේ යාම',
+    description:
+      'අලුත්ම threesome wal katha, walle kathawa, wife sharing සහ වටේ යාම sinhala wal katha.',
   },
   {
     id: 'romantic',
     slug: 'romantic',
-    name: 'ආදර කතා (Romantic Stories)',
+    name: 'ආදර කතා (Sinhala Sex Katha)',
     sinhalaName: 'ආදර සහ රස කතා',
-    description: 'ආදරණීය හා හැඟීම්බර සිංහල වල් කතා සහ කෙටි කතා එකතුව.',
+    description:
+      'ආදර හා හැඟීම්බර sinhala sex katha, sinhala sex stories, real story සහ jil katha එකතුව.',
   },
 ];
 
@@ -336,18 +390,18 @@ export class StoryService {
         payload = await fetchJsonSafe('/api-data/catalog.json');
       }
       if (payload && Array.isArray(payload.categories) && payload.categories.length > 0) {
-        catMap.clear();
         for (const c of payload.categories) {
           if (isDocDeleted(c)) continue;
           const key = stripZeroWidth(c.slug || c.id);
           if (!key || key === 'all') continue;
+          const existing = catMap.get(key);
           catMap.set(key, {
-            id: stripZeroWidth(c.id || key),
+            id: stripZeroWidth(c.id || existing?.id || key),
             slug: key,
-            name: stripZeroWidth(c.name || key),
-            sinhalaName: stripZeroWidth(c.sinhalaName || c.name || key),
-            description: stripZeroWidth(c.description || ''),
-            storyCount: Number(c.storyCount) || 0,
+            name: existing?.name || stripZeroWidth(c.name || key),
+            sinhalaName: existing?.sinhalaName || stripZeroWidth(c.sinhalaName || c.name || key),
+            description: existing?.description || stripZeroWidth(c.description || ''),
+            storyCount: Number(c.storyCount) || existing?.storyCount || 0,
           });
         }
       }
@@ -386,19 +440,7 @@ export class StoryService {
     let filtered = [...all];
 
     if (category && category !== 'all') {
-      const lowerCat = stripZeroWidth(decodeURIComponent(category)).toLowerCase();
-      filtered = filtered.filter((s) => {
-        const sCat = (s.category || '').toLowerCase();
-        const sCatId = (s.categoryId || '').toLowerCase();
-        const sCatName = (s.categoryName || '').toLowerCase();
-        const sTags = (s.tags || []).map((t) => t.toLowerCase());
-        return (
-          sCat === lowerCat ||
-          sCatId === lowerCat ||
-          sCatName.includes(lowerCat) ||
-          sTags.includes(lowerCat)
-        );
-      });
+      filtered = filtered.filter((s) => storyMatchesCategory(s, category));
     }
 
     if (search.trim()) {

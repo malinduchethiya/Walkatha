@@ -7,12 +7,38 @@ export const LEGACY_REDIRECT_HOSTS = new Set<string>([
   'walkathawa.site',
   'walkathawa.com',
   'www.walkathawa.com',
+  'walakatha.com',
+  'www.walakatha.com',
 ]);
 
 export const PRODUCTION_HOSTS = new Set<string>([
   SITE_HOSTNAME,
   ...Array.from(LEGACY_REDIRECT_HOSTS),
 ]);
+
+const CATEGORY_SLUG_ALIASES: Record<string, string> = {
+  amma: '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'amma-wal-katha': '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'ammai-puthai': '%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'thaththa-wal-katha': 'thaththa-duwa',
+  'akka-wal-katha': 'akka-malli',
+  'akkagen-sapa': 'akka-malli',
+  'sahodhara-sohadhari': 'akka-malli',
+  'wife-wal-katha': 'wife',
+  'wife-gf': 'wife',
+  'nana-wal-katha': 'nanda',
+  'pawule-an-aya': 'nanda',
+  'aunty-wal-katha': '%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'wadimahal-bala': '%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F',
+  'teacher-wal-katha': 'school',
+  'model-wal-katha': 'school',
+  samalingika: 'lesbian',
+  'spa-kathawa': 'spa-katha',
+  'threesome-wal-katha': '%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8',
+  'walle-kathawa': '%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8',
+  'sex-katha': 'romantic',
+  'sinhala-sex-katha': 'romantic',
+};
 
 export function normalizeCanonicalPath(rawPathname: string): string {
   let target = (rawPathname || '/').replace(/\/{2,}/g, '/');
@@ -27,7 +53,7 @@ export function normalizeCanonicalPath(rawPathname: string): string {
     return target.replace(/\/page\/1$/i, '');
   }
   if (/^\/category\/[^/]+\/page\/1$/i.test(target)) {
-    return target.replace(/\/page\/1$/i, '');
+    target = target.replace(/\/page\/1$/i, '');
   }
   if (target === '/posts') {
     return '/';
@@ -39,10 +65,19 @@ export function normalizeCanonicalPath(rawPathname: string): string {
     return target.replace(/^\/katha\//, '/story/');
   }
   if (target.startsWith('/categories/')) {
-    return target.replace(/^\/categories\//, '/category/');
+    target = target.replace(/^\/categories\//, '/category/');
   }
   if (target.startsWith('/collections/')) {
-    return target.replace(/^\/collections\//, '/category/');
+    target = target.replace(/^\/collections\//, '/category/');
+  }
+  if (target.startsWith('/category/')) {
+    const parts = target.split('/');
+    const rawCatSlug = (parts[2] || '').toLowerCase();
+    const mapped = CATEGORY_SLUG_ALIASES[rawCatSlug];
+    if (mapped) {
+      parts[2] = mapped;
+      target = parts.join('/');
+    }
   }
   if (target === '/collections') {
     return '/categories';

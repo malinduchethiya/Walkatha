@@ -17,16 +17,46 @@ const PRIMARY_FIREBASE_CONFIG = {
 };
 
 const DEFAULT_CATEGORIES = [
-  { id: 'wife', slug: 'wife', sinhalaName: 'වයිෆ් / බිරිඳ කතා', name: 'Wife Stories' },
-  { id: 'akka-malli', slug: 'akka-malli', sinhalaName: 'අක්කා - මල්ලි කතා', name: 'Akka Malli' },
-  { id: 'nanda', slug: 'nanda', sinhalaName: 'නැන්දා / ඇන්ටි කතා', name: 'Aunty Stories' },
-  { id: 'school', slug: 'school', sinhalaName: 'පාසල් සහ කැම්පස් කතා', name: 'School & Campus' },
-  { id: 'romantic', slug: 'romantic', sinhalaName: 'ආදර සහ රස කතා', name: 'Romantic Stories' },
-  { id: 'lesbian', slug: 'lesbian', sinhalaName: 'Lesbian කතා', name: 'Lesbian Stories' },
-  { id: 'වටේ-යාම', slug: 'වටේ-යාම', sinhalaName: 'වටේ යාම', name: 'Wife Sharing & Cuckold' },
-  { id: 'අම්මා-පුතා', slug: 'අම්මා-පුතා', sinhalaName: 'අම්මා පුතා', name: 'Amma Stories' },
-  { id: 'ඇන්ටි-පුතා', slug: 'ඇන්ටි-පුතා', sinhalaName: 'ඇන්ටි පුතා', name: 'Aunty Putha' },
+  { id: 'අම්මා-පුතා', slug: 'අම්මා-පුතා', sinhalaName: 'අම්ම පුතා', name: 'අම්ම පුතා (Amma Wal Katha)' },
+  { id: 'wife', slug: 'wife', sinhalaName: 'වයිෆ් හෝ GF', name: 'වයිෆ් හෝ GF (Wife Wal Katha)' },
+  { id: 'thaththa-duwa', slug: 'thaththa-duwa', sinhalaName: 'පියා සහ දියණියෝ', name: 'පියා සහ දියණියෝ (Thaththa Duwa)' },
+  { id: 'akka-malli', slug: 'akka-malli', sinhalaName: 'ලොකු අක්කා / අක්කා මල්ලි', name: 'ලොකු අක්කා (Akka Wal Katha)' },
+  { id: 'nanda', slug: 'nanda', sinhalaName: 'නෑනා / නැන්දා', name: 'නෑනා / නැන්දා (Nana Wal Katha)' },
+  { id: 'ඇන්ටි-පුතා', slug: 'ඇන්ටි-පුතා', sinhalaName: 'ඇන්ටි පුතා', name: 'ඇන්ටි පුතා (Aunty Wal Katha)' },
+  { id: 'school', slug: 'school', sinhalaName: 'පාසල් / ගුරු', name: 'පාසල් / ගුරු (Teacher Wal Katha)' },
+  { id: 'spa-katha', slug: 'spa-katha', sinhalaName: 'ස්පා කතා', name: 'ස්පා කතා (Spa Kathawa)' },
+  { id: 'lesbian', slug: 'lesbian', sinhalaName: 'සමලිංගික කතා', name: 'සමලිංගික (Samalingika)' },
+  { id: 'වටේ-යාම', slug: 'වටේ-යාම', sinhalaName: 'වටේ යාම', name: 'වටේ යාම (Threesome & Walle Kathawa)' },
+  { id: 'romantic', slug: 'romantic', sinhalaName: 'ආදර සහ රස කතා', name: 'ආදර කතා (Sinhala Sex Katha)' },
 ];
+
+const CATEGORY_THEME_PATTERNS = {
+  'අම්මා-පුතා': /(amma|අම්ම|මව|putha|පුතා)/i,
+  wife: /(wife|වයිෆ්|බිරිඳ|බිරින්ද|gf|girlfriend|කෙල්ල|couple|ජෝඩු|husband)/i,
+  'thaththa-duwa': /(thaththa|තාත්ත|පියා|duwa|දුව|දියණි|bappa|බාප්ප)/i,
+  'akka-malli': /(akka|අක්ක|නංගි|nangi|මල්ලි|malli|සහෝදර|sahodhara)/i,
+  nanda: /(nanda|නැන්ද|nana|නෑන|පවුල|pawul|මාමා|mama)/i,
+  'ඇන්ටි-පුතා': /(aunty|ඇන්ටි|anti|අන්කල්|uncle)/i,
+  school: /(school|පාසල්|ඉස්කෝල|teacher|ටීච|මැඩම්|madam|campus|කැම්පස්|hostel|හොස්ටල්|model|ක්ලාස්|class)/i,
+  'spa-katha': /(spa|ස්පා|massage|මසාජ්)/i,
+  lesbian: /(lesbian|සමලිංගික|samalingika|ලෙස්බියන්)/i,
+  'වටේ-යාම': /(වටේ|wate|cuckold|threesome|ත්‍රීසම්|ජෝඩු මාරු|sharing|වල්ලෙ|walle)/i,
+  romantic: /(romantic|ආදර|love|රස|sex katha|real|ඇත්ත)/i,
+};
+
+function storyMatchesCategory(story, rawCatSlug) {
+  const catLower = stripZW(rawCatSlug).toLowerCase();
+  const sCat = stripZW(story.category).toLowerCase();
+  const sCatId = stripZW(story.categoryId).toLowerCase();
+  const sTags = Array.isArray(story.tags) ? story.tags.map((t) => stripZW(t).toLowerCase()) : [];
+  if (sCat === catLower || sCatId === catLower || sTags.includes(catLower)) return true;
+  const rx = CATEGORY_THEME_PATTERNS[catLower];
+  if (rx) {
+    const text = `${story.title || ''} ${story.slug || ''} ${story.shortDescription || story.description || ''} ${sTags.join(' ')}`;
+    return rx.test(text);
+  }
+  return false;
+}
 
 const STATIC_SITE_PAGES = [
   { path: '/', changefreq: 'daily', priority: '1.0' },
@@ -287,13 +317,23 @@ async function loadStore() {
 
   const catMap = new Map();
   for (const def of DEFAULT_CATEGORIES) {
-    catMap.set(def.slug.toLowerCase(), def);
+    catMap.set(def.slug.toLowerCase(), { ...def });
   }
   for (const c of combinedRawCats) {
     if (!c || c.isDeleted || c.deleted || c.private === true) continue;
     const slug = stripZW(c.slug || c.id);
     if (!slug || slug.toLowerCase() === 'all') continue;
-    catMap.set(slug.toLowerCase(), { ...c, slug });
+    const key = slug.toLowerCase();
+    const existing = catMap.get(key);
+    catMap.set(key, {
+      ...c,
+      slug,
+      name: existing?.name || c.name || slug,
+      sinhalaName: existing?.sinhalaName || c.sinhalaName || c.name || slug,
+    });
+  }
+  for (const [key, catObj] of catMap.entries()) {
+    catObj.storyCount = stories.filter((s) => storyMatchesCategory(s, key)).length;
   }
 
   return {

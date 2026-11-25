@@ -1,13 +1,6 @@
-# Canonical host & protocol 301 redirects (Cloudflare Pages / Netlify static edge)
-http://walkathawa.site/* https://www.walkathawa.site/:splat 301!
-https://walkathawa.site/* https://www.walkathawa.site/:splat 301!
-http://www.walkathawa.site/* https://www.walkathawa.site/:splat 301!
-http://walkathawa.com/* https://www.walkathawa.site/:splat 301!
-https://walkathawa.com/* https://www.walkathawa.site/:splat 301!
-http://www.walkathawa.com/* https://www.walkathawa.site/:splat 301!
-https://www.walkathawa.com/* https://www.walkathawa.site/:splat 301!
+# Canonical legacy URL 301 redirects (Cloudflare Workers Static Assets / Pages compliant)
+# Host & protocol normalization (apex -> www) is handled by _worker.js
 
-# Legacy URL canonical 301 redirects
 /posts / 301
 /posts/:slug /story/:slug 301
 /katha/:slug /story/:slug 301
@@ -19,6 +12,27 @@ https://www.walkathawa.com/* https://www.walkathawa.site/:splat 301!
 /page/1 / 301
 /popular/page/1 /popular 301
 /archives/page/1 /archives 301
+/category/amma /category/%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F 301
+/category/amma-wal-katha /category/%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F 301
+/category/ammai-puthai /category/%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F 301
+/category/thaththa-wal-katha /category/thaththa-duwa 301
+/category/akka-wal-katha /category/akka-malli 301
+/category/akkagen-sapa /category/akka-malli 301
+/category/sahodhara-sohadhari /category/akka-malli 301
+/category/wife-wal-katha /category/wife 301
+/category/wife-gf /category/wife 301
+/category/nana-wal-katha /category/nanda 301
+/category/pawule-an-aya /category/nanda 301
+/category/aunty-wal-katha /category/%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F 301
+/category/wadimahal-bala /category/%E0%B6%87%E0%B6%B1%E0%B7%8A%E0%B6%A7%E0%B7%92-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F 301
+/category/teacher-wal-katha /category/school 301
+/category/model-wal-katha /category/school 301
+/category/samalingika /category/lesbian 301
+/category/spa-kathawa /category/spa-katha 301
+/category/threesome-wal-katha /category/%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8 301
+/category/walle-kathawa /category/%E0%B7%80%E0%B6%A7%E0%B7%9A-%E0%B6%BA%E0%B7%8F%E0%B6%B8 301
+/category/sex-katha /category/romantic 301
+/category/sinhala-sex-katha /category/romantic 301
 /sitemap_index.xml /sitemap.xml 301
 /sitemap-main.xml /sitemap.xml 301
 /sitemap-stories.xml /sitemap.xml 301

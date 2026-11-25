@@ -10,7 +10,7 @@ import {
   getCategoryLabel,
 } from '../../utils/storyFormatting';
 import { readInitialStoryFromDocument } from '../../utils/initialData';
-import { formatStoryImageAlt } from '../../config/seoMetadata';
+import { formatStoryImageAlt, getCategoryAnchorText } from '../../config/seoMetadata';
 
 interface StoryReaderProps {
   slug: string;
@@ -188,7 +188,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           onClick={(e) => handleLink(e, () => onSelectCategory(categorySlug))}
           className="text-amber-500/90 hover:text-amber-400 transition-colors"
         >
-          {categoryLabel}
+          {getCategoryAnchorText(categorySlug, categoryLabel)}
         </a>
       </nav>
 
@@ -250,7 +250,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
         <figure className="my-7 overflow-hidden rounded-md border border-zinc-800/80 bg-[#16161a]">
           <img
             src={story.coverImage}
-            alt={formatStoryImageAlt(story.title, categoryLabel)}
+            alt={formatStoryImageAlt(story.title, categoryLabel, categorySlug)}
             onError={() => setCoverFailed(true)}
             className="w-full aspect-video object-cover"
           />
@@ -270,17 +270,70 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
         )}
       </div>
 
-      {/* Subtle Hairline Telegram Notice (No thick left border) */}
-      <div className="my-10 py-5 border-t border-b border-zinc-800/80 text-sm text-zinc-400 leading-relaxed">
-        අලුත්ම සිංහල කතා දිනපතා එසැණින් කියවීමට අපගේ Telegram නාලිකාව සමඟ එක්වන්න:{' '}
-        <a
-          href="https://t.me/walkathawa"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-amber-400 hover:underline font-medium"
-        >
-          t.me/walkathawa
-        </a>
+      {/* Minimal In-Page SEO Context & Internal Category Links + Telegram Notice */}
+      <div className="my-10 py-5 border-t border-b border-zinc-800/80 text-xs sm:text-sm text-zinc-400 leading-relaxed space-y-2.5">
+        <p>
+          මෙම කතාව{' '}
+          <a
+            href={`/category/${encodeURIComponent(categorySlug)}`}
+            onClick={(e) => handleLink(e, () => onSelectCategory(categorySlug))}
+            className="text-zinc-200 hover:text-amber-400 underline underline-offset-2"
+          >
+            {getCategoryAnchorText(categorySlug, categoryLabel)}
+          </a>{' '}
+          එකතුවට අයත් sinhala wal katha සහ sinhala wela katha නිර්මාණයකි. තවත් අලුත්ම{' '}
+          <a
+            href="/category/%E0%B6%85%E0%B6%B8%E0%B7%8A%E0%B6%B8%E0%B7%8F-%E0%B6%B4%E0%B7%94%E0%B6%AD%E0%B7%8F"
+            onClick={(e) => handleLink(e, () => onSelectCategory('අම්මා-පුතා'))}
+            className="text-zinc-300 hover:text-amber-400"
+          >
+            amma wal katha
+          </a>
+          ,{' '}
+          <a
+            href="/category/wife"
+            onClick={(e) => handleLink(e, () => onSelectCategory('wife'))}
+            className="text-zinc-300 hover:text-amber-400"
+          >
+            wife wal katha
+          </a>
+          ,{' '}
+          <a
+            href="/category/thaththa-duwa"
+            onClick={(e) => handleLink(e, () => onSelectCategory('thaththa-duwa'))}
+            className="text-zinc-300 hover:text-amber-400"
+          >
+            thaththa duwa
+          </a>
+          ,{' '}
+          <a
+            href="/category/akka-malli"
+            onClick={(e) => handleLink(e, () => onSelectCategory('akka-malli'))}
+            className="text-zinc-300 hover:text-amber-400"
+          >
+            akka wal katha
+          </a>{' '}
+          සහ{' '}
+          <a
+            href="/categories"
+            onClick={(e) => handleLink(e, onBack)}
+            className="text-zinc-300 hover:text-amber-400"
+          >
+            walkatha වර්ගීකරණ
+          </a>{' '}
+          නොමිලේ කියවන්න.
+        </p>
+        <p>
+          අලුත්ම wal katha 2026 හා wela katha දිනපතා එසැණින් කියවීමට Telegram නාලිකාව සමඟ එක්වන්න:{' '}
+          <a
+            href="https://t.me/walkathawa"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-400 hover:underline font-medium"
+          >
+            t.me/walkathawa
+          </a>
+        </p>
       </div>
 
       {/* Previous / Next Story Navigation */}
@@ -329,7 +382,9 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       {/* Related Stories — Compact Editorial List */}
       {relatedStories.length > 0 && (
         <section className="mt-12 pt-8 border-t border-zinc-800/80">
-          <h2 className="text-sm font-semibold text-zinc-300 mb-4">තවත් කියවන්න</h2>
+          <h2 className="text-sm font-semibold text-zinc-300 mb-4">
+            තවත් Sinhala Wal Katha හා Wela Katha කියවන්න
+          </h2>
           <ul className="divide-y divide-zinc-800/70">
             {relatedStories.map((rel) => {
               const relSlug = rel.slug || rel.id;
