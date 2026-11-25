@@ -5,6 +5,11 @@ import {
   DEFAULT_OG_IMAGE,
   buildCanonicalUrl,
 } from '../config/site';
+import {
+  HOME_SEO,
+  getCategorySeoCopy,
+  formatStorySeoTitle,
+} from '../config/seoMetadata';
 
 export const SITE_URL = SITE_ORIGIN;
 export { SITE_NAME, DEFAULT_OG_IMAGE };
@@ -12,16 +17,7 @@ export { SITE_NAME, DEFAULT_OG_IMAGE };
 export const HOME_FAQ_ENTRIES: { question: string; answer: string }[] = [];
 
 export function formatCleanTitle(rawTitle: string): string {
-  const cleaned = rawTitle
-    .replace(/\s*[–|-]\s*(Sinhala\s+)?(Wal|Wela|Wala|Sex)\s+Katha.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const suffix = ' | Walkathawa';
-  if (cleaned.length + suffix.length <= 60) {
-    return `${cleaned}${suffix}`;
-  }
-  return `${cleaned.slice(0, Math.max(10, 57 - suffix.length)).trim()}...${suffix}`;
+  return formatStorySeoTitle(rawTitle);
 }
 
 export function formatCleanDescription(rawDesc: string, fallbackTitle?: string): string {
@@ -30,10 +26,10 @@ export function formatCleanDescription(rawDesc: string, fallbackTitle?: string):
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (!cleaned || cleaned.length < 35) {
+  if (!cleaned || cleaned.length < 45) {
     const base = fallbackTitle
-      ? `${fallbackTitle} — සිංහල කතා Walkathawa වෙතින් නොමිලේ කියවන්න.`
-      : 'Walkathawa (වල් කතාව) — අලුත්ම සිංහල කතා, ආදර කතා සහ කෙටි කතා එකතුව නොමිලේ කියවන්න.';
+      ? `${fallbackTitle} — Sinhala wal katha & wela katha Walkathawa වෙතින් නොමිලේ කියවන්න.`
+      : HOME_SEO.description;
     return base.slice(0, 158);
   }
   if (cleaned.length <= 158) return cleaned;
@@ -131,18 +127,23 @@ export class SeoService {
   ) {
     const isCategory = Boolean(category && category.slug && category.slug !== 'all');
     const categoryLabel = category?.sinhalaName || category?.name || category?.slug || '';
-    const title = isCategory
+    const catSeo = isCategory ? getCategorySeoCopy(category!.slug || category!.id, categoryLabel) : null;
+    const title = isCategory && catSeo
       ? page > 1
-        ? `${categoryLabel} — පිටුව ${page} | Walkathawa`
-        : `${categoryLabel} | Walkathawa`
+        ? `${catSeo.titleBase} — පිටුව ${page} | Walkathawa`
+        : `${catSeo.titleBase} | Walkathawa`
       : page > 1
-      ? `Walkathawa (වල් කතාව) — පිටුව ${page}`
-      : 'Walkathawa (වල් කතාව) | Sinhala Stories Online';
+      ? `Sinhala Wal Katha — පිටුව ${page} | Walkathawa`
+      : HOME_SEO.title;
 
     const description = formatCleanDescription(
-      isCategory
-        ? `${categoryLabel} — සිංහල කතා එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`
-        : 'Walkathawa (වල් කතාව) — අලුත්ම සිංහල කතා, ආදර කතා සහ කෙටි කතා එකතුව නොමිලේ කියවන්න.'
+      isCategory && catSeo
+        ? page > 1
+          ? `${catSeo.titleBase} පිටුව ${page} — අලුත්ම sinhala wal katha සහ wela katha Walkathawa වෙතින් නොමිලේ කියවන්න.`
+          : catSeo.description
+        : page > 1
+        ? `Walkathawa (වල් කතාව) පිටුව ${page} — අලුත්ම sinhala wal katha, wela katha, sinhala wala katha සහ wal katha new නොමිලේ කියවන්න.`
+        : HOME_SEO.description
     );
 
     const routePath = isCategory
@@ -304,7 +305,15 @@ export class SeoService {
       inLanguage: 'si-LK',
       wordCount,
       timeRequired: `PT${readingMinutes}M`,
-      articleSection: story.categoryName || story.category || 'සිංහල කතා',
+      articleSection: story.categoryName || story.category || 'Sinhala Wal Katha',
+      keywords: [
+        'wal katha',
+        'sinhala wal katha',
+        'wela katha',
+        'walkatha',
+        'sinhala wala katha',
+        story.categoryName || story.category || 'sinhala walkatha',
+      ],
       image: [imageUrl],
       ...(datePublished ? { datePublished } : {}),
       ...(dateModified ? { dateModified } : {}),
@@ -367,31 +376,33 @@ export class SeoService {
 
   static updateCategoriesSeo(_categories: Category[] = []) {
     this.updateStaticPageSeo(
-      'වර්ගීකරණ',
+      'Sinhala Wal Katha Categories — වර්ගීකරණ',
       '/categories',
-      'Walkathawa සිංහල කතා වර්ගීකරණ එකතුව පිරික්සන්න.'
+      'Walkathawa (වල් කතාව) සියලුම sinhala wal katha, wela katha, wife, akka, amma, aunty සහ school wal katha වර්ගීකරණ එකම තැනකින්.'
     );
   }
 
   static updatePopularSeo(page = 1, totalPages = 1) {
-    const title = page > 1 ? `ජනප්‍රිය කතා — පිටුව ${page}` : 'ජනප්‍රිය කතා';
+    const title =
+      page > 1 ? `Popular Sinhala Wal Katha — පිටුව ${page}` : 'Popular Sinhala Wal Katha — ජනප්‍රිය කතා';
     const canonicalPath = page > 1 ? `/popular/page/${page}` : '/popular';
     this.updateStaticPageSeo(
       title,
       canonicalPath,
-      'Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව.'
+      'Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය sinhala wal katha, wela katha, walkatha සහ sinhala wala katha එකතුව.'
     );
     this.setLinkRel('prev', page > 1 ? buildCanonicalUrl('/popular', page - 1) : null);
     this.setLinkRel('next', page < totalPages ? buildCanonicalUrl('/popular', page + 1) : null);
   }
 
   static updateArchivesSeo(page = 1, totalPages = 1) {
-    const title = page > 1 ? `ලේඛනාගාරය — පිටුව ${page}` : 'ලේඛනාගාරය';
+    const title =
+      page > 1 ? `Wal Katha New & Archives — පිටුව ${page}` : 'Wal Katha New & Archives — ලේඛනාගාරය';
     const canonicalPath = page > 1 ? `/archives/page/${page}` : '/archives';
     this.updateStaticPageSeo(
       title,
       canonicalPath,
-      'Walkathawa සිංහල කතා ලේඛනාගාරය — පැරණි හා අලුත් කතා සියල්ල.'
+      'Walkathawa සිංහල වල් කතා ලේඛනාගාරය — අලුත්ම wal katha new, aluth wal katha සහ සම්පූර්ණ sinhala walkatha එකතුව.'
     );
     this.setLinkRel('prev', page > 1 ? buildCanonicalUrl('/archives', page - 1) : null);
     this.setLinkRel('next', page < totalPages ? buildCanonicalUrl('/archives', page + 1) : null);
@@ -478,9 +489,9 @@ export class SeoService {
 
   static updateSitemapPageSeo(_totalStories = 613) {
     this.updateStaticPageSeo(
-      'සම්පූර්ණ කතා නාමාවලිය',
+      'Complete Sinhala Wal Katha Index — නාමාවලිය',
       '/sitemap',
-      'Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා සහ වර්ගීකරණ එකම පිටුවකින්.'
+      'Walkathawa (වල් කතාව) වෙබ් අඩවියේ සියලුම sinhala wal katha, wela katha, walkatha සහ වර්ගීකරණ එකම පිටුවකින්.'
     );
   }
 }

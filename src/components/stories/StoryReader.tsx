@@ -10,6 +10,7 @@ import {
   getCategoryLabel,
 } from '../../utils/storyFormatting';
 import { readInitialStoryFromDocument } from '../../utils/initialData';
+import { formatStoryImageAlt } from '../../config/seoMetadata';
 
 interface StoryReaderProps {
   slug: string;
@@ -249,7 +250,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
         <figure className="my-7 overflow-hidden rounded-md border border-zinc-800/80 bg-[#16161a]">
           <img
             src={story.coverImage}
-            alt={story.title}
+            alt={formatStoryImageAlt(story.title, categoryLabel)}
             onError={() => setCoverFailed(true)}
             className="w-full aspect-video object-cover"
           />

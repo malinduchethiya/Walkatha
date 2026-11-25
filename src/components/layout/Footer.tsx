@@ -48,13 +48,13 @@ export const Footer: React.FC<FooterProps> = ({
               Walkathawa
             </a>
             <p className="text-xs text-zinc-500 leading-relaxed">
-              ශ්‍රී ලාංකික පාඨකයන් සඳහා වෙන්වූ සිංහල කතා එකතුව. 18+ ප්‍රබන්ධ සාහිත්‍යය.
+              Walkathawa (වල් කතාව) — අලුත්ම Sinhala wal katha, wela katha සහ walkatha එකතුව. 18+ ප්‍රබන්ධ සාහිත්‍යය.
             </p>
           </div>
 
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-400">
-              {categories.slice(0, 6).map((cat) => {
+              {categories.map((cat) => {
                 const slug = cat.slug || cat.id;
                 return (
                   <a

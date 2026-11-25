@@ -22,6 +22,10 @@ const DEFAULT_CATEGORIES = [
   { id: 'nanda', slug: 'nanda', sinhalaName: 'නැන්දා / ඇන්ටි කතා', name: 'Aunty Stories' },
   { id: 'school', slug: 'school', sinhalaName: 'පාසල් සහ කැම්පස් කතා', name: 'School & Campus' },
   { id: 'romantic', slug: 'romantic', sinhalaName: 'ආදර සහ රස කතා', name: 'Romantic Stories' },
+  { id: 'lesbian', slug: 'lesbian', sinhalaName: 'Lesbian කතා', name: 'Lesbian Stories' },
+  { id: 'වටේ-යාම', slug: 'වටේ-යාම', sinhalaName: 'වටේ යාම', name: 'Wife Sharing & Cuckold' },
+  { id: 'අම්මා-පුතා', slug: 'අම්මා-පුතා', sinhalaName: 'අම්මා පුතා', name: 'Amma Stories' },
+  { id: 'ඇන්ටි-පුතා', slug: 'ඇන්ටි-පුතා', sinhalaName: 'ඇන්ටි පුතා', name: 'Aunty Putha' },
 ];
 
 const STATIC_SITE_PAGES = [
@@ -133,7 +137,7 @@ function isPublishableStory(story) {
   return true;
 }
 
-function withTimeout(promise, ms = 12000) {
+function withTimeout(promise, ms = 25000) {
   return Promise.race([
     promise,
     new Promise((resolve) => setTimeout(() => resolve(null), ms)),
@@ -152,8 +156,8 @@ async function fetchFromFirestore() {
 
   try {
     const [storiesSnap, catsSnap] = await Promise.all([
-      withTimeout(getDocs(collection(db, 'stories')), 12000),
-      withTimeout(getDocs(collection(db, 'categories')), 12000),
+      withTimeout(getDocs(collection(db, 'stories')), 25000),
+      withTimeout(getDocs(collection(db, 'categories')), 25000),
     ]);
 
     if (storiesSnap) {

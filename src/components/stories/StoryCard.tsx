@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Story, Category } from '../../types/story';
 import { formatSinhalaTimeAgo } from '../../utils/formatters';
 import { getStoryExcerpt, getCategoryLabel } from '../../utils/storyFormatting';
+import { formatStoryImageAlt } from '../../config/seoMetadata';
 
 interface StoryCardProps {
   story: Story;
@@ -41,7 +42,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           {hasValidCover ? (
             <img
               src={story.coverImage}
-              alt={story.title}
+              alt={formatStoryImageAlt(story.title, categoryLabel)}
               loading="lazy"
               decoding="async"
               onError={() => setImageFailed(true)}

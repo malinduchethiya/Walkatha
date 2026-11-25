@@ -528,7 +528,7 @@ function resolveRouteForSsr(
     }
 
     const postTitle = stripZW(story.title);
-    const cleanTitle = formatCleanStoryTitle(postTitle);
+    const cleanTitle = formatStorySeoTitle(postTitle);
     const bodyText =
       story.fullContent || story.content || story.shortDescription || story.description || postTitle;
     const excerpt = String(bodyText).replace(/\s+/g, ' ').trim().slice(0, 155);
@@ -699,11 +699,12 @@ function resolveRouteForSsr(
     const totalPages = Math.max(1, Math.ceil(catStories.length / 20));
     const slice = catStories.slice((catPage - 1) * 20, catPage * 20);
     const catLabel = stripZW(category.sinhalaName || category.name || rawCatSlug);
-    const title = catPage > 1 ? `${catLabel} — පිටුව ${catPage} | Walkathawa` : `${catLabel} | Walkathawa`;
-    const description = stripZW(
-      category.description ||
-        `${catLabel} — සිංහල කතා එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`
-    ).slice(0, 158);
+    const catSeo = getCategorySeoCopy(category.slug || rawCatSlug, catLabel);
+    const title =
+      catPage > 1
+        ? `${catSeo.titleBase} — පිටුව ${catPage} | Walkathawa`
+        : `${catSeo.titleBase} | Walkathawa`;
+    const description = stripZW(catSeo.description).slice(0, 158);
     const catBaseRoute = `/category/${encodeURIComponent(category.slug || rawCatSlug)}`;
     const baseCatUrl = `${SITE_URL}${catBaseRoute}`;
     const canonicalUrl = buildSsrPageUrl(catBaseRoute, catPage);
@@ -910,16 +911,16 @@ function resolveRouteForSsr(
     const pageStories = activeStories.slice(startIdx, startIdx + 20);
     const title =
       homePage > 1
-        ? `Walkathawa (වල් කතාව) — පිටුව ${homePage}`
-        : 'Walkathawa (වල් කතාව) | Sinhala Stories Online';
+        ? `Sinhala Wal Katha — පිටුව ${homePage} | Walkathawa`
+        : HOME_SEO.title;
     const sampleTitles = pageStories
       .slice(0, 2)
       .map((s) => stripZW(s.title))
       .join(', ');
     const description =
       homePage > 1 && sampleTitles
-        ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු සිංහල කතා නොමිලේ කියවන්න.`.slice(0, 158)
-        : 'Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala katha, romantic stories, fictional stories, and short stories updated regularly.';
+        ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha සහ wal katha sinhala නොමිලේ කියවන්න.`.slice(0, 158)
+        : HOME_SEO.description;
 
     const canonicalUrl = buildSsrPageUrl('/', homePage);
     const prevUrl = homePage > 1 ? buildSsrPageUrl('/', homePage - 1) : null;

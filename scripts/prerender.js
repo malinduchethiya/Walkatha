@@ -97,16 +97,75 @@ function toIsoDate(raw) {
   return isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
+const HOME_SEO_TITLE = 'Walkathawa (වල් කතාව) — Sinhala Wal Katha & Wela Katha New';
+const HOME_SEO_DESCRIPTION =
+  'Walkathawa (වල් කතාව) — Read new Sinhala wal katha, wela katha, and sinhala wala katha online free. Daily updated wal katha sinhala and aluth sinhala walkatha.';
+
+const CATEGORY_SEO_MAP = {
+  wife: {
+    titleBase: 'Wife Wal Katha — වයිෆ් / බිරිඳ කතා',
+    shortBase: 'Wife Wal Katha',
+    description:
+      'අලුත්ම wife wal katha, බිරිඳ කතා සහ sinhala wal katha Walkathawa වෙතින් නොමිලේ කියවන්න. Daily updated wela katha sinhala.',
+  },
+  'akka-malli': {
+    titleBase: 'Akka Malli Wal Katha — අක්කා මල්ලි කතා',
+    shortBase: 'Akka Malli Wal Katha',
+    description:
+      'නවතම akka wal katha, අක්කා මල්ලි කතා සහ sinhala wala katha Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
+  },
+  nanda: {
+    titleBase: 'Aunty & Nanda Wal Katha — නැන්දා කතා',
+    shortBase: 'Aunty & Nanda Wal Katha',
+    description:
+      'හොඳම aunty wal katha, නැන්දා කතා සහ sinhala wal katha new එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.',
+  },
+  'ඇන්ටි-පුතා': {
+    titleBase: 'Aunty Wal Katha — ඇන්ටි පුතා කතා',
+    shortBase: 'Aunty Wal Katha',
+    description:
+      'අලුත්ම aunty wal katha, ඇන්ටි පුතා කතා සහ wal katha sinhala Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
+  },
+  'අම්මා-පුතා': {
+    titleBase: 'Amma Wal Katha — අම්මා පුතා කතා',
+    shortBase: 'Amma Wal Katha',
+    description:
+      'අලුත්ම amma wal katha, අම්මා පුතා කතා සහ sinhala wal katha Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
+  },
+  school: {
+    titleBase: 'School & Teacher Wal Katha — පාසල් කතා',
+    shortBase: 'School & Teacher Wal Katha',
+    description:
+      'නවතම school wal katha, teacher wal katha සහ පාසල් කැම්පස් sinhala walkatha එකතුව Walkathawa වෙතින් කියවන්න.',
+  },
+  lesbian: {
+    titleBase: 'Lesbian Wal Katha — සිංහල වල් කතා',
+    shortBase: 'Lesbian Wal Katha',
+    description:
+      'අලුත්ම lesbian wal katha සහ sinhala wela katha එකතුව Walkathawa (වල් කතාව) වෙතින් නොමිලේ කියවන්න.',
+  },
+  'වටේ-යාම': {
+    titleBase: 'Cuckold & Wife Sharing Wal Katha — වටේ යාම',
+    shortBase: 'Cuckold Wal Katha',
+    description:
+      'අලුත්ම cuckold wal katha, wife sharing සහ වටේ යාම sinhala wal katha Walkathawa වෙතින් නොමිලේ කියවන්න.',
+  },
+  romantic: {
+    titleBase: 'Romantic Sinhala Wal Katha — ආදර කතා',
+    shortBase: 'Romantic Sinhala Wal Katha',
+    description:
+      'ආදර හා හැඟීම්බර sinhala wal katha, wela katha සහ sinhala walkatha කෙටි කතා Walkathawa වෙතින් නොමිලේ කියවන්න.',
+  },
+};
+
 function formatCleanStoryTitle(rawTitle) {
-  const cleaned = stripZW(rawTitle)
-    .replace(/\s*[–|-]\s*(Sinhala\s+)?(Wal|Wela|Wala|Sex)\s+Katha.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleaned = stripZW(rawTitle).replace(/\s+/g, ' ').trim();
   const suffix = ` | ${SITE_NAME}`;
-  if (cleaned.length + suffix.length <= 60) {
-    return `${cleaned}${suffix}`;
-  }
-  return `${cleaned.slice(0, Math.max(10, 57 - suffix.length)).trim()}...${suffix}`;
+  const hasCoreKeyword = /(wal\s*katha|wela\s*katha|wala\s*katha|walkatha|වල්\s*කතා)/i.test(cleaned);
+  const withKeyword = hasCoreKeyword ? `${cleaned}${suffix}` : `${cleaned} — Wal Katha${suffix}`;
+  if (withKeyword.length <= 65) return withKeyword;
+  if (cleaned.length + suffix.length <= 65) return `${cleaned}${suffix}`;
+  return `${cleaned.slice(0, Math.max(12, 62 - suffix.length)).trim()}...${suffix}`;
 }
 
 function formatCleanDescription(rawDesc, fallbackBody, fallbackTitle) {
@@ -222,6 +281,7 @@ function buildOrganizationSchema() {
     '@type': 'Organization',
     '@id': `${SITE_ORIGIN}/#organization`,
     name: SITE_NAME,
+    alternateName: ['වල් කතාව', 'Wal Katha', 'Walkatha', 'Sinhala Wal Katha'],
     url: `${SITE_ORIGIN}/`,
     logo: {
       '@type': 'ImageObject',
@@ -491,17 +551,19 @@ function main() {
     const startIdx = (p - 1) * PAGE_SIZE;
     const pageStories = stories.slice(startIdx, startIdx + PAGE_SIZE);
     const title =
-      p > 1
-        ? `Walkathawa (වල් කතාව) — පිටුව ${p}`
-        : 'Walkathawa (වල් කතාව) | Sinhala Stories Online';
+      p > 1 ? `Sinhala Wal Katha — පිටුව ${p} | ${SITE_NAME}` : HOME_SEO_TITLE;
     const sampleTitles = pageStories
       .slice(0, 2)
       .map((s) => stripZW(s.title))
       .join(', ');
     const description =
       p > 1 && sampleTitles
-        ? `Walkathawa පිටුව ${p}: ${sampleTitles} ඇතුළු සිංහල කතා නොමිලේ කියවන්න.`.slice(0, 158)
-        : 'Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala katha, romantic stories, fictional stories, and short stories updated regularly.';
+        ? formatCleanDescription(
+            `Walkathawa පිටුව ${p}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha සහ wal katha sinhala නොමිලේ කියවන්න.`,
+            '',
+            title
+          )
+        : HOME_SEO_DESCRIPTION;
     const canonicalUrl = buildPageAbsoluteUrl('/', p);
     const prevUrl = p > 1 ? buildPageAbsoluteUrl('/', p - 1) : null;
     const nextUrl = p < totalHomePages ? buildPageAbsoluteUrl('/', p + 1) : null;
@@ -534,6 +596,7 @@ function main() {
               '@id': `${SITE_ORIGIN}/#website`,
               url: `${SITE_ORIGIN}/`,
               name: SITE_NAME,
+              alternateName: ['වල් කතාව', 'Sinhala Wal Katha', 'Wela Katha'],
               inLanguage: 'si-LK',
               description,
               publisher: { '@id': `${SITE_ORIGIN}/#organization` },
@@ -638,8 +701,9 @@ function main() {
     renderDocument(
       templateParts,
       {
-        title: `වර්ගීකරණ | ${SITE_NAME}`,
-        description: 'Walkathawa සිංහල කතා වර්ගීකරණ එකතුව පිරික්සන්න.',
+        title: `Sinhala Wal Katha Categories — වර්ගීකරණ | ${SITE_NAME}`,
+        description:
+          'Walkathawa (වල් කතාව) සියලුම sinhala wal katha, wela katha, wife, akka, amma, aunty සහ school wal katha වර්ගීකරණ එකම තැනකින්.',
         canonicalUrl: `${SITE_ORIGIN}/categories`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -649,8 +713,9 @@ function main() {
               '@type': 'CollectionPage',
               '@id': `${SITE_ORIGIN}/categories#collection`,
               url: `${SITE_ORIGIN}/categories`,
-              name: `වර්ගීකරණ | ${SITE_NAME}`,
-              description: 'Walkathawa සිංහල කතා වර්ගීකරණ එකතුව පිරික්සන්න.',
+              name: `Sinhala Wal Katha Categories — වර්ගීකරණ | ${SITE_NAME}`,
+              description:
+                'Walkathawa (වල් කතාව) සියලුම sinhala wal katha, wela katha, wife, akka, amma, aunty සහ school wal katha වර්ගීකරණ එකම තැනකින්.',
               inLanguage: 'si-LK',
             },
             {
@@ -665,7 +730,7 @@ function main() {
       },
       `<div class="ssr-shell">${buildSiteNavHtml(
         categories
-      )}<main><h1>වර්ගීකරණ | Walkathawa</h1><ul>${catListHtml}</ul></main>${buildSiteFooterHtml(
+      )}<main><h1>Sinhala Wal Katha Categories — වර්ගීකරණ</h1><ul>${catListHtml}</ul></main>${buildSiteFooterHtml(
         categories
       )}</div>`
     )
@@ -677,15 +742,18 @@ function main() {
   for (let p = 1; p <= totalPopularPages; p++) {
     const startIdx = (p - 1) * PAGE_SIZE;
     const slice = popularSorted.slice(startIdx, startIdx + PAGE_SIZE);
-    const title = p > 1 ? `ජනප්‍රිය කතා — පිටුව ${p} | ${SITE_NAME}` : `ජනප්‍රිය කතා | ${SITE_NAME}`;
+    const title =
+      p > 1
+        ? `Popular Sinhala Wal Katha — පිටුව ${p} | ${SITE_NAME}`
+        : `Popular Sinhala Wal Katha — ජනප්‍රිය කතා | ${SITE_NAME}`;
     const sampleTitles = slice
       .slice(0, 2)
       .map((s) => stripZW(s.title))
       .join(', ');
     const description = formatCleanDescription(
       p > 1
-        ? `Walkathawa ජනප්‍රිය සිංහල කතා පිටුව ${p}: ${sampleTitles} ඇතුළු වැඩිපුරම කියවන කතා එකතුව.`
-        : `Walkathawa වෙබ් අඩවියේ වැඩිපුරම කියවන ජනප්‍රිය සිංහල කතා එකතුව: ${sampleTitles} සහ තවත් කතා.`,
+        ? `Popular sinhala wal katha පිටුව ${p}: ${sampleTitles} ඇතුළු වැඩිපුරම කියවන wela katha සහ walkatha එකතුව.`
+        : `Walkathawa වැඩිපුරම කියවන ජනප්‍රිය sinhala wal katha, wela katha සහ sinhala wala katha: ${sampleTitles}.`,
       '',
       title
     );
@@ -762,15 +830,17 @@ function main() {
     const startIdx = (p - 1) * PAGE_SIZE;
     const slice = stories.slice(startIdx, startIdx + PAGE_SIZE);
     const title =
-      p > 1 ? `ලේඛනාගාරය — පිටුව ${p} | ${SITE_NAME}` : `ලේඛනාගාරය | ${SITE_NAME}`;
+      p > 1
+        ? `Wal Katha New & Archives — පිටුව ${p} | ${SITE_NAME}`
+        : `Wal Katha New & Archives — ලේඛනාගාරය | ${SITE_NAME}`;
     const sampleTitles = slice
       .slice(0, 2)
       .map((s) => stripZW(s.title))
       .join(', ');
     const description = formatCleanDescription(
       p > 1
-        ? `Walkathawa සිංහල කතා ලේඛනාගාරය පිටුව ${p}: ${sampleTitles} ඇතුළු සම්පූර්ණ කතා එකතුව.`
-        : `Walkathawa සිංහල කතා ලේඛනාගාරය — ${sampleTitles} ඇතුළු සියලුම පැරණි හා අලුත් කතා එකතුව.`,
+        ? `Wal katha new ලේඛනාගාරය පිටුව ${p}: ${sampleTitles} ඇතුළු සම්පූර්ණ sinhala wal katha සහ walkatha එකතුව.`
+        : `Walkathawa සිංහල වල් කතා ලේඛනාගාරය — ${sampleTitles} ඇතුළු අලුත්ම wal katha new සහ sinhala walkatha එකතුව.`,
       '',
       title
     );
@@ -854,8 +924,8 @@ function main() {
     renderDocument(
       templateParts,
       {
-        title: `සම්පූර්ණ කතා නාමාවලිය | ${SITE_NAME}`,
-        description: `Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා (${stories.length}) සහ වර්ගීකරණ එකම පිටුවකින්.`,
+        title: `Complete Sinhala Wal Katha Index — නාමාවලිය | ${SITE_NAME}`,
+        description: `Walkathawa (වල් කතාව) වෙබ් අඩවියේ සියලුම sinhala wal katha (${stories.length}), wela katha, walkatha සහ වර්ගීකරණ එකම පිටුවකින්.`,
         canonicalUrl: `${SITE_ORIGIN}/sitemap`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -865,8 +935,8 @@ function main() {
               '@type': 'CollectionPage',
               '@id': `${SITE_ORIGIN}/sitemap#webpage`,
               url: `${SITE_ORIGIN}/sitemap`,
-              name: `සම්පූර්ණ කතා නාමාවලිය | ${SITE_NAME}`,
-              description: `Walkathawa වෙබ් අඩවියේ සියලුම සිංහල කතා (${stories.length}) සහ වර්ගීකරණ එකම පිටුවකින්.`,
+              name: `Complete Sinhala Wal Katha Index — නාමාවලිය | ${SITE_NAME}`,
+              description: `Walkathawa (වල් කතාව) වෙබ් අඩවියේ සියලුම sinhala wal katha (${stories.length}), wela katha, walkatha සහ වර්ගීකරණ එකම පිටුවකින්.`,
               inLanguage: 'si-LK',
             },
           ],
@@ -874,7 +944,7 @@ function main() {
       },
       `<div class="ssr-shell">${buildSiteNavHtml(
         categories
-      )}<main><h1>Walkathawa — සම්පූර්ණ කතා නාමාවලිය (${stories.length})</h1><h2>වර්ගීකරණ</h2><ul>${catListHtml}</ul><h2>සියලුම කතා</h2><ul>${allSitemapLinks}</ul></main>${buildSiteFooterHtml(
+      )}<main><h1>Walkathawa — Sinhala Wal Katha සම්පූර්ණ කතා නාමාවලිය (${stories.length})</h1><h2>වර්ගීකරණ</h2><ul>${catListHtml}</ul><h2>සියලුම කතා</h2><ul>${allSitemapLinks}</ul></main>${buildSiteFooterHtml(
         categories
       )}</div>`
     )
@@ -893,26 +963,29 @@ function main() {
       return sCat === catLower || sCatId === catLower || sTags.includes(catLower);
     });
     const catLabel = stripZW(cat.sinhalaName || cat.name || rawSlug);
-    const baseCatDesc = stripZW(
-      cat.description || `${catLabel} — සිංහල කතා එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`
-    );
+    const catSeo = CATEGORY_SEO_MAP[catLower] || {
+      titleBase: `${catLabel} — Wal Katha`,
+      shortBase: catLabel,
+      description: `${catLabel} — අලුත්ම sinhala wal katha, wela katha සහ walkatha එකතුව Walkathawa වෙතින් නොමිලේ කියවන්න.`,
+    };
     const catBaseRoute = `/category/${encodeSlug(rawSlug)}`;
     const totalCatPages = Math.max(1, Math.ceil(matching.length / PAGE_SIZE));
 
     for (let p = 1; p <= totalCatPages; p++) {
       const startIdx = (p - 1) * PAGE_SIZE;
       const slice = matching.slice(startIdx, startIdx + PAGE_SIZE);
-      const title = p > 1 ? `${catLabel} — පිටුව ${p} | ${SITE_NAME}` : `${catLabel} | ${SITE_NAME}`;
+      const title =
+        p > 1
+          ? `${catSeo.shortBase} — පිටුව ${p} | ${SITE_NAME}`
+          : `${catSeo.titleBase} | ${SITE_NAME}`;
       const sampleTitles = slice
         .slice(0, 2)
         .map((s) => stripZW(s.title))
         .join(', ');
       const description = formatCleanDescription(
         p > 1
-          ? `${catLabel} පිටුව ${p}: ${sampleTitles} ඇතුළු සිංහල කතා Walkathawa වෙතින් නොමිලේ කියවන්න.`
-          : baseCatDesc.length < 65 && sampleTitles
-          ? `${baseCatDesc} — ${sampleTitles} ඇතුළු කතා ${matching.length} ක් Walkathawa වෙතින් කියවන්න.`
-          : baseCatDesc,
+          ? `${catSeo.shortBase} පිටුව ${p}: ${sampleTitles} ඇතුළු sinhala wal katha සහ wela katha Walkathawa වෙතින් නොමිලේ කියවන්න.`
+          : catSeo.description,
         '',
         title
       );
@@ -1057,7 +1130,7 @@ function main() {
     const coverHtml =
       story.coverImage && String(story.coverImage).startsWith('http')
         ? `<figure><img src="${escapeHtmlAttr(String(story.coverImage).trim())}" alt="${escapeHtmlAttr(
-            postTitle
+            `${postTitle} — ${catLabel} | Sinhala Wal Katha`
           )}" loading="eager" /></figure>`
         : '';
 
@@ -1130,6 +1203,7 @@ function main() {
               wordCount,
               timeRequired: `PT${readingMinutes}M`,
               articleSection: catLabel,
+              keywords: ['wal katha', 'sinhala wal katha', 'wela katha', 'walkatha', 'sinhala wala katha', catLabel],
               image: [ogImg],
               ...(datePublished ? { datePublished } : {}),
               ...(dateModified ? { dateModified } : {}),

@@ -4,6 +4,7 @@ import { StoryCard } from './StoryCard';
 import { Pagination } from '../common/Pagination';
 import { cleanCategoryBadgeName } from '../../utils/formatters';
 import type { ViewMode } from '../../utils/storyFormatting';
+import { HOME_SEO, getCategorySeoCopy } from '../../config/seoMetadata';
 
 interface StoryGalleryProps {
   stories: Story[];
@@ -51,27 +52,33 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         )
       : null;
 
-  let heading = 'නවතම කතා';
-  let subheading: string | undefined;
+  let heading = currentPage > 1 ? `Sinhala Wal Katha — පිටුව ${currentPage}` : HOME_SEO.h1;
+  let subheading: string | undefined = currentPage === 1 ? HOME_SEO.subtitle : undefined;
   let paginationBase = '/';
 
   if (pageKind === 'category') {
-    heading = activeCatObj
+    const fallbackLabel = activeCatObj
       ? cleanCategoryBadgeName(activeCatObj.sinhalaName || activeCatObj.name)
       : selectedCategory;
-    subheading = activeCatObj?.description;
+    const catSeo = getCategorySeoCopy(selectedCategory, fallbackLabel);
+    heading = catSeo.h1;
+    subheading = activeCatObj?.description || catSeo.description;
     paginationBase = `/category/${encodeURIComponent(selectedCategory)}`;
   } else if (pageKind === 'popular') {
-    heading = 'ජනප්‍රිය කතා';
+    heading = 'Popular Sinhala Wal Katha — ජනප්‍රිය කතා';
+    subheading = undefined;
     paginationBase = '/popular';
   } else if (pageKind === 'archives') {
-    heading = 'ලේඛනාගාරය';
+    heading = 'Wal Katha New & Archives — ලේඛනාගාරය';
+    subheading = undefined;
     paginationBase = '/archives';
   } else if (pageKind === 'profile') {
     heading = selectedAuthor;
+    subheading = undefined;
     paginationBase = `/profile/${encodeURIComponent(selectedAuthor)}`;
   } else if (pageKind === 'search') {
     heading = searchQuery ? `“${searchQuery}” සෙවුම් ප්‍රතිඵල` : 'සෙවුම් ප්‍රතිඵල';
+    subheading = undefined;
     paginationBase = '/search';
   }
 

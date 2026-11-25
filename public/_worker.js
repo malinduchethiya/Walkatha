@@ -241,13 +241,13 @@ function toIsoDate(raw) {
 }
 
 function formatCleanStoryTitle(rawTitle) {
-  const cleaned = stripZW(rawTitle)
-    .replace(/\s*[–|-]\s*(Sinhala\s+)?(Wal|Wela|Wala|Sex)\s+Katha.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleaned = stripZW(rawTitle).replace(/\s+/g, ' ').trim();
   const suffix = ` | ${SITE_NAME}`;
-  if (cleaned.length + suffix.length <= 60) return `${cleaned}${suffix}`;
-  return `${cleaned.slice(0, Math.max(10, 57 - suffix.length)).trim()}...${suffix}`;
+  const hasCoreKeyword = /(wal\s*katha|wela\s*katha|wala\s*katha|walkatha|වල්\s*කතා)/i.test(cleaned);
+  const withKeyword = hasCoreKeyword ? `${cleaned}${suffix}` : `${cleaned} — Wal Katha${suffix}`;
+  if (withKeyword.length <= 65) return withKeyword;
+  if (cleaned.length + suffix.length <= 65) return `${cleaned}${suffix}`;
+  return `${cleaned.slice(0, Math.max(12, 62 - suffix.length)).trim()}...${suffix}`;
 }
 
 function splitParagraphs(rawContent) {
@@ -830,7 +830,9 @@ function isStaticAssetPath(pathname) {
   if (
     pathname.startsWith('/assets/') ||
     pathname.startsWith('/api-data/') ||
-    pathname.startsWith('/_prerender/')
+    pathname.startsWith('/_prerender/') ||
+    pathname.startsWith('/images/') ||
+    /^\/google[a-z0-9]+\.html$/i.test(pathname)
   ) {
     return true;
   }
@@ -885,14 +887,12 @@ export default {
       return handleSitemapRequest(request, env, ctx, parseInt(shardMatch[1], 10));
     }
 
-    // 5. Pass through real static assets directly from Cloudflare Pages ASSETS
+    // 5. Pass through real static assets directly from Cloudflare ASSETS
     if (isStaticAssetPath(pathname) && env && env.ASSETS) {
       return env.ASSETS.fetch(request);
     }
 
-    // 6. Dynamic SSR for HTML routes (ensures live Firestore stories and accurate 404s)
-    const userAgent = request.headers.get('User-Agent') || '';
-    const isBot = isBotUserAgent(userAgent);
+    // 5b. Fast-path: serve prerendered static HTML directly from dist/ ASSETS when no query pagination/search overrides it
     let decodedPath = pathname;
     try {
       decodedPath = decodeURIComponent(pathname);
@@ -900,6 +900,37 @@ export default {
       decodedPath = pathname;
     }
     const normalizedPath = decodedPath.replace(/\/+$/, '') || '/';
+    const hasQueryPage = url.searchParams.has('page') && (parseInt(url.searchParams.get('page') || '1', 10) || 1) > 1;
+    const isAdminOrSearch =
+      normalizedPath === '/admin' ||
+      normalizedPath.startsWith('/admin/') ||
+      normalizedPath === '/search';
+
+    if (
+      (request.method === 'GET' || request.method === 'HEAD') &&
+      !hasQueryPage &&
+      !isAdminOrSearch &&
+      env &&
+      env.ASSETS
+    ) {
+      const staticHtmlPath = normalizedPath === '/' ? '/index.html' : `${normalizedPath}.html`;
+      try {
+        const assetRes = await env.ASSETS.fetch(
+          new Request(`${url.origin}${encodeURI(staticHtmlPath)}`, { method: request.method })
+        );
+        if (assetRes && assetRes.ok) {
+          const headers = new Headers(assetRes.headers);
+          headers.set('Content-Type', 'text/html; charset=utf-8');
+          headers.set('Cache-Control', 'public, max-age=120, s-maxage=300, stale-while-revalidate=3600');
+          headers.set('X-Content-Type-Options', 'nosniff');
+          return new Response(assetRes.body, { status: 200, headers });
+        }
+      } catch {
+        // fall through to live Firestore SSR
+      }
+    }
+
+    // 6. Dynamic SSR fallback for live newly published stories & real HTTP 404s
     const pageParam = parseInt(url.searchParams.get('page') || '1', 10);
     const page = !isNaN(pageParam) && pageParam > 1 ? pageParam : 1;
 
@@ -1403,13 +1434,13 @@ export default {
       const pageStories = activeStories.slice(startIdx, startIdx + 20);
       const title =
         homePage > 1
-          ? `Walkathawa (වල් කතාව) — පිටුව ${homePage}`
-          : 'Walkathawa (වල් කතාව) | Sinhala Stories Online';
+          ? `Sinhala Wal Katha — පිටුව ${homePage} | ${SITE_NAME}`
+          : 'Walkathawa (වල් කතාව) — Sinhala Wal Katha & Wela Katha New';
       const sampleTitles = pageStories.slice(0, 2).map((s) => stripZW(s.title)).join(', ');
       const description =
         homePage > 1 && sampleTitles
-          ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු සිංහල කතා නොමිලේ කියවන්න.`.slice(0, 158)
-          : 'Walkathawa (වල් කතාව) is a place to read Sinhala stories online. Discover new Sinhala katha, romantic stories, fictional stories, and short stories updated regularly.';
+          ? `Walkathawa පිටුව ${homePage}: ${sampleTitles} ඇතුළු අලුත්ම sinhala wal katha, wela katha සහ wal katha sinhala නොමිලේ කියවන්න.`.slice(0, 158)
+          : 'Walkathawa (වල් කතාව) — Read new Sinhala wal katha, wela katha, and sinhala wala katha online free. Daily updated wal katha sinhala and aluth sinhala walkatha.';
       const canonicalUrl = buildPageAbsoluteUrl('/', homePage);
       const prevUrl = homePage > 1 ? buildPageAbsoluteUrl('/', homePage - 1) : null;
       const nextUrl = homePage < totalPages ? buildPageAbsoluteUrl('/', homePage + 1) : null;
